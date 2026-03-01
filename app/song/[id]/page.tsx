@@ -18,10 +18,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const song = getSong(id);
 
-  // Sync song tempo to metronome BPM whenever it changes
+  // Sync song metadata to player store whenever they change
   useEffect(() => {
     if (song) store.setBpm(song.tempo);
   }, [song?.tempo]);
+
+  useEffect(() => {
+    if (song) store.setCapo(song.capo);
+  }, [song?.capo]);
 
   if (!song) {
     return (
@@ -35,8 +39,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   }
 
   const allChords = extractChords(song.sections);
-  const displayedKey = store.transpose
-    ? transposeChord(song.displayKey, store.transpose, store.useFlats)
+  const totalShift = store.transpose + store.capo;
+  const displayedKey = totalShift
+    ? transposeChord(song.displayKey, totalShift, store.useFlats)
     : song.displayKey;
 
   return (
@@ -217,7 +222,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       <div className="border-b border-zinc-800 px-4 py-2 overflow-x-auto">
         <div className="max-w-5xl mx-auto flex gap-1.5 flex-wrap">
           {allChords.map((chord) => {
-            const displayed = transposeChord(chord, store.transpose, store.useFlats);
+            const displayed = transposeChord(chord, totalShift, store.useFlats);
             return (
               <button
                 key={chord}

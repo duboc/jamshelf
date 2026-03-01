@@ -9,8 +9,8 @@ interface ChordBadgeProps {
 }
 
 export function ChordBadge({ chord, onTap }: ChordBadgeProps) {
-  const { transpose, useFlats } = usePlayerStore();
-  const displayed = transposeChord(chord, transpose, useFlats);
+  const { transpose, useFlats, capo } = usePlayerStore();
+  const displayed = transposeChord(chord, transpose + capo, useFlats);
 
   return (
     <button
