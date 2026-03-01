@@ -259,7 +259,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             {/* BPM */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">BPM:</span>
-              <button onClick={() => patchMeta(id, 'tempo', Math.max(20, song.tempo - 5))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">-</button>
+              <button onClick={() => patchMeta(id, 'tempo', Math.max(20, song.tempo - 1))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">-</button>
               <input
                 type="number"
                 value={song.tempo}
@@ -269,7 +269,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 }}
                 className="w-10 text-center text-sm font-mono text-zinc-300 bg-transparent border-b border-zinc-700 outline-none focus:border-violet-500"
               />
-              <button onClick={() => patchMeta(id, 'tempo', Math.min(300, song.tempo + 5))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">+</button>
+              <button onClick={() => patchMeta(id, 'tempo', Math.min(300, song.tempo + 1))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">+</button>
             </div>
 
             {/* Time Signature */}
@@ -344,12 +344,34 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               {store.isAutoScrolling ? 'Scrolling...' : 'Auto Scroll'}
             </button>
             {store.isAutoScrolling && (
-              <input
-                type="range" min={0.2} max={3} step={0.1}
-                value={store.autoScrollSpeed}
-                onChange={(e) => store.setAutoScrollSpeed(Number(e.target.value))}
-                className="w-20 accent-violet-500"
-              />
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => store.setAutoScrollSpeed(Math.max(0.1, +(store.autoScrollSpeed - 0.1).toFixed(1)))}
+                  className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
+                >-</button>
+                {[
+                  { label: 'Slow', value: 0.2 },
+                  { label: 'Med', value: 0.5 },
+                  { label: 'Fast', value: 1.0 },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    onClick={() => store.setAutoScrollSpeed(preset.value)}
+                    className={`text-[10px] px-2 py-1 rounded font-semibold transition-colors ${
+                      Math.abs(store.autoScrollSpeed - preset.value) < 0.05
+                        ? 'bg-green-600 text-white'
+                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => store.setAutoScrollSpeed(Math.min(2.0, +(store.autoScrollSpeed + 0.1).toFixed(1)))}
+                  className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
+                >+</button>
+                <span className="text-[10px] font-mono text-zinc-500 w-6 text-center">{store.autoScrollSpeed.toFixed(1)}</span>
+              </div>
             )}
           </div>
 
