@@ -38,8 +38,8 @@ export function ChordSheet({
       last = now;
       const el = scrollRef.current;
       // Speed value maps to pixels per second:
-      // 0.1 = 6px/s (very slow), 0.5 = 30px/s, 1.0 = 60px/s, 2.0 = 120px/s
-      if (el) el.scrollTop += speedRef.current * 60 * (dt / 1000);
+      // 0.1 = 2px/s, 0.3 = 6px/s (slow), 0.7 = 14px/s (med), 1.5 = 30px/s (fast)
+      if (el) el.scrollTop += speedRef.current * 20 * (dt / 1000);
       frameId = requestAnimationFrame(step);
     };
     frameId = requestAnimationFrame(step);

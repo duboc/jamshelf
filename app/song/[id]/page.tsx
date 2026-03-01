@@ -346,19 +346,19 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             {store.isAutoScrolling && (
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => store.setAutoScrollSpeed(Math.max(0.1, +(store.autoScrollSpeed - 0.1).toFixed(1)))}
+                  onClick={() => store.setAutoScrollSpeed(Math.max(0.05, +(store.autoScrollSpeed - 0.05).toFixed(2)))}
                   className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
                 >-</button>
                 {[
-                  { label: 'Slow', value: 0.2 },
-                  { label: 'Med', value: 0.5 },
-                  { label: 'Fast', value: 1.0 },
+                  { label: 'Slow', value: 0.3 },
+                  { label: 'Med', value: 0.7 },
+                  { label: 'Fast', value: 1.5 },
                 ].map((preset) => (
                   <button
                     key={preset.label}
                     onClick={() => store.setAutoScrollSpeed(preset.value)}
                     className={`text-[10px] px-2 py-1 rounded font-semibold transition-colors ${
-                      Math.abs(store.autoScrollSpeed - preset.value) < 0.05
+                      Math.abs(store.autoScrollSpeed - preset.value) < 0.03
                         ? 'bg-green-600 text-white'
                         : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                     }`}
@@ -367,10 +367,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                   </button>
                 ))}
                 <button
-                  onClick={() => store.setAutoScrollSpeed(Math.min(2.0, +(store.autoScrollSpeed + 0.1).toFixed(1)))}
+                  onClick={() => store.setAutoScrollSpeed(Math.min(3.0, +(store.autoScrollSpeed + 0.05).toFixed(2)))}
                   className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
                 >+</button>
-                <span className="text-[10px] font-mono text-zinc-500 w-6 text-center">{store.autoScrollSpeed.toFixed(1)}</span>
+                <span className="text-[10px] font-mono text-zinc-500 w-8 text-center">{store.autoScrollSpeed.toFixed(2)}</span>
               </div>
             )}
           </div>
