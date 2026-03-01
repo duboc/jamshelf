@@ -1,7 +1,8 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { extractChords, transposeChord } from '@/lib/utils/music';
@@ -12,10 +13,16 @@ import { Metronome } from '@/components/metronome/Metronome';
 export default function SongPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { songs } = useSongStore();
+  const { songs, updateSong, exportSong } = useSongStore();
   const store = usePlayerStore();
+  const [showExport, setShowExport] = useState(false);
 
   const song = songs.find((s) => s.id === id);
+
+  // Sync song tempo to metronome BPM
+  useEffect(() => {
+    if (song) store.setBpm(song.tempo);
+  }, [song?.tempo]);
 
   if (!song) {
     return (
@@ -52,20 +59,81 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Key */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">Key:</span>
               <span className="text-sm font-mono font-bold text-violet-400">{displayedKey}</span>
             </div>
-            {song.capo > 0 && (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-zinc-500">Capo:</span>
-                <span className="text-sm font-mono text-amber-400">{song.capo}</span>
-              </div>
-            )}
+
+            {/* Editable Capo */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-zinc-500">Capo:</span>
+              <button
+                onClick={() => updateSong(song.id, { capo: Math.max(0, song.capo - 1) })}
+                className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
+              >
+                -
+              </button>
+              <span className="text-sm font-mono text-amber-400 w-4 text-center">{song.capo}</span>
+              <button
+                onClick={() => updateSong(song.id, { capo: Math.min(12, song.capo + 1) })}
+                className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Editable BPM */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">BPM:</span>
-              <span className="text-sm font-mono text-zinc-300">{song.tempo}</span>
+              <button
+                onClick={() => updateSong(song.id, { tempo: Math.max(20, song.tempo - 5) })}
+                className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                value={song.tempo}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v) && v >= 20 && v <= 300) updateSong(song.id, { tempo: v });
+                }}
+                className="w-10 text-center text-sm font-mono text-zinc-300 bg-transparent border-b border-zinc-700 outline-none focus:border-violet-500"
+              />
+              <button
+                onClick={() => updateSong(song.id, { tempo: Math.min(300, song.tempo + 5) })}
+                className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
+              >
+                +
+              </button>
             </div>
+
+            {/* Time Signature */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-zinc-500">Time:</span>
+              <select
+                value={song.timeSignature}
+                onChange={(e) => updateSong(song.id, { timeSignature: e.target.value })}
+                className="text-sm font-mono text-zinc-300 bg-zinc-800 border border-zinc-700 rounded px-1 py-0.5 outline-none focus:border-violet-500"
+              >
+                <option value="4/4">4/4</option>
+                <option value="3/4">3/4</option>
+                <option value="6/8">6/8</option>
+                <option value="2/4">2/4</option>
+                <option value="5/4">5/4</option>
+                <option value="7/8">7/8</option>
+              </select>
+            </div>
+
+            {/* Export JSON */}
+            <button
+              onClick={() => setShowExport(!showExport)}
+              className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+              title="Export as JSON"
+            >
+              { }JSON
+            </button>
           </div>
         </div>
       </header>
@@ -179,6 +247,37 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           onClose={() => store.setActiveChord(null)}
         />
       </div>
+
+      {/* Export JSON modal */}
+      {showExport && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-zinc-700">
+              <h3 className="font-bold text-zinc-100">Song JSON</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const json = exportSong(song.id);
+                    if (json) navigator.clipboard.writeText(json);
+                  }}
+                  className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                >
+                  Copy to Clipboard
+                </button>
+                <button
+                  onClick={() => setShowExport(false)}
+                  className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+            <pre className="flex-1 overflow-auto p-4 text-xs font-mono text-zinc-300 whitespace-pre-wrap">
+              {exportSong(song.id)}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
