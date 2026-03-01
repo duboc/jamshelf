@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { SongCard } from '@/components/song-list/SongCard';
 import Link from 'next/link';
 
 export default function Home() {
-  const { songs, removeSong, exportAll, importSongs } = useSongStore();
+  const { getSongs, removeEntry, exportAll, importEntries } = useSongStore();
+  const songs = getSongs();
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
@@ -19,17 +20,17 @@ export default function Home() {
   );
 
   const handleExportAll = () => {
-    const json = exportAll();
-    navigator.clipboard.writeText(json);
-    alert('All songs copied to clipboard as JSON!');
+    const cho = exportAll();
+    navigator.clipboard.writeText(cho);
+    alert('All songs copied to clipboard as ChordPro (.cho)!');
   };
 
   const handleImport = () => {
     if (!importText.trim()) {
-      setImportMsg('Paste song JSON first.');
+      setImportMsg('Paste a ChordPro file first.');
       return;
     }
-    const count = importSongs(importText.trim());
+    const count = importEntries(importText.trim());
     if (count > 0) {
       setImportMsg(`Successfully imported ${count} song${count > 1 ? 's' : ''}!`);
       setImportText('');
@@ -38,7 +39,7 @@ export default function Home() {
         setImportMsg('');
       }, 1500);
     } else {
-      setImportMsg('Invalid JSON. Make sure it matches the Jamshelf song format.');
+      setImportMsg('Could not parse ChordPro. Make sure the file starts with {title: ...}');
     }
   };
 
@@ -54,14 +55,12 @@ export default function Home() {
             <button
               onClick={() => setShowImport(true)}
               className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
-              title="Import song from JSON"
             >
-              Import JSON
+              Import .cho
             </button>
             <button
               onClick={handleExportAll}
               className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
-              title="Export all songs as JSON"
             >
               Export All
             </button>
@@ -99,18 +98,18 @@ export default function Home() {
             </div>
           ) : (
             filtered.map((song) => (
-              <SongCard key={song.id} song={song} onRemove={removeSong} />
+              <SongCard key={song.id} song={song} onRemove={removeEntry} />
             ))
           )}
         </div>
       </main>
 
-      {/* Import JSON modal */}
+      {/* Import .cho modal */}
       {showImport && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-              <h3 className="font-bold text-zinc-100">Import Song from JSON</h3>
+              <h3 className="font-bold text-zinc-100">Import ChordPro (.cho)</h3>
               <button
                 onClick={() => { setShowImport(false); setImportMsg(''); setImportText(''); }}
                 className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
@@ -120,17 +119,18 @@ export default function Home() {
             </div>
             <div className="p-4 space-y-4">
               <p className="text-xs text-zinc-400">
-                Paste a Jamshelf song JSON (single song or array of songs). This is the same format you get from Export.
+                Paste a ChordPro file (must start with <code className="text-violet-400">{'{title: ...}'}</code>).
+                You can also paste multiple songs separated by <code className="text-zinc-500">---</code>.
               </p>
               <textarea
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
                 rows={12}
-                placeholder='{"title": "...", "artist": "...", "sections": [...]}'
+                placeholder={`{title: My Song}\n{artist: Artist Name}\n{key: Am}\n\n[Verse 1]\n[Am]Lyrics here`}
                 className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-600 outline-none focus:border-violet-500 transition-colors font-mono text-xs resize-y"
               />
               {importMsg && (
-                <div className={`text-sm rounded-lg px-4 py-2 ${importMsg.includes('Success') ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
+                <div className={`text-sm rounded-lg px-4 py-2 ${importMsg.includes('Successfully') ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
                   {importMsg}
                 </div>
               )}
