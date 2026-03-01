@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import type { Song } from '@/lib/types/song';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { SectionBlock } from './SectionBlock';
@@ -15,19 +15,22 @@ export function ChordSheet({ song, onChordTap }: ChordSheetProps) {
   const animRef = useRef<number>(0);
   const { fontSize, isAutoScrolling, autoScrollSpeed } = usePlayerStore();
 
-  const doScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTop += autoScrollSpeed * 0.5;
-    animRef.current = requestAnimationFrame(doScroll);
-  }, [autoScrollSpeed]);
+  // Use a ref for speed so the animation loop always reads the latest value
+  // without needing to restart the loop when speed changes
+  const speedRef = useRef(autoScrollSpeed);
+  useEffect(() => { speedRef.current = autoScrollSpeed; }, [autoScrollSpeed]);
 
   useEffect(() => {
-    if (isAutoScrolling) {
-      animRef.current = requestAnimationFrame(doScroll);
-    }
-    return () => cancelAnimationFrame(animRef.current);
-  }, [isAutoScrolling, doScroll]);
+    if (!isAutoScrolling) return;
+    let frameId: number;
+    const step = () => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop += speedRef.current * 0.5;
+      frameId = requestAnimationFrame(step);
+    };
+    frameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frameId);
+  }, [isAutoScrolling]);
 
   return (
     <div
