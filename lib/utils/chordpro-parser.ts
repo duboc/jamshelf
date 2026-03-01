@@ -18,11 +18,8 @@ function inferSectionType(label: string): SectionType {
 // A string looks like a section header (not a chord name)
 function looksLikeSection(s: string): boolean {
   if (!s) return false;
-  // Has a space (e.g. "Verse 1", "Pre-Chorus") → section
   if (/\s/.test(s)) return true;
-  // Matches known section keywords
   if (/^(intro|verse|chorus|pre.?chorus|bridge|outro|solo|interlude|instrumental|grid|refr|verso)/i.test(s)) return true;
-  // Pure chord name like "Am", "F#m7", "D/A" → not a section
   if (/^[A-G][#b]?[a-z0-9/()#]*$/.test(s)) return false;
   return false;
 }
@@ -32,15 +29,7 @@ function looksLikeSection(s: string): boolean {
 export function parseChordPro(id: string, text: string): ParsedSong {
   const lines = text.split('\n');
 
-  const meta: {
-    title: string;
-    artist: string;
-    originalKey: string;
-    capo: number;
-    displayKey: string;
-    tempo: number;
-    timeSignature: string;
-  } = {
+  const meta = {
     title: '',
     artist: '',
     originalKey: '',
@@ -48,6 +37,8 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     displayKey: '',
     tempo: 120,
     timeSignature: '4/4',
+    rating: 0,
+    favorite: false,
   };
 
   const sections: Section[] = [];
@@ -55,7 +46,6 @@ export function parseChordPro(id: string, text: string): ParsedSong {
 
   function pushCurrent() {
     if (current) {
-      // Trim trailing empty lines from the section
       while (current.lines.length && !current.lines[current.lines.length - 1].trim()) {
         current.lines.pop();
       }
@@ -90,6 +80,12 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     const timeM = line.match(/^\{time:\s*(.+)\}$/i);
     if (timeM) { meta.timeSignature = timeM[1].trim(); continue; }
 
+    const ratingM = line.match(/^\{rating:\s*([1-5])\}$/i);
+    if (ratingM) { meta.rating = parseInt(ratingM[1]); continue; }
+
+    const favM = line.match(/^\{favorite:\s*(true|false)\}$/i);
+    if (favM) { meta.favorite = favM[1].toLowerCase() === 'true'; continue; }
+
     // ── Ignored directives ─────────────────────────────────────────────────
     if (/^\{define:/i.test(line)) continue;
     if (/^\{end_of_/i.test(line)) continue;
@@ -119,43 +115,31 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     const commentM = line.match(/^\{comment:\s*(.+)\}$/i);
     if (commentM) {
       const val = commentM[1].trim();
-      if (looksLikeSection(val)) {
-        startSection(val);
-      }
-      // otherwise skip (it's an annotation like "Main Chords: C Am F G")
+      if (looksLikeSection(val)) startSection(val);
       continue;
     }
 
     // ── Any remaining directive → skip ────────────────────────────────────
     if (/^\{[^}]+\}$/.test(line)) continue;
 
-    // ── Standalone bracket section header, e.g. [Verse 1], [Intro] ────────
-    // A line that is ONLY a bracket group (no surrounding text) and the content looks like a section
+    // ── Standalone bracket section header ─────────────────────────────────
     const standaloneM = line.match(/^\[([^\]]+)\]$/);
     if (standaloneM && looksLikeSection(standaloneM[1])) {
       startSection(standaloneM[1]);
       continue;
     }
 
-    // ── Content line (chords + lyrics) ────────────────────────────────────
+    // ── Content line ──────────────────────────────────────────────────────
     if (!current && line.trim()) {
-      // Content before any section header — create implicit first section
       current = { type: 'verse', label: 'Song', lines: [] };
     }
-    if (current) {
-      current.lines.push(line);
-    }
+    if (current) current.lines.push(line);
   }
 
   pushCurrent();
 
-  // Fallback: if no sections at all, wrap everything into one
   if (sections.length === 0) {
-    const contentLines = lines.filter(l => {
-      if (!l.trim()) return false;
-      if (/^\{[^}]+\}$/.test(l)) return false;
-      return true;
-    });
+    const contentLines = lines.filter(l => l.trim() && !/^\{[^}]+\}$/.test(l));
     if (contentLines.length) {
       sections.push({ type: 'verse', label: 'Song', lines: contentLines });
     }
@@ -170,11 +154,13 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     displayKey: meta.displayKey || meta.originalKey || '',
     tempo: meta.tempo,
     timeSignature: meta.timeSignature,
+    rating: meta.rating,
+    favorite: meta.favorite,
     sections,
   };
 }
 
-// ─── Serializer: ParsedSong → ChordPro text ──────────────────────────────────
+// ─── Serializer ───────────────────────────────────────────────────────────────
 
 export function songToChordPro(song: ParsedSong): string {
   const lines: string[] = [];
@@ -184,19 +170,20 @@ export function songToChordPro(song: ParsedSong): string {
   if (song.capo > 0)    lines.push(`{capo: ${song.capo}}`);
   if (song.tempo !== 120) lines.push(`{tempo: ${song.tempo}}`);
   if (song.timeSignature !== '4/4') lines.push(`{time: ${song.timeSignature}}`);
+  if (song.rating > 0)  lines.push(`{rating: ${song.rating}}`);
+  if (song.favorite)    lines.push(`{favorite: true}`);
   lines.push('');
 
   for (const section of song.sections) {
     lines.push(`[${section.label}]`);
-    for (const line of section.lines) lines.push(line);
+    for (const l of section.lines) lines.push(l);
     lines.push('');
   }
 
   return lines.join('\n').trimEnd();
 }
 
-// ─── Metadata patch helper ───────────────────────────────────────────────────
-// Updates or inserts a single directive in the raw .cho text without full parse+serialize.
+// ─── Metadata patch helper ────────────────────────────────────────────────────
 
 export function patchChordProMeta(text: string, key: string, value: string | number): string {
   const directive = `{${key}: ${value}}`;
@@ -204,15 +191,21 @@ export function patchChordProMeta(text: string, key: string, value: string | num
   if (pattern.test(text)) {
     return text.replace(pattern, directive);
   }
-  // Insert after any existing directives at the top
   const firstNonDirective = text.split('\n').findIndex(l => l.trim() && !/^\{[^}]+\}$/.test(l.trim()));
   const insertAt = firstNonDirective < 0 ? 0 : firstNonDirective;
-  const lines = text.split('\n');
-  lines.splice(insertAt, 0, directive);
-  return lines.join('\n');
+  const ls = text.split('\n');
+  ls.splice(insertAt, 0, directive);
+  return ls.join('\n');
 }
 
-// ─── Parse an entry (convenience wrapper) ────────────────────────────────────
+// ─── Remove a directive ───────────────────────────────────────────────────────
+
+export function removeChordProMeta(text: string, key: string): string {
+  const pattern = new RegExp(`^\\{${key}:[^}]*\\}\\n?`, 'im');
+  return text.replace(pattern, '');
+}
+
+// ─── Convenience wrapper ──────────────────────────────────────────────────────
 
 export function parseEntry(entry: ChordProEntry): ParsedSong {
   return parseChordPro(entry.id, entry.text);

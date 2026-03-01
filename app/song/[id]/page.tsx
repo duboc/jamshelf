@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
+import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { extractChords, transposeChord } from '@/lib/utils/music';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
@@ -13,8 +14,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const router = useRouter();
   const { getSong, patchMeta, exportEntry } = useSongStore();
+  const { setlists, addSongToSetlist } = useSetlistStore();
   const store = usePlayerStore();
   const [showExport, setShowExport] = useState(false);
+  const [showSetlistMenu, setShowSetlistMenu] = useState(false);
+  const [setlistMsg, setSetlistMsg] = useState('');
 
   const song = getSong(id);
 
@@ -44,6 +48,26 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     ? transposeChord(song.displayKey, totalShift, store.useFlats)
     : song.displayKey;
 
+  const handleStar = (star: number) => {
+    const newRating = song.rating === star ? 0 : star;
+    patchMeta(id, 'rating', newRating);
+  };
+
+  const handleFavorite = () => {
+    if (song.favorite) {
+      patchMeta(id, 'favorite', 'false');
+    } else {
+      patchMeta(id, 'favorite', 'true');
+    }
+  };
+
+  const handleAddToSetlist = (setlistId: string, setlistName: string) => {
+    addSongToSetlist(setlistId, id);
+    setSetlistMsg(`Added to "${setlistName}"`);
+    setShowSetlistMenu(false);
+    setTimeout(() => setSetlistMsg(''), 2000);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Top bar */}
@@ -62,7 +86,83 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             </div>
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Star rating */}
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => handleStar(star)}
+                  className={`text-lg transition-colors ${
+                    star <= song.rating ? 'text-amber-400' : 'text-zinc-700 hover:text-amber-400/60'
+                  }`}
+                  title={`Rate ${star} star${star !== 1 ? 's' : ''}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+
+            {/* Favorite */}
+            <button
+              onClick={handleFavorite}
+              className={`text-xl transition-colors ${
+                song.favorite ? 'text-red-400' : 'text-zinc-600 hover:text-red-400/60'
+              }`}
+              title={song.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              {song.favorite ? '♥' : '♡'}
+            </button>
+
+            {/* Add to setlist */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSetlistMenu(!showSetlistMenu)}
+                className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                title="Add to setlist"
+              >
+                + Setlist
+              </button>
+              {showSetlistMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 overflow-hidden">
+                  {setlists.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-zinc-500">
+                      No setlists yet.{' '}
+                      <button
+                        onClick={() => { setShowSetlistMenu(false); router.push('/'); }}
+                        className="text-violet-400 underline"
+                      >
+                        Create one
+                      </button>
+                    </div>
+                  ) : (
+                    setlists.map((sl) => {
+                      const already = sl.songIds.includes(id);
+                      return (
+                        <button
+                          key={sl.id}
+                          onClick={() => !already && handleAddToSetlist(sl.id, sl.name)}
+                          disabled={already}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                            already
+                              ? 'text-zinc-600 cursor-default'
+                              : 'text-zinc-200 hover:bg-zinc-800'
+                          }`}
+                        >
+                          {sl.name}
+                          {already && <span className="ml-2 text-xs text-zinc-600">✓</span>}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
+            {setlistMsg && (
+              <span className="text-xs text-green-400 font-medium">{setlistMsg}</span>
+            )}
+
             {/* Key */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">Key:</span>
@@ -251,6 +351,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           onClose={() => store.setActiveChord(null)}
         />
       </div>
+
+      {/* Setlist dropdown backdrop */}
+      {showSetlistMenu && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowSetlistMenu(false)}
+        />
+      )}
 
       {/* Export .cho modal */}
       {showExport && (

@@ -36,7 +36,17 @@ export interface ParsedSong {
   tempo: number;
   timeSignature: string;
   sections: Section[];
+  rating: number;    // 0 = unrated, 1–5 stars
+  favorite: boolean;
 }
 
 // Alias for backwards compatibility with existing components
 export type Song = ParsedSong;
+
+// Setlist types
+export interface Setlist {
+  id: string;
+  name: string;
+  songIds: string[];
+  createdAt: number;
+}
