@@ -4,16 +4,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { processWithGemini } from '@/lib/utils/ai-import';
-import type { Song } from '@/lib/types/song';
+import { parseChordPro } from '@/lib/utils/chordpro-parser';
+import type { ChordProEntry } from '@/lib/types/song';
 
 export default function AddSongPage() {
   const router = useRouter();
-  const { addSong } = useSongStore();
+  const { addEntry } = useSongStore();
   const [rawText, setRawText] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [preview, setPreview] = useState<Song | null>(null);
+  const [preview, setPreview] = useState<ChordProEntry | null>(null);
 
   const handleProcess = async () => {
     if (!rawText.trim()) {
@@ -27,8 +28,8 @@ export default function AddSongPage() {
     setError('');
     setLoading(true);
     try {
-      const song = await processWithGemini(apiKey.trim(), rawText.trim());
-      setPreview(song);
+      const entry = await processWithGemini(apiKey.trim(), rawText.trim());
+      setPreview(entry);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to process chord sheet');
     } finally {
@@ -38,9 +39,12 @@ export default function AddSongPage() {
 
   const handleConfirm = () => {
     if (!preview) return;
-    addSong(preview);
+    addEntry(preview);
     router.push('/');
   };
+
+  // Parse preview entry for display metadata
+  const previewSong = preview ? parseChordPro(preview.id, preview.text) : null;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -83,7 +87,7 @@ export default function AddSongPage() {
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
                   rows={16}
-                  placeholder="Paste raw chord sheet from Ultimate Guitar, etc..."
+                  placeholder="Paste raw chord sheet from Ultimate Guitar, CifraClub, or .cho file..."
                   className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-600 outline-none focus:border-violet-500 transition-colors font-mono text-sm resize-y"
                 />
               </div>
@@ -102,31 +106,36 @@ export default function AddSongPage() {
                 {loading ? 'Processing with Gemini...' : 'Process with AI'}
               </button>
             </>
-          ) : (
+          ) : previewSong ? (
             <>
               {/* Preview */}
               <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-                <h2 className="text-xl font-bold text-zinc-100">{preview.title}</h2>
-                <p className="text-zinc-400">{preview.artist}</p>
-                <div className="flex gap-3 mt-3">
-                  <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-violet-400 font-mono">
-                    Key: {preview.displayKey}
+                <h2 className="text-xl font-bold text-zinc-100">{previewSong.title}</h2>
+                <p className="text-zinc-400">{previewSong.artist}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {previewSong.displayKey && (
+                    <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-violet-400 font-mono">
+                      Key: {previewSong.displayKey}
+                    </span>
+                  )}
+                  <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400 font-mono">
+                    {previewSong.tempo} BPM
                   </span>
                   <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400 font-mono">
-                    {preview.tempo} BPM
+                    {previewSong.timeSignature}
                   </span>
-                  <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400 font-mono">
-                    {preview.timeSignature}
-                  </span>
-                  {preview.capo > 0 && (
+                  {previewSong.capo > 0 && (
                     <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-amber-400 font-mono">
-                      Capo {preview.capo}
+                      Capo {previewSong.capo}
                     </span>
                   )}
                 </div>
-                <div className="mt-4 text-sm text-zinc-400">
-                  {preview.sections.length} section{preview.sections.length !== 1 ? 's' : ''} detected
+                <div className="mt-3 text-sm text-zinc-400">
+                  {previewSong.sections.length} section{previewSong.sections.length !== 1 ? 's' : ''} detected
                 </div>
+                <pre className="mt-4 text-xs font-mono text-zinc-500 max-h-40 overflow-y-auto bg-zinc-950 rounded p-3 whitespace-pre-wrap">
+                  {preview.text}
+                </pre>
               </div>
 
               <div className="flex gap-3">
@@ -144,7 +153,7 @@ export default function AddSongPage() {
                 </button>
               </div>
             </>
-          )}
+          ) : null}
         </div>
       </main>
     </div>

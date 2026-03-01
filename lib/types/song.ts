@@ -19,7 +19,14 @@ export interface Section {
   lines: string[];
 }
 
-export interface Song {
+// The persisted unit of storage — raw ChordPro text + stable ID
+export interface ChordProEntry {
+  id: string;
+  text: string;
+}
+
+// The parsed, renderable song object
+export interface ParsedSong {
   id: string;
   title: string;
   artist: string;
@@ -30,3 +37,6 @@ export interface Song {
   timeSignature: string;
   sections: Section[];
 }
+
+// Alias for backwards compatibility with existing components
+export type Song = ParsedSong;

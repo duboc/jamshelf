@@ -1,8 +1,7 @@
 'use client';
 
-import { use, useEffect } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { extractChords, transposeChord } from '@/lib/utils/music';
@@ -13,13 +12,13 @@ import { Metronome } from '@/components/metronome/Metronome';
 export default function SongPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { songs, updateSong, exportSong } = useSongStore();
+  const { getSong, patchMeta, exportEntry } = useSongStore();
   const store = usePlayerStore();
   const [showExport, setShowExport] = useState(false);
 
-  const song = songs.find((s) => s.id === id);
+  const song = getSong(id);
 
-  // Sync song tempo to metronome BPM
+  // Sync song tempo to metronome BPM whenever it changes
   useEffect(() => {
     if (song) store.setBpm(song.tempo);
   }, [song?.tempo]);
@@ -58,7 +57,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             {/* Key */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">Key:</span>
@@ -69,14 +68,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">Capo:</span>
               <button
-                onClick={() => updateSong(song.id, { capo: Math.max(0, song.capo - 1) })}
+                onClick={() => patchMeta(id, 'capo', Math.max(0, song.capo - 1))}
                 className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
               >
                 -
               </button>
               <span className="text-sm font-mono text-amber-400 w-4 text-center">{song.capo}</span>
               <button
-                onClick={() => updateSong(song.id, { capo: Math.min(12, song.capo + 1) })}
+                onClick={() => patchMeta(id, 'capo', Math.min(12, song.capo + 1))}
                 className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
               >
                 +
@@ -87,7 +86,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             <div className="flex items-center gap-1">
               <span className="text-xs text-zinc-500">BPM:</span>
               <button
-                onClick={() => updateSong(song.id, { tempo: Math.max(20, song.tempo - 5) })}
+                onClick={() => patchMeta(id, 'tempo', Math.max(20, song.tempo - 5))}
                 className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
               >
                 -
@@ -97,12 +96,12 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 value={song.tempo}
                 onChange={(e) => {
                   const v = parseInt(e.target.value);
-                  if (!isNaN(v) && v >= 20 && v <= 300) updateSong(song.id, { tempo: v });
+                  if (!isNaN(v) && v >= 20 && v <= 300) patchMeta(id, 'tempo', v);
                 }}
                 className="w-10 text-center text-sm font-mono text-zinc-300 bg-transparent border-b border-zinc-700 outline-none focus:border-violet-500"
               />
               <button
-                onClick={() => updateSong(song.id, { tempo: Math.min(300, song.tempo + 5) })}
+                onClick={() => patchMeta(id, 'tempo', Math.min(300, song.tempo + 5))}
                 className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors"
               >
                 +
@@ -114,7 +113,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               <span className="text-xs text-zinc-500">Time:</span>
               <select
                 value={song.timeSignature}
-                onChange={(e) => updateSong(song.id, { timeSignature: e.target.value })}
+                onChange={(e) => patchMeta(id, 'time', e.target.value)}
                 className="text-sm font-mono text-zinc-300 bg-zinc-800 border border-zinc-700 rounded px-1 py-0.5 outline-none focus:border-violet-500"
               >
                 <option value="4/4">4/4</option>
@@ -126,13 +125,13 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               </select>
             </div>
 
-            {/* Export JSON */}
+            {/* Export .cho */}
             <button
               onClick={() => setShowExport(!showExport)}
               className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-              title="Export as JSON"
+              title="Export as ChordPro (.cho)"
             >
-              { }JSON
+              .cho
             </button>
           </div>
         </div>
@@ -248,17 +247,17 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         />
       </div>
 
-      {/* Export JSON modal */}
+      {/* Export .cho modal */}
       {showExport && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-              <h3 className="font-bold text-zinc-100">Song JSON</h3>
+              <h3 className="font-bold text-zinc-100">ChordPro Source</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    const json = exportSong(song.id);
-                    if (json) navigator.clipboard.writeText(json);
+                    const cho = exportEntry(id);
+                    if (cho) navigator.clipboard.writeText(cho);
                   }}
                   className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors"
                 >
@@ -273,7 +272,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               </div>
             </div>
             <pre className="flex-1 overflow-auto p-4 text-xs font-mono text-zinc-300 whitespace-pre-wrap">
-              {exportSong(song.id)}
+              {exportEntry(id)}
             </pre>
           </div>
         </div>

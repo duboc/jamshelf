@@ -2,54 +2,95 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Song } from '@/lib/types/song';
-import { DEFAULT_SONGS } from '@/lib/data/default-songs';
+import type { ChordProEntry, ParsedSong } from '@/lib/types/song';
+import { parseEntry, patchChordProMeta } from '@/lib/utils/chordpro-parser';
+import { DEFAULT_CHORDPRO } from '@/lib/data/default-songs';
 
 interface SongStore {
-  songs: Song[];
-  addSong: (song: Song) => void;
-  removeSong: (id: string) => void;
-  updateSong: (id: string, updates: Partial<Song>) => void;
-  exportSong: (id: string) => string | null;
+  entries: ChordProEntry[];
+
+  // Derived accessors (parse on demand)
+  getSong: (id: string) => ParsedSong | null;
+  getSongs: () => ParsedSong[];
+  getEntry: (id: string) => ChordProEntry | null;
+
+  // Mutations
+  addEntry: (entry: ChordProEntry) => void;
+  removeEntry: (id: string) => void;
+  updateEntry: (id: string, text: string) => void;
+  patchMeta: (id: string, key: string, value: string | number) => void;
+
+  // Import / Export
+  exportEntry: (id: string) => string | null;
   exportAll: () => string;
-  importSongs: (json: string) => number;
+  importEntries: (text: string) => number;
 }
 
 export const useSongStore = create<SongStore>()(
   persist(
     (set, get) => ({
-      songs: DEFAULT_SONGS,
-      addSong: (song) => set((s) => ({ songs: [...s.songs, song] })),
-      removeSong: (id) => set((s) => ({ songs: s.songs.filter((x) => x.id !== id) })),
-      updateSong: (id, updates) =>
-        set((s) => ({
-          songs: s.songs.map((song) =>
-            song.id === id ? { ...song, ...updates } : song
-          ),
-        })),
-      exportSong: (id) => {
-        const song = get().songs.find((s) => s.id === id);
-        return song ? JSON.stringify(song, null, 2) : null;
+      entries: DEFAULT_CHORDPRO,
+
+      getSong: (id) => {
+        const entry = get().entries.find((e) => e.id === id);
+        return entry ? parseEntry(entry) : null;
       },
-      exportAll: () => JSON.stringify(get().songs, null, 2),
-      importSongs: (json: string) => {
-        try {
-          const parsed = JSON.parse(json);
-          const arr: Song[] = Array.isArray(parsed) ? parsed : [parsed];
-          const valid = arr.filter(
-            (s) => s.title && s.sections && Array.isArray(s.sections)
-          );
-          if (!valid.length) return 0;
-          // assign new IDs to avoid collisions
-          const withIds = valid.map((s) => ({
-            ...s,
-            id: s.id || 'song-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-          }));
-          set((s) => ({ songs: [...s.songs, ...withIds] }));
-          return withIds.length;
-        } catch {
-          return 0;
-        }
+
+      getSongs: () => get().entries.map(parseEntry),
+
+      getEntry: (id) => get().entries.find((e) => e.id === id) ?? null,
+
+      addEntry: (entry) =>
+        set((s) => ({ entries: [...s.entries, entry] })),
+
+      removeEntry: (id) =>
+        set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+
+      updateEntry: (id, text) =>
+        set((s) => ({
+          entries: s.entries.map((e) => (e.id === id ? { ...e, text } : e)),
+        })),
+
+      patchMeta: (id, key, value) => {
+        const entry = get().entries.find((e) => e.id === id);
+        if (!entry) return;
+        const newText = patchChordProMeta(entry.text, key, value);
+        set((s) => ({
+          entries: s.entries.map((e) => (e.id === id ? { ...e, text: newText } : e)),
+        }));
+      },
+
+      exportEntry: (id) => {
+        const entry = get().entries.find((e) => e.id === id);
+        return entry ? entry.text : null;
+      },
+
+      exportAll: () =>
+        get().entries.map((e) => e.text).join('\n\n---\n\n'),
+
+      importEntries: (text: string) => {
+        const raw = text.trim();
+        const parts = raw.includes('\n---\n')
+          ? raw.split(/\n---\n/)
+          : [raw];
+
+        const valid = parts
+          .map((t) => t.trim())
+          .filter((t) => /^\{title:/im.test(t));
+
+        if (!valid.length) return 0;
+
+        const newEntries: ChordProEntry[] = valid.map((t) => {
+          const titleMatch = t.match(/^\{title:\s*(.+)\}$/im);
+          const title = titleMatch ? titleMatch[1].trim() : '';
+          const id = title
+            ? 'song-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+            : 'song-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+          return { id, text: t };
+        });
+
+        set((s) => ({ entries: [...s.entries, ...newEntries] }));
+        return newEntries.length;
       },
     }),
     { name: 'jamshelf-songs' }
