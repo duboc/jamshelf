@@ -155,7 +155,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Top bar */}
       <header className="border-b border-zinc-800 px-4 py-3">
         <div className="flex items-center justify-between max-w-5xl mx-auto">
@@ -404,7 +404,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {/* Main content */}
-      <div className="flex flex-1 relative">
+      <div className="flex flex-1 relative min-h-0">
         <ChordSheet
           song={song}
           onChordTap={(chord) => store.setActiveChord(chord)}
