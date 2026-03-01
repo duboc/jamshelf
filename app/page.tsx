@@ -2,18 +2,30 @@
 
 import { useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
+import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { SongCard } from '@/components/song-list/SongCard';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+type Tab = 'all' | 'favorites' | 'setlists';
 
 export default function Home() {
   const { getSongs, removeEntry, exportAll, importEntries } = useSongStore();
+  const { setlists, createSetlist, deleteSetlist } = useSetlistStore();
+  const router = useRouter();
   const songs = getSongs();
+
+  const [tab, setTab] = useState<Tab>('all');
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [importMsg, setImportMsg] = useState('');
+  const [newSetlistName, setNewSetlistName] = useState('');
+  const [showNewSetlist, setShowNewSetlist] = useState(false);
 
-  const filtered = songs.filter(
+  const baseSongs = tab === 'favorites' ? songs.filter((s) => s.favorite) : songs;
+
+  const filtered = baseSongs.filter(
     (s) =>
       s.title.toLowerCase().includes(search.toLowerCase()) ||
       s.artist.toLowerCase().includes(search.toLowerCase())
@@ -41,6 +53,15 @@ export default function Home() {
     } else {
       setImportMsg('Could not parse ChordPro. Make sure the file starts with {title: ...}');
     }
+  };
+
+  const handleCreateSetlist = () => {
+    const name = newSetlistName.trim();
+    if (!name) return;
+    const sl = createSetlist(name);
+    setNewSetlistName('');
+    setShowNewSetlist(false);
+    router.push(`/setlists/${sl.id}`);
   };
 
   return (
@@ -74,32 +95,134 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Search */}
-      <div className="px-6 py-4">
-        <div className="max-w-3xl mx-auto">
-          <input
-            type="text"
-            placeholder="Search songs..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500 transition-colors"
-          />
+      {/* Tabs */}
+      <div className="border-b border-zinc-800 px-6">
+        <div className="max-w-3xl mx-auto flex gap-0">
+          {(['all', 'favorites', 'setlists'] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${
+                tab === t
+                  ? 'border-violet-500 text-violet-400'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              {t === 'favorites' ? '♥ Favorites' : t === 'setlists' ? '♪ Setlists' : 'All Songs'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Song list */}
+      {/* Search (songs tabs only) */}
+      {tab !== 'setlists' && (
+        <div className="px-6 py-4">
+          <div className="max-w-3xl mx-auto">
+            <input
+              type="text"
+              placeholder={tab === 'favorites' ? 'Search favorites...' : 'Search songs...'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
       <main className="flex-1 px-6 pb-8">
-        <div className="max-w-3xl mx-auto space-y-2">
-          {filtered.length === 0 ? (
-            <div className="text-center py-16 text-zinc-500">
-              {songs.length === 0
-                ? 'No songs yet. Add one to get started!'
-                : 'No songs match your search.'}
+        <div className="max-w-3xl mx-auto">
+
+          {/* All / Favorites tab */}
+          {tab !== 'setlists' && (
+            <div className="space-y-2">
+              {filtered.length === 0 ? (
+                <div className="text-center py-16 text-zinc-500">
+                  {tab === 'favorites'
+                    ? songs.filter((s) => s.favorite).length === 0
+                      ? 'No favorites yet. Tap ♡ on any song to add it here.'
+                      : 'No favorites match your search.'
+                    : songs.length === 0
+                      ? 'No songs yet. Add one to get started!'
+                      : 'No songs match your search.'}
+                </div>
+              ) : (
+                filtered.map((song) => (
+                  <SongCard key={song.id} song={song} onRemove={removeEntry} />
+                ))
+              )}
             </div>
-          ) : (
-            filtered.map((song) => (
-              <SongCard key={song.id} song={song} onRemove={removeEntry} />
-            ))
+          )}
+
+          {/* Setlists tab */}
+          {tab === 'setlists' && (
+            <div className="pt-4 space-y-3">
+              {/* Create setlist */}
+              {showNewSetlist ? (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Setlist name..."
+                    value={newSetlistName}
+                    onChange={(e) => setNewSetlistName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateSetlist();
+                      if (e.key === 'Escape') { setShowNewSetlist(false); setNewSetlistName(''); }
+                    }}
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500 transition-colors"
+                  />
+                  <button
+                    onClick={handleCreateSetlist}
+                    className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+                  >
+                    Create
+                  </button>
+                  <button
+                    onClick={() => { setShowNewSetlist(false); setNewSetlistName(''); }}
+                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowNewSetlist(true)}
+                  className="w-full py-3 rounded-xl border-2 border-dashed border-zinc-700 hover:border-violet-500 text-zinc-500 hover:text-violet-400 text-sm font-medium transition-colors"
+                >
+                  + New Setlist
+                </button>
+              )}
+
+              {setlists.length === 0 && !showNewSetlist && (
+                <div className="text-center py-12 text-zinc-500">
+                  No setlists yet. Create one to organize songs for a gig.
+                </div>
+              )}
+
+              {setlists.map((sl) => (
+                <div
+                  key={sl.id}
+                  className="group flex items-center gap-3 p-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 transition-all"
+                >
+                  <Link href={`/setlists/${sl.id}`} className="flex-1 min-w-0">
+                    <div className="font-semibold text-zinc-100">{sl.name}</div>
+                    <div className="text-sm text-zinc-500 mt-0.5">
+                      {sl.songIds.length} song{sl.songIds.length !== 1 ? 's' : ''}
+                    </div>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete setlist "${sl.name}"?`)) deleteSetlist(sl.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
+                    title="Delete setlist"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </main>
