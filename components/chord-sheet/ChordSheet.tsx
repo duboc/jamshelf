@@ -32,9 +32,14 @@ export function ChordSheet({
   useEffect(() => {
     if (!isAutoScrolling) return;
     let frameId: number;
-    const step = () => {
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = now - last;
+      last = now;
       const el = scrollRef.current;
-      if (el) el.scrollTop += speedRef.current * 0.5;
+      // Speed value maps to pixels per second:
+      // 0.1 = 6px/s (very slow), 0.5 = 30px/s, 1.0 = 60px/s, 2.0 = 120px/s
+      if (el) el.scrollTop += speedRef.current * 60 * (dt / 1000);
       frameId = requestAnimationFrame(step);
     };
     frameId = requestAnimationFrame(step);
