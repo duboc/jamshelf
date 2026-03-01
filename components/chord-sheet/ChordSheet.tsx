@@ -8,15 +8,24 @@ import { SectionBlock } from './SectionBlock';
 interface ChordSheetProps {
   song: Song;
   onChordTap: (chord: string) => void;
+  // Edit mode props
+  editMode?: boolean;
+  selectedCoord?: { sectionIdx: number; lineIdx: number; segIdx: number } | null;
+  onChordSelect?: (sectionIdx: number, lineIdx: number, segIdx: number) => void;
+  onAddChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
 }
 
-export function ChordSheet({ song, onChordTap }: ChordSheetProps) {
+export function ChordSheet({
+  song,
+  onChordTap,
+  editMode = false,
+  selectedCoord = null,
+  onChordSelect,
+  onAddChord,
+}: ChordSheetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<number>(0);
   const { fontSize, isAutoScrolling, autoScrollSpeed } = usePlayerStore();
 
-  // Use a ref for speed so the animation loop always reads the latest value
-  // without needing to restart the loop when speed changes
   const speedRef = useRef(autoScrollSpeed);
   useEffect(() => { speedRef.current = autoScrollSpeed; }, [autoScrollSpeed]);
 
@@ -40,7 +49,16 @@ export function ChordSheet({ song, onChordTap }: ChordSheetProps) {
     >
       <div className="max-w-3xl mx-auto font-mono">
         {song.sections.map((section, i) => (
-          <SectionBlock key={i} section={section} onChordTap={onChordTap} />
+          <SectionBlock
+            key={i}
+            section={section}
+            sectionIdx={i}
+            onChordTap={onChordTap}
+            editMode={editMode}
+            selectedCoord={selectedCoord}
+            onChordSelect={onChordSelect}
+            onAddChord={onAddChord}
+          />
         ))}
       </div>
     </div>
