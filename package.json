@@ -6,9 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "emulators": "firebase emulators:start",
+    "test:e2e": "firebase emulators:exec \"node scripts/run-e2e-inner.mjs\"",
+    "test:real": "node scripts/run-e2e-inner.mjs"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^8.6.0",
+    "@google-cloud/storage": "^7.21.0",
+    "@google/genai": "^2.8.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -21,6 +27,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "firebase-tools": "^15.19.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
