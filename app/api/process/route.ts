@@ -57,7 +57,7 @@ function getAiClient() {
   return aiClient;
 }
 
-const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 
 export async function POST(request: Request) {
   try {
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       config: {
         temperature: 0.1,
         maxOutputTokens: 8192,
+        tools: [{ googleSearch: {} }],
       },
     });
 
