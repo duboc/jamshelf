@@ -84,7 +84,8 @@ export function parseLine(line: string): { chord: string | null; text: string }[
 export function extractChords(sections: { lines: string[] }[]): string[] {
   const s = new Set<string>();
   sections.forEach(sec => sec.lines.forEach(l => {
-    let m, re = /\[([^\]]+)\]/g;
+    let m;
+    const re = /\[([^\]]+)\]/g;
     while ((m = re.exec(l)) !== null) s.add(m[1]);
   }));
   return [...s];

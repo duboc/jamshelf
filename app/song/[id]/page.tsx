@@ -43,8 +43,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   // Clear selection when leaving edit mode
   useEffect(() => {
     if (!store.editMode) {
-      setSelectedCoord(null);
-      setAddTarget(null);
+      const timer = setTimeout(() => {
+        setSelectedCoord(null);
+        setAddTarget(null);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [store.editMode]);
 

@@ -1,5 +1,3 @@
-'use client';
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ChordProEntry, ParsedSong } from '@/lib/types/song';
@@ -8,6 +6,9 @@ import { DEFAULT_CHORDPRO } from '@/lib/data/default-songs';
 
 interface SongStore {
   entries: ChordProEntry[];
+
+  // Database fetch
+  fetchEntries: () => Promise<void>;
 
   // Derived accessors (parse on demand)
   getSong: (id: string) => ParsedSong | null;
@@ -31,6 +32,18 @@ export const useSongStore = create<SongStore>()(
     (set, get) => ({
       entries: DEFAULT_CHORDPRO,
 
+      fetchEntries: async () => {
+        try {
+          const res = await fetch('/api/songs');
+          if (res.ok) {
+            const data = await res.json();
+            set({ entries: data });
+          }
+        } catch (err) {
+          console.error('Failed to fetch songs from database:', err);
+        }
+      },
+
       getSong: (id) => {
         const entry = get().entries.find((e) => e.id === id);
         return entry ? parseEntry(entry) : null;
@@ -40,16 +53,32 @@ export const useSongStore = create<SongStore>()(
 
       getEntry: (id) => get().entries.find((e) => e.id === id) ?? null,
 
-      addEntry: (entry) =>
-        set((s) => ({ entries: [...s.entries, entry] })),
+      addEntry: (entry) => {
+        set((s) => ({ entries: [...s.entries, entry] }));
+        fetch('/api/songs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(entry),
+        }).catch((err) => console.error('Failed to sync added song:', err));
+      },
 
-      removeEntry: (id) =>
-        set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+      removeEntry: (id) => {
+        set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
+        fetch(`/api/songs/${id}`, {
+          method: 'DELETE',
+        }).catch((err) => console.error('Failed to sync deleted song:', err));
+      },
 
-      updateEntry: (id, text) =>
+      updateEntry: (id, text) => {
         set((s) => ({
           entries: s.entries.map((e) => (e.id === id ? { ...e, text } : e)),
-        })),
+        }));
+        fetch(`/api/songs/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        }).catch((err) => console.error('Failed to sync updated song:', err));
+      },
 
       patchMeta: (id, key, value) => {
         const entry = get().entries.find((e) => e.id === id);
@@ -58,6 +87,11 @@ export const useSongStore = create<SongStore>()(
         set((s) => ({
           entries: s.entries.map((e) => (e.id === id ? { ...e, text: newText } : e)),
         }));
+        fetch(`/api/songs/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: newText }),
+        }).catch((err) => console.error('Failed to sync patched song metadata:', err));
       },
 
       exportEntry: (id) => {
@@ -90,6 +124,16 @@ export const useSongStore = create<SongStore>()(
         });
 
         set((s) => ({ entries: [...s.entries, ...newEntries] }));
+
+        // Sync all new entries to server
+        newEntries.forEach((entry) => {
+          fetch('/api/songs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(entry),
+          }).catch((err) => console.error('Failed to sync imported song:', err));
+        });
+
         return newEntries.length;
       },
     }),

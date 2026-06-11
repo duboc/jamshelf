@@ -60,7 +60,6 @@ jamshelf/
 ├── public/                       # Static assets
 ├── scripts/                      # Build/seed scripts
 ├── docs/                         # This documentation
-├── CLAUDE.md                     # AI assistant instructions
 └── PLANNING.md                   # Feature roadmap
 ```
 
