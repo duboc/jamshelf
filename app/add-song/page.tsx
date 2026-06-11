@@ -54,7 +54,7 @@ export default function AddSongPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-zinc-800 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
+        <div className={`${preview ? 'max-w-5xl' : 'max-w-3xl'} mx-auto flex items-center gap-3 transition-all duration-300`}>
           <button
             onClick={() => router.push('/')}
             className="text-zinc-400 hover:text-white transition-colors text-sm"
@@ -66,7 +66,7 @@ export default function AddSongPage() {
       </header>
 
       <main className="flex-1 px-6 py-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className={`${preview ? 'max-w-5xl' : 'max-w-3xl'} mx-auto space-y-6 transition-all duration-300`}>
           {!preview ? (
             <>
 
@@ -177,14 +177,32 @@ export default function AddSongPage() {
                   </div>
                 </div>
 
-                {/* Visual Preview */}
-                <div className="bg-zinc-900 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">
-                  <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Sheet Layout Preview</h3>
-                    <span className="text-[11px] text-zinc-500 font-mono">Interactive layout preview</span>
+                {/* Visual + Text Split Preview */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left Column: Raw ChordPro Editor (5 cols) */}
+                  <div className="lg:col-span-5 bg-zinc-900 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">
+                    <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
+                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Raw ChordPro Editor</h3>
+                      <span className="text-[10px] text-zinc-500 font-mono">Edit raw source</span>
+                    </div>
+                    <textarea
+                      value={preview.text}
+                      onChange={(e) => setPreview({ ...preview, text: e.target.value })}
+                      rows={18}
+                      className="w-full p-4 bg-zinc-950 text-zinc-300 font-mono text-xs leading-relaxed outline-none focus:ring-1 focus:ring-violet-500 resize-none h-[420px] overflow-y-auto"
+                      title="Edit raw ChordPro source code"
+                    />
                   </div>
-                  <div className="max-h-96 overflow-y-auto p-6 bg-zinc-950">
-                    <ChordSheet song={previewSong} onChordTap={() => {}} />
+
+                  {/* Right Column: Visual Chord Sheet (7 cols) */}
+                  <div className="lg:col-span-7 bg-zinc-900 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">
+                    <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
+                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Visual Sheet Layout</h3>
+                      <span className="text-[10px] text-zinc-500 font-mono">Real-time rendering</span>
+                    </div>
+                    <div className="h-[420px] overflow-y-auto p-4 bg-zinc-950">
+                      <ChordSheet song={previewSong} onChordTap={() => {}} />
+                    </div>
                   </div>
                 </div>
               </div>
