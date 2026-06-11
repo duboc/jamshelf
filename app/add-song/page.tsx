@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { processWithGemini } from '@/lib/utils/ai-import';
-import { parseChordPro } from '@/lib/utils/chordpro-parser';
+import { parseChordPro, patchChordProMeta } from '@/lib/utils/chordpro-parser';
 import type { ChordProEntry } from '@/lib/types/song';
+import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 
 export default function AddSongPage() {
   const router = useRouter();
@@ -14,6 +15,15 @@ export default function AddSongPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<ChordProEntry | null>(null);
+
+  const updatePreviewMeta = (key: string, value: string | number) => {
+    if (!preview) return;
+    const newText = patchChordProMeta(preview.text, key, value);
+    setPreview({
+      ...preview,
+      text: newText,
+    });
+  };
 
   const handleProcess = async () => {
     if (!rawText.trim()) {
@@ -63,13 +73,13 @@ export default function AddSongPage() {
               {/* Raw chord sheet */}
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-1">
-                  Paste chord sheet / lyrics
+                  Paste chord sheet OR type song search query
                 </label>
                 <textarea
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
                   rows={16}
-                  placeholder="Paste raw chord sheet from Ultimate Guitar, CifraClub, or .cho file..."
+                  placeholder="Type a search query (e.g., 'Coldplay Yellow chords') or paste a raw chord sheet..."
                   className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-600 outline-none focus:border-violet-500 transition-colors font-mono text-sm resize-y"
                 />
               </div>
@@ -91,33 +101,92 @@ export default function AddSongPage() {
           ) : previewSong ? (
             <>
               {/* Preview */}
-              <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-                <h2 className="text-xl font-bold text-zinc-100">{previewSong.title}</h2>
-                <p className="text-zinc-400">{previewSong.artist}</p>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {previewSong.displayKey && (
-                    <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-violet-400 font-mono">
-                      Key: {previewSong.displayKey}
-                    </span>
-                  )}
-                  <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400 font-mono">
-                    {previewSong.tempo} BPM
-                  </span>
-                  <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400 font-mono">
-                    {previewSong.timeSignature}
-                  </span>
-                  {previewSong.capo > 0 && (
-                    <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-amber-400 font-mono">
-                      Capo {previewSong.capo}
-                    </span>
-                  )}
+              {/* Preview */}
+              <div className="space-y-6">
+                {/* Form editing preview metadata */}
+                <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6 space-y-4">
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Song Metadata</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={previewSong.title}
+                        onChange={(e) => updatePreviewMeta('title', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-750 text-zinc-100 focus:border-violet-500 outline-none text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">Artist</label>
+                      <input
+                        type="text"
+                        value={previewSong.artist}
+                        onChange={(e) => updatePreviewMeta('artist', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-750 text-zinc-100 focus:border-violet-500 outline-none text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">Key</label>
+                      <input
+                        type="text"
+                        value={previewSong.originalKey}
+                        onChange={(e) => updatePreviewMeta('key', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-750 text-zinc-100 focus:border-violet-500 outline-none text-sm font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">Capo</label>
+                      <input
+                        type="number"
+                        value={previewSong.capo}
+                        min={0}
+                        max={12}
+                        onChange={(e) => updatePreviewMeta('capo', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-750 text-zinc-100 focus:border-violet-500 outline-none text-sm font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">Tempo (BPM)</label>
+                      <input
+                        type="number"
+                        value={previewSong.tempo}
+                        min={20}
+                        max={300}
+                        onChange={(e) => updatePreviewMeta('tempo', parseInt(e.target.value) || 120)}
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-750 text-zinc-100 focus:border-violet-500 outline-none text-sm font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1">Time Signature</label>
+                      <select
+                        value={previewSong.timeSignature}
+                        onChange={(e) => updatePreviewMeta('time', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-750 text-zinc-100 focus:border-violet-500 outline-none text-sm"
+                      >
+                        <option value="4/4">4/4</option>
+                        <option value="3/4">3/4</option>
+                        <option value="6/8">6/8</option>
+                        <option value="2/4">2/4</option>
+                        <option value="5/4">5/4</option>
+                        <option value="7/8">7/8</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-3 text-sm text-zinc-400">
-                  {previewSong.sections.length} section{previewSong.sections.length !== 1 ? 's' : ''} detected
+
+                {/* Visual Preview */}
+                <div className="bg-zinc-900 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">
+                  <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Sheet Layout Preview</h3>
+                    <span className="text-[11px] text-zinc-500 font-mono">Interactive layout preview</span>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto p-6 bg-zinc-950">
+                    <ChordSheet song={previewSong} onChordTap={() => {}} />
+                  </div>
                 </div>
-                <pre className="mt-4 text-xs font-mono text-zinc-500 max-h-40 overflow-y-auto bg-zinc-950 rounded p-3 whitespace-pre-wrap">
-                  {preview.text}
-                </pre>
               </div>
 
               <div className="flex gap-3">
