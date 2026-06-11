@@ -57,7 +57,7 @@ function getAiClient() {
   return aiClient;
 }
 
-const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 export async function POST(request: Request) {
   try {
@@ -119,10 +119,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id, text: clean });
   } catch (error: unknown) {
-    console.error('API Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    console.error('Detailed API Error:', error);
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'AI processing failed. Please verify raw input or check service configuration.' },
       { status: 500 }
     );
   }
