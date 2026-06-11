@@ -71,20 +71,38 @@ export async function POST(request: Request) {
     }
 
     const ai = getAiClient();
-    const response = await ai.models.generateContent({
+
+    // Call 1: Search and retrieve raw chords and lyrics using Google Search grounding
+    const searchResponse = await ai.models.generateContent({
       model: modelName,
-      contents: GEMINI_PROMPT + '\n\n' + rawText,
+      contents: `Search the web to find the complete chords and lyrics for the following song or query: ${rawText}. Output only the raw chords and lyrics sheet.`,
       config: {
-        temperature: 0.1,
-        maxOutputTokens: 8192,
         tools: [{ googleSearch: {} }],
       },
     });
 
-    const text = response?.text;
+    const rawChords = searchResponse?.text;
+    if (!rawChords) {
+      return NextResponse.json(
+        { error: 'Failed to retrieve chords via Google Search grounding' },
+        { status: 500 }
+      );
+    }
+
+    // Call 2: Format the raw chords into structured ChordPro (No grounding to avoid API constraints)
+    const formatResponse = await ai.models.generateContent({
+      model: modelName,
+      contents: GEMINI_PROMPT + '\n\n' + rawChords,
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: 8192,
+      },
+    });
+
+    const text = formatResponse?.text;
     if (!text) {
       return NextResponse.json(
-        { error: 'No response from Gemini model' },
+        { error: 'Failed to format ChordPro from retrieved chords' },
         { status: 500 }
       );
     }
