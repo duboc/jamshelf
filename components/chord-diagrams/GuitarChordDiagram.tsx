@@ -17,7 +17,7 @@ const FRET_H = (H - PAD_TOP - 10) / FRET_COUNT;
 const STR_GAP = (W - PAD_LEFT - 10) / (STRING_COUNT - 1);
 
 export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) {
-  const { f: frets, g: fingers, b: baseFret, r: barres, c: capoOnFirst } = voicing;
+  const { f: frets, b: baseFret, r: barres } = voicing;
   const minFret = baseFret || 1;
 
   return (
@@ -28,7 +28,7 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
 
       {/* Nut or fret number */}
       {minFret === 1 ? (
-        <rect x={PAD_LEFT - 2} y={PAD_TOP - 2} width={STR_GAP * 5 + 4} height={3} rx={1} className="fill-zinc-300" />
+        <rect x={PAD_LEFT - 2} y={PAD_TOP - 2} width={STR_GAP * 5 + 4} height={3} rx={1} fill="#d4d4d8" />
       ) : (
         <text x={PAD_LEFT - 12} y={PAD_TOP + FRET_H / 2 + 4} className="fill-zinc-400 text-[9px]" textAnchor="middle">
           {minFret}
@@ -43,7 +43,7 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
           y1={PAD_TOP + i * FRET_H}
           x2={PAD_LEFT + STR_GAP * 5}
           y2={PAD_TOP + i * FRET_H}
-          className="stroke-zinc-600"
+          stroke="#52525b"
           strokeWidth={0.5}
         />
       ))}
@@ -56,7 +56,7 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
           y1={PAD_TOP}
           x2={PAD_LEFT + i * STR_GAP}
           y2={PAD_TOP + FRET_COUNT * FRET_H}
-          className="stroke-zinc-600"
+          stroke="#52525b"
           strokeWidth={0.5}
         />
       ))}
@@ -76,7 +76,7 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
             width={(endStr - startStr) * STR_GAP + 6}
             height={10}
             rx={5}
-            className="fill-zinc-300"
+            fill="#d4d4d8"
           />
         );
       })}
@@ -86,20 +86,20 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
         const x = PAD_LEFT + i * STR_GAP;
         if (fret === -1) {
           return (
-            <text key={`m-${i}`} x={x} y={PAD_TOP - 6} textAnchor="middle" className="fill-zinc-500 text-[9px]">
+            <text key={`m-${i}`} x={x} y={PAD_TOP - 6} textAnchor="middle" fill="#71717a" className="text-[9px] font-bold">
               x
             </text>
           );
         }
         if (fret === 0) {
           return (
-            <circle key={`o-${i}`} cx={x} cy={PAD_TOP - 6} r={3} className="fill-none stroke-zinc-400" strokeWidth={1} />
+            <circle key={`o-${i}`} cx={x} cy={PAD_TOP - 6} r={3} fill="none" stroke="#a1a1aa" strokeWidth={1} />
           );
         }
         const fretRel = fret - minFret;
         const y = PAD_TOP + fretRel * FRET_H + FRET_H / 2;
         return (
-          <circle key={`d-${i}`} cx={x} cy={y} r={5} className="fill-zinc-200" />
+          <circle key={`d-${i}`} cx={x} cy={y} r={5} fill="#e4e4e7" />
         );
       })}
     </svg>
