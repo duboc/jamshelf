@@ -73,10 +73,16 @@ export async function POST(request: Request) {
 
     const ai = getAiClient();
 
-    // Call 1: Search and retrieve raw chords and lyrics using Google Search grounding
+    // Call 1: Search and retrieve raw chords, lyrics, and metadata using Google Search grounding
     const searchResponse = await ai.models.generateContent({
       model: modelName,
-      contents: `Search the web to find the complete chords and lyrics for the following song or query: ${rawText}. Output only the raw chords and lyrics sheet.`,
+      contents: `Search the web to find the following information for "${rawText}":
+1. The official key of the song.
+2. The tempo (BPM) of the song.
+3. The capo position (if any).
+4. The complete chords and lyrics sheet.
+
+Output the key, tempo, and capo clearly at the top, followed by the raw chords and lyrics sheet.`,
       config: {
         tools: [{ googleSearch: {} }],
       },
