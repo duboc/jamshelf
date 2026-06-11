@@ -14,6 +14,7 @@ interface PlayerStore {
   beat: number;
   capo: number;
   editMode: boolean;
+  displayMode: 'full' | 'chords' | 'text';
 
   setTranspose: (v: number) => void;
   transposeUp: () => void;
@@ -28,6 +29,7 @@ interface PlayerStore {
   setBeat: (b: number) => void;
   setCapo: (c: number) => void;
   toggleEditMode: () => void;
+  setDisplayMode: (m: 'full' | 'chords' | 'text') => void;
 }
 
 export const usePlayerStore = create<PlayerStore>((set) => ({
@@ -42,6 +44,7 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
   beat: 0,
   capo: 0,
   editMode: false,
+  displayMode: 'full',
 
   setTranspose: (v) => set({ transpose: ((v % 12) + 12) % 12 }),
   transposeUp: () => set((s) => ({ transpose: ((s.transpose + 1) % 12 + 12) % 12 })),
@@ -60,4 +63,5 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
     // disable auto-scroll when entering edit mode
     isAutoScrolling: s.editMode ? s.isAutoScrolling : false,
   })),
+  setDisplayMode: (m) => set({ displayMode: m }),
 }));

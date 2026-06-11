@@ -12,6 +12,7 @@ import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
 import { Metronome } from '@/components/metronome/Metronome';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
+import { ChordsReference } from '@/components/chord-diagrams/ChordsReference';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
 type AddTarget = { sectionIdx: number; lineIdx: number; charPos: number };
@@ -426,6 +427,29 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           {/* Metronome */}
           <Metronome />
 
+          {/* Display Mode */}
+          {!store.editMode && (
+            <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 mr-2">
+              {[
+                { id: 'full', label: 'Mix' },
+                { id: 'chords', label: 'Chords' },
+                { id: 'text', label: 'Lyrics' },
+              ].map((mode) => (
+                <button
+                  key={mode.id}
+                  onClick={() => store.setDisplayMode(mode.id as 'full' | 'chords' | 'text')}
+                  className={`text-[10px] md:text-xs px-2.5 py-1 rounded-md font-bold transition-all ${
+                    store.displayMode === mode.id
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-transparent text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Edit toggle */}
           <button
             onClick={() => { store.toggleEditMode(); closeOverlay(); }}
@@ -440,28 +464,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         </div>
       </div>
 
-      {/* Chord buttons bar — hidden in edit mode */}
-      {!store.editMode && (
-        <div className="border-b border-zinc-800 px-4 py-2 overflow-x-auto">
-          <div className="max-w-5xl mx-auto flex gap-1.5 flex-wrap">
-            {allChords.map((chord) => {
-              const displayed = transposeChord(chord, totalShift, store.useFlats);
-              return (
-                <button
-                  key={chord}
-                  onClick={() => store.setActiveChord(displayed)}
-                  className={`text-xs px-2 py-1 rounded font-mono font-bold transition-colors ${
-                    store.activeChord === displayed
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-zinc-800 text-violet-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  {displayed}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* Chords Reference Grid — hidden in edit mode or when lyrics-only mode is active */}
+      {!store.editMode && store.displayMode !== 'text' && (
+        <ChordsReference chords={allChords} />
       )}
 
       {/* Edit mode hint */}
