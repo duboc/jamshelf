@@ -32,6 +32,18 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const song = getSong(id);
 
+  const [titleInput, setTitleInput] = useState(song?.title || '');
+  const [artistInput, setArtistInput] = useState(song?.artist || '');
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (song) {
+      setTitleInput(song.title);
+      setArtistInput(song.artist);
+    }
+  }, [song]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   useEffect(() => {
     if (song) store.setBpm(song.tempo);
   }, [song?.tempo]);
@@ -142,6 +154,22 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   // ── Rating / Favorite / Setlist ────────────────────────────────────────────
 
+  const saveTitle = () => {
+    const trimmed = titleInput.trim();
+    if (trimmed && song && trimmed !== song.title) {
+      patchMeta(id, 'title', trimmed);
+    }
+  };
+
+  const saveArtist = () => {
+    if (song) {
+      const trimmed = artistInput.trim();
+      if (trimmed !== song.artist) {
+        patchMeta(id, 'artist', trimmed);
+      }
+    }
+  };
+
   const handleStar = (star: number) => {
     patchMeta(id, 'rating', song.rating === star ? 0 : star);
   };
@@ -169,9 +197,26 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             >
               &larr; Back
             </button>
-            <div>
-              <h1 className="text-lg font-bold font-display text-zinc-100">{song.title}</h1>
-              <div className="text-xs text-zinc-400">{song.artist}</div>
+            <div className="flex flex-col">
+              <input
+                type="text"
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="text-sm md:text-base font-bold font-display text-zinc-100 bg-transparent border-b border-transparent hover:border-zinc-700 focus:border-violet-500 outline-none px-1 py-0.5 max-w-[180px] sm:max-w-[240px] md:max-w-[320px] transition-all"
+                title="Click to edit song title"
+              />
+              <input
+                type="text"
+                value={artistInput}
+                onChange={(e) => setArtistInput(e.target.value)}
+                onBlur={saveArtist}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="text-xs text-zinc-400 bg-transparent border-b border-transparent hover:border-zinc-800 focus:border-violet-500/60 outline-none px-1 py-0.5 max-w-[180px] sm:max-w-[240px] md:max-w-[320px] transition-all"
+                placeholder="Unknown Artist"
+                title="Click to edit artist name"
+              />
             </div>
           </div>
 
