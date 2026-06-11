@@ -11,7 +11,6 @@ export default function AddSongPage() {
   const router = useRouter();
   const { addEntry } = useSongStore();
   const [rawText, setRawText] = useState('');
-  const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<ChordProEntry | null>(null);
@@ -21,14 +20,10 @@ export default function AddSongPage() {
       setError('Please paste a chord sheet first.');
       return;
     }
-    if (!apiKey.trim()) {
-      setError('Please enter your Gemini API key.');
-      return;
-    }
     setError('');
     setLoading(true);
     try {
-      const entry = await processWithGemini(apiKey.trim(), rawText.trim());
+      const entry = await processWithGemini(rawText.trim());
       setPreview(entry);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to process chord sheet');
@@ -64,19 +59,6 @@ export default function AddSongPage() {
         <div className="max-w-3xl mx-auto space-y-6">
           {!preview ? (
             <>
-              {/* API Key */}
-              <div>
-                <label className="block text-sm font-medium text-zinc-400 mb-1">
-                  Gemini API Key
-                </label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="AIza..."
-                  className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-600 outline-none focus:border-violet-500 transition-colors font-mono text-sm"
-                />
-              </div>
 
               {/* Raw chord sheet */}
               <div>

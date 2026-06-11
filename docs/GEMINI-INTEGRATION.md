@@ -2,69 +2,81 @@
 
 ## Overview
 
-Jamshelf uses Google's **Gemini 2.0 Flash** model to convert raw chord sheets (pasted text) into structured ChordPro format. The integration is fully client-side — the API call goes directly from the browser to Google's API. No server-side proxy is involved.
+Jamshelf uses Google's **Gemini 2.5 Flash** (or Gemini 2.0 Flash) model to convert raw chord sheets (pasted text) into structured ChordPro format. The integration is server-side via a Next.js API Route Handler (`/api/process`) using the unified `@google/genai` SDK.
 
-**Source file**: `lib/utils/ai-import.ts`
+This architecture supports:
+1. **Application Default Credentials (ADC)** via Vertex AI (recommended for production).
+2. **Developer API Key** via Google AI Studio.
 
-## Getting a Gemini API Key
+The client browser no longer requires or collects the user's API key.
 
-1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
-2. Sign in with a Google account
-3. Click "Create API Key"
-4. Copy the key — it starts with `AIza...`
-5. Paste it into Jamshelf's Add Song page when prompted
+## Setup & Configuration
 
-The key is used for the current session only and is never persisted to localStorage or sent anywhere other than Google's API.
+The backend client automatically selects the authentication mode based on the environment variables defined on the server:
+
+### Option A: Application Default Credentials (ADC) / Vertex AI (Enterprise)
+
+Configure the following environment variables:
+```bash
+GOOGLE_GENAI_USE_ENTERPRISE=true
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GOOGLE_CLOUD_LOCATION="us-central1" # optional, defaults to us-central1
+```
+
+To authenticate locally for development:
+```bash
+gcloud auth application-default login
+```
+
+### Option B: Gemini Developer API Key
+
+Configure either of the following environment variables:
+```bash
+GEMINI_API_KEY="your-api-key"
+# or
+GOOGLE_API_KEY="your-api-key"
+```
 
 ## User Flow
 
 1. Navigate to `/add-song`
-2. Select the "AI Import" tab
-3. Enter a Gemini API key
-4. Paste raw chord sheet text (from any format — tabs, chord-over-lyrics, etc.)
-5. Click "Import"
-6. Jamshelf sends the text to Gemini with a conversion prompt
-7. Gemini returns structured ChordPro
-8. The response is cleaned and saved as a new `ChordProEntry`
-9. User is redirected to the new song's viewer page
+2. Paste raw chord sheet text (from any format — tabs, chord-over-lyrics, etc.)
+3. Click "Process with AI"
+4. The frontend calls `/api/process` POST endpoint with `{ rawText }`
+5. The backend initializes `GoogleGenAI` and calls Gemini
+6. The backend cleans the response and returns a structured `ChordProEntry`
+7. User previews the formatted song and clicks "Add to Library"
 
-## API Request Format
+## API Endpoint Reference
 
 **Endpoint**:
 ```
-POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}
+POST /api/process
 ```
 
-**Headers**:
+**Request Headers**:
 ```
 Content-Type: application/json
 ```
 
-**Body**:
+**Request Body**:
 ```json
 {
-  "contents": [
-    {
-      "parts": [
-        {
-          "text": "<GEMINI_PROMPT>\n\n<raw chord sheet text>"
-        }
-      ]
-    }
-  ],
-  "generationConfig": {
-    "temperature": 0.1,
-    "maxOutputTokens": 8192
-  }
+  "rawText": "pasted chord sheet contents..."
 }
 ```
 
-- **Temperature 0.1**: Near-deterministic output for consistent formatting
-- **Max tokens 8192**: Sufficient for long songs with multiple sections
+**Response Body (Success)**:
+```json
+{
+  "id": "song-song-title",
+  "text": "{title: Song Title}\n{artist: Artist Name}\n..."
+}
+```
 
 ## Prompt Engineering
 
-The full prompt sent to Gemini:
+The backend sends the following prompt to Gemini:
 
 ```
 You are a music transcription assistant. Convert the raw chord sheet / lyrics text
@@ -88,58 +100,7 @@ RULES:
 - Brazilian Portuguese section labels if applicable: use English equivalents in output
 ```
 
-### Prompt Design Decisions
-
-| Rule | Why |
-| ---- | --- |
-| "Output ONLY the ChordPro file content" | Prevents Gemini from wrapping output in markdown code fences or adding explanations |
-| Exact metadata format | Ensures the parser can extract `{title:}`, `{key:}`, etc. reliably |
-| "Omit {capo:} if capo is 0" | Keeps output clean; parser defaults capo to 0 |
-| Bracket section headers | Matches the format the parser expects (`[Verse 1]`, not `{start_of_verse}`) |
-| "Number duplicate sections" | Prevents label collisions in the parsed output |
-| "Immediately before the syllable" | Ensures chords align visually with the correct lyrics position |
-| Portuguese section labels | The app originated for Brazilian music — Gemini normalizes "Refrão" → "Chorus" |
-
-## Response Processing
-
-```typescript
-// 1. Extract text from Gemini response
-const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-// 2. Strip accidental markdown fences
-const clean = text
-  .replace(/^```[a-z]*\n?/gm, '')
-  .replace(/^```$/gm, '')
-  .trim();
-
-// 3. Derive song ID from title directive
-const titleMatch = clean.match(/^\{title:\s*(.+)\}$/im);
-const title = titleMatch ? titleMatch[1].trim() : '';
-const id = title
-  ? 'song-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  : 'song-' + Date.now();
-
-// 4. Return as ChordProEntry
-return { id, text: clean };
-```
-
-The markdown stripping handles cases where Gemini wraps output in `` ```chordpro `` fences despite the prompt instruction.
-
-## Error Handling
-
-| Error | Cause | Handling |
-| ----- | ----- | -------- |
-| `Gemini API error: 400` | Invalid API key or malformed request | Thrown as `Error`, caught by UI |
-| `Gemini API error: 403` | API key lacks permissions or quota exceeded | Thrown as `Error` |
-| `Gemini API error: 429` | Rate limit exceeded | Thrown as `Error` |
-| `No response from Gemini` | Response JSON has no `candidates[0].content.parts[0].text` | Thrown as `Error` |
-| Network error | No internet connection | Standard `fetch` rejection |
-
-All errors are thrown and expected to be caught by the calling component for user-facing display.
-
 ## Security Considerations
 
-- **Client-side API key**: The key is passed directly to Google's API from the browser. It is never stored in localStorage, cookies, or any persistent storage.
-- **No server proxy**: There is no backend to leak keys through logs or error reports.
-- **User responsibility**: Users should use API keys with appropriate restrictions (e.g., HTTP referrer restrictions in Google Cloud Console).
-- **No key validation**: The app does not pre-validate keys — invalid keys produce a 400/403 error from Google's API.
+- **Server-side Credentials**: All API keys and GCP service account credentials remain securely on the server environment.
+- **Access Control**: You can restrict access or add authentication middleware to `/api/process` to limit consumption.
