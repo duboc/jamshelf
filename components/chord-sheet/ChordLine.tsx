@@ -1,5 +1,6 @@
 'use client';
 
+import { usePlayerStore } from '@/lib/stores/player-store';
 import { parseLine } from '@/lib/utils/music';
 import { ChordBadge } from './ChordBadge';
 
@@ -23,8 +24,37 @@ export function ChordLine({
 }: ChordLineProps) {
   const segments = parseLine(line);
   const hasChords = segments.some((s) => s.chord);
+  const { displayMode } = usePlayerStore();
 
   if (!editMode) {
+    if (displayMode === 'text') {
+      const lyricsOnly = segments.map((s) => s.text).join('');
+      return (
+        <div className="min-h-[1.4em] whitespace-pre-wrap leading-relaxed text-zinc-300">
+          {lyricsOnly || '\u00A0'}
+        </div>
+      );
+    }
+
+    if (displayMode === 'chords') {
+      if (!hasChords) return null;
+      return (
+        <div className="flex flex-wrap items-end leading-relaxed">
+          {segments.map((seg, i) => {
+            const emptyText = seg.text ? ' '.repeat(seg.text.length) : '';
+            return (
+              <span key={i} className="inline-flex flex-col">
+                <span className="min-h-[1.4em]">
+                  {seg.chord ? <ChordBadge chord={seg.chord} onTap={onChordTap} /> : null}
+                </span>
+                <span className="whitespace-pre-wrap font-mono">{emptyText || '\u00A0'}</span>
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
+
     if (!hasChords) {
       return (
         <div className="min-h-[1.4em] whitespace-pre-wrap leading-relaxed">
