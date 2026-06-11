@@ -15,6 +15,7 @@ RULES:
 - Section headers use bracket syntax on their own line: [Intro], [Verse 1], [Chorus], [Pre-Chorus], [Bridge], [Outro]
 - Number duplicate sections: [Verse 1], [Verse 2], [Chorus 1], [Chorus 2]
 - Inline chords use [ChordName] notation placed immediately before the syllable they land on
+- For sections without lyrics (like Intro, Solo, Instrumental, Outro), preserve the horizontal chord progression and grid format on the same lines (e.g., | [C] | [Am] | or [C] [Am] [F] [G]) instead of splitting them onto separate lines.
 - Detect and label all sections: Intro, Verse, Pre-Chorus, Chorus, Bridge, Outro, Solo
 - Preserve all lyrics exactly
 - Brazilian Portuguese section labels if applicable: use English equivalents in output
@@ -27,7 +28,7 @@ EXAMPLE OUTPUT:
 {tempo: 76}
 
 [Intro]
-[C]
+| [C] | [Am] | [F] | [G] |
 
 [Verse 1]
 [C]I fell by the wayside like everyone else
