@@ -13,6 +13,9 @@ interface ChordSheetProps {
   selectedCoord?: { sectionIdx: number; lineIdx: number; segIdx: number } | null;
   onChordSelect?: (sectionIdx: number, lineIdx: number, segIdx: number) => void;
   onAddChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
+  // Live-session sync props
+  onScrollTopChange?: (scrollTop: number) => void;
+  syncCorrection?: { scrollTop: number; nonce: number };
 }
 
 export function ChordSheet({
@@ -22,6 +25,8 @@ export function ChordSheet({
   selectedCoord = null,
   onChordSelect,
   onAddChord,
+  onScrollTopChange,
+  syncCorrection,
 }: ChordSheetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { fontSize, isAutoScrolling, autoScrollSpeed } = usePlayerStore();
@@ -45,6 +50,24 @@ export function ChordSheet({
     frameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frameId);
   }, [isAutoScrolling]);
+
+  // Report scroll position for a live-session leader to broadcast.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !onScrollTopChange) return;
+    const handler = () => onScrollTopChange(el.scrollTop);
+    el.addEventListener('scroll', handler, { passive: true });
+    return () => el.removeEventListener('scroll', handler);
+  }, [onScrollTopChange]);
+
+  // Snap to the latest synced position when following a live session leader.
+  useEffect(() => {
+    if (!syncCorrection) return;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = syncCorrection.scrollTop;
+    // Only re-run when a new correction arrives (nonce), not on every scrollTop read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncCorrection?.nonce]);
 
   return (
     <div

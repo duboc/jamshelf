@@ -22,6 +22,7 @@ interface PlayerStore {
   setFontSize: (s: number) => void;
   setAutoScrollSpeed: (s: number) => void;
   toggleAutoScroll: () => void;
+  setAutoScrolling: (on: boolean) => void;
   setActiveChord: (c: string | null) => void;
   setMetronomeOn: (on: boolean) => void;
   setBpm: (bpm: number) => void;
@@ -50,6 +51,7 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
   setFontSize: (sz) => set({ fontSize: Math.max(60, Math.min(160, sz)) }),
   setAutoScrollSpeed: (sp) => set({ autoScrollSpeed: sp }),
   toggleAutoScroll: () => set((s) => ({ isAutoScrolling: !s.isAutoScrolling })),
+  setAutoScrolling: (on) => set({ isAutoScrolling: on }),
   setActiveChord: (c) => set((s) => ({ activeChord: s.activeChord === c ? null : c })),
   setMetronomeOn: (on) => set({ metronomeOn: on }),
   setBpm: (bpm) => set({ bpm: Math.max(40, Math.min(240, bpm)) }),

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 
-export function Metronome() {
+export function Metronome({ readOnly = false }: { readOnly?: boolean }) {
   const { bpm, metronomeOn, beat, setBeat, setMetronomeOn } = usePlayerStore();
   const audioCtxRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -42,6 +42,28 @@ export function Metronome() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [metronomeOn, bpm, playClick, setBeat]);
+
+  if (readOnly) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-500 font-mono">
+          {metronomeOn ? `${bpm} BPM · synced` : 'Metronome synced'}
+        </span>
+        {metronomeOn && (
+          <div className="flex gap-1.5">
+            {[0, 1, 2, 3].map((b) => (
+              <div
+                key={b}
+                className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                  beat === b ? 'bg-violet-400 scale-125' : 'bg-zinc-700'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3">

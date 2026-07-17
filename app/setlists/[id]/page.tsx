@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
+import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
 
 export default function SetlistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { setlists, renameSetlist, removeSongFromSetlist, reorderSong, addSongToSetlist } = useSetlistStore();
   const { getSongs } = useSongStore();
+  const liveStatus = useLiveSessionStatus(id);
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -98,6 +100,12 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
               </h1>
             )}
             <span className="text-xs text-zinc-500">{setlistSongs.length} songs</span>
+            {liveStatus.leaderId && (
+              <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-600/20 text-red-400 font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                {liveStatus.leaderName} is leading
+              </span>
+            )}
           </div>
 
           <button
@@ -181,7 +189,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                   <span className="text-xs leading-none">⠿</span>
                 </div>
 
-                <Link href={`/song/${song.id}`} className="flex-1 min-w-0">
+                <Link href={`/song/${song.id}?setlist=${id}`} className="flex-1 min-w-0">
                   <div className="font-semibold text-zinc-100 truncate">{song.title}</div>
                   <div className="text-sm text-zinc-400 truncate">{song.artist}</div>
                   <div className="flex gap-2 mt-1">
@@ -199,7 +207,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                 {/* Next song hint */}
                 {idx < setlistSongs.length - 1 && (
                   <Link
-                    href={`/song/${setlistSongs[idx + 1].id}`}
+                    href={`/song/${setlistSongs[idx + 1].id}?setlist=${id}`}
                     className="opacity-0 group-hover:opacity-100 text-[10px] text-zinc-500 hover:text-violet-400 transition-all text-center px-2"
                     title={`Next: ${setlistSongs[idx + 1].title}`}
                   >
