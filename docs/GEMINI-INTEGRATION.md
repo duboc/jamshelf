@@ -4,38 +4,18 @@
 
 Jamshelf uses Google's **Gemini 2.5 Flash** (or Gemini 2.0 Flash) model to convert raw chord sheets (pasted text) into structured ChordPro format. The integration is server-side via a Next.js API Route Handler (`/api/process`) using the unified `@google/genai` SDK.
 
-This architecture supports:
-1. **Application Default Credentials (ADC)** via Vertex AI (recommended for production).
-2. **Developer API Key** via Google AI Studio.
-
-The client browser no longer requires or collects the user's API key.
+Authentication is **Application Default Credentials (ADC) via Vertex AI only** — no API keys are supported. The client browser never requires or collects any credential.
 
 ## Setup & Configuration
 
-The backend client automatically selects the authentication mode based on the environment variables defined on the server:
-
-### Option A: Application Default Credentials (ADC) / Vertex AI (Enterprise)
-
-Configure the following environment variables:
-```bash
-GOOGLE_GENAI_USE_ENTERPRISE=true
-GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
-GOOGLE_CLOUD_LOCATION="us-central1" # optional, defaults to us-central1
-```
+Set `GOOGLE_CLOUD_PROJECT` (and optionally `GOOGLE_CLOUD_LOCATION`) in your `.env` file — see `.env.example` at the repo root and `docs/RUNBOOK.md`'s Environment Variables section.
 
 To authenticate locally for development:
 ```bash
 gcloud auth application-default login
 ```
 
-### Option B: Gemini Developer API Key
-
-Configure either of the following environment variables:
-```bash
-GEMINI_API_KEY="your-api-key"
-# or
-GOOGLE_API_KEY="your-api-key"
-```
+In deployed environments (Cloud Run, GCE, GKE, etc.), ADC is picked up automatically from the attached service account — no credentials file or key ever needs to be configured.
 
 ## User Flow
 

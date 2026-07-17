@@ -43,16 +43,11 @@ let aiClient: GoogleGenAI | null = null;
 function getAiClient() {
   if (aiClient) return aiClient;
 
-  const isEnterprise = process.env.GOOGLE_GENAI_USE_ENTERPRISE === 'true';
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-
-  aiClient = isEnterprise
-    ? new GoogleGenAI({
-        enterprise: true,
-        project: process.env.GOOGLE_CLOUD_PROJECT,
-        location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-      })
-    : new GoogleGenAI({ apiKey });
+  aiClient = new GoogleGenAI({
+    enterprise: true,
+    project: process.env.GOOGLE_CLOUD_PROJECT,
+    location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
+  });
 
   return aiClient;
 }
