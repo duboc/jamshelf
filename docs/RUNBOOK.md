@@ -11,7 +11,21 @@ cp .env.example .env
 
 Next.js loads `.env` automatically for `npm run dev`/`build`/`start`. Standalone scripts (`scripts/seed-songs-batch.mjs`, `scripts/build-default-songs.mjs`) load it the same way via `@next/env`. In deployed environments (Vercel, Cloud Run, etc.), set the same variables in the platform's environment configuration instead of shipping a `.env` file.
 
-Only `GOOGLE_CLOUD_PROJECT` is required (Firestore/Cloud Storage persistence and the Gemini/Vertex AI import feature); Spotify matching (`SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET`) is optional and silently skipped if unset. See `docs/GEMINI-INTEGRATION.md` and `docs/SPOTIFY-INTEGRATION.md` for setup details on each.
+`GOOGLE_CLOUD_PROJECT` and `JAMSHELF_STORAGE_BUCKET` are required — `lib/gcp.ts` throws on startup if either is unset, deliberately, rather than falling back to a hardcoded project. Spotify matching (`SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET`) is optional and silently skipped if unset. See `docs/GEMINI-INTEGRATION.md` and `docs/SPOTIFY-INTEGRATION.md` for setup details on each.
+
+### ⚠️ Local testing safety: use the emulators, not real data
+
+`GOOGLE_CLOUD_PROJECT` has no hardcoded fallback specifically because ADC in most dev environments has real, working access to real GCP projects — pointing it at production and running a normal `npm run dev` session means every add/edit/delete in the UI is a real write against real data, no confirmation prompt, no sandbox. This isn't hypothetical: it's exactly how a real production song got deleted and several junk setlists got created during a local UI-testing session before this safeguard existed.
+
+For any local development or automated testing that exercises delete/edit flows:
+```bash
+npm run emulators   # starts Firestore + Storage emulators (firebase.json)
+```
+Then in another terminal, run the dev server with the emulators explicitly targeted:
+```bash
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 npm run dev
+```
+Only point `GOOGLE_CLOUD_PROJECT` at `riojucu` (or any real project) when you specifically intend to touch real data.
 
 ## Deployment
 
