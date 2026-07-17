@@ -36,15 +36,24 @@ export function ChordSheet({
 
   useEffect(() => {
     if (!isAutoScrolling) return;
+    const el = scrollRef.current;
+    if (!el) return;
     let frameId: number;
     let last = performance.now();
+    // Track the intended position in a plain JS float, separate from the DOM.
+    // Browsers round/truncate `scrollTop` to an integer on every write, so
+    // reading it back each frame (the old `el.scrollTop += delta` pattern)
+    // silently drops any sub-1px-per-frame delta — which is most of the
+    // usable speed range at 60fps, making slow/medium speeds do nothing at
+    // all. Accumulating here instead preserves full precision across frames.
+    let position = el.scrollTop;
     const step = (now: number) => {
       const dt = now - last;
       last = now;
-      const el = scrollRef.current;
       // Speed value maps to pixels per second:
       // 0.1 = 2px/s, 0.3 = 6px/s (slow), 0.7 = 14px/s (med), 1.5 = 30px/s (fast)
-      if (el) el.scrollTop += speedRef.current * 20 * (dt / 1000);
+      position += speedRef.current * 20 * (dt / 1000);
+      el.scrollTop = position;
       frameId = requestAnimationFrame(step);
     };
     frameId = requestAnimationFrame(step);
