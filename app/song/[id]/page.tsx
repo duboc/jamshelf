@@ -1,10 +1,11 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { use, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
+import { useLiveSession } from '@/lib/stores/live-session-store';
 import { extractChords, transposeChord, parseLine } from '@/lib/utils/music';
 import { moveChord, renameChord, deleteChord, insertChord } from '@/lib/utils/edit-chordpro';
 import { songToChordPro } from '@/lib/utils/chordpro-parser';
@@ -19,16 +20,29 @@ type AddTarget = { sectionIdx: number; lineIdx: number; charPos: number };
 export default function SongPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { getSong, patchMeta, exportEntry, updateEntry } = useSongStore();
   const { setlists, addSongToSetlist } = useSetlistStore();
   const store = usePlayerStore();
   const [showExport, setShowExport] = useState(false);
+  const [showSpotifyPreview, setShowSpotifyPreview] = useState(false);
   const [showSetlistMenu, setShowSetlistMenu] = useState(false);
   const [setlistMsg, setSetlistMsg] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
 
   // Edit mode state
   const [selectedCoord, setSelectedCoord] = useState<SelectedCoord | null>(null);
   const [addTarget, setAddTarget] = useState<AddTarget | null>(null);
+
+  // Live session (cross-device sync while playing a setlist)
+  const setlistIdParam = searchParams.get('setlist');
+  const activeSetlist = setlistIdParam
+    ? setlists.find((sl) => sl.id === setlistIdParam) ?? null
+    : null;
+  const scrollTopRef = useRef(0);
+  const live = useLiveSession(activeSetlist ? activeSetlist.id : null, id, scrollTopRef);
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [nameInput, setNameInput] = useState('');
 
   const song = getSong(id);
 
@@ -39,6 +53,29 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   useEffect(() => {
     if (song) store.setCapo(song.capo);
   }, [song?.capo]);
+
+  // Follow the leader to whatever song they're on
+  useEffect(() => {
+    if (!activeSetlist) return;
+    if (live.isFollowing && live.session.currentSongId && live.session.currentSongId !== id) {
+      router.push(`/song/${live.session.currentSongId}?setlist=${activeSetlist.id}`);
+    }
+  }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, router]);
+
+  const handleGoLive = () => {
+    if (!live.deviceName) {
+      setNameInput('');
+      setShowNamePrompt(true);
+    } else {
+      live.startLeading();
+    }
+  };
+
+  const confirmGoLive = () => {
+    if (!nameInput.trim()) return;
+    live.startLeading(nameInput.trim());
+    setShowNamePrompt(false);
+  };
 
   // Clear selection when leaving edit mode
   useEffect(() => {
@@ -67,6 +104,13 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const displayedKey = totalShift
     ? transposeChord(song.displayKey, totalShift, store.useFlats)
     : song.displayKey;
+
+  const setlistSongIdx = activeSetlist ? activeSetlist.songIds.indexOf(id) : -1;
+  const prevSongId = setlistSongIdx > 0 ? activeSetlist!.songIds[setlistSongIdx - 1] : null;
+  const nextSongId =
+    activeSetlist && setlistSongIdx >= 0 && setlistSongIdx < activeSetlist.songIds.length - 1
+      ? activeSetlist.songIds[setlistSongIdx + 1]
+      : null;
 
   // ── Edit helpers ────────────────────────────────────────────────────────────
   // Capture the narrowed song in a const so nested functions can access it
@@ -169,6 +213,26 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             >
               &larr; Back
             </button>
+            {activeSetlist && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => prevSongId && router.push(`/song/${prevSongId}?setlist=${activeSetlist.id}`)}
+                  disabled={!prevSongId}
+                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-sm"
+                  title="Previous song in setlist"
+                >
+                  &#8249;
+                </button>
+                <button
+                  onClick={() => nextSongId && router.push(`/song/${nextSongId}?setlist=${activeSetlist.id}`)}
+                  disabled={!nextSongId}
+                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-sm"
+                  title="Next song in setlist"
+                >
+                  &#8250;
+                </button>
+              </div>
+            )}
             <div>
               <h1 className="text-lg font-bold font-display text-zinc-100">{song.title}</h1>
               <div className="text-xs text-zinc-400">{song.artist}</div>
@@ -176,6 +240,61 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Live session status */}
+            {activeSetlist && (
+              <div className="relative flex items-center gap-1.5">
+                {live.isLeading ? (
+                  <>
+                    <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-600/20 text-red-400 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> Leading
+                    </span>
+                    <button
+                      onClick={live.stopLeading}
+                      className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                    >
+                      Stop
+                    </button>
+                  </>
+                ) : live.isFollowing ? (
+                  <>
+                    <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-violet-400 font-semibold">
+                      &#128279; {live.isLeaderStale ? `${live.session.leaderName} inactive` : `Following ${live.session.leaderName}`}
+                    </span>
+                    <button
+                      onClick={handleGoLive}
+                      className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                    >
+                      Take over
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleGoLive}
+                    className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                  >
+                    &#128308; Go Live
+                  </button>
+                )}
+                {showNamePrompt && (
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 p-3 space-y-2">
+                    <div className="text-xs text-zinc-400">Your name, so the band knows who&rsquo;s leading:</div>
+                    <input
+                      autoFocus
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') confirmGoLive(); if (e.key === 'Escape') setShowNamePrompt(false); }}
+                      placeholder="e.g. Alex - Guitar"
+                      className="w-full px-2 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 outline-none focus:border-violet-500"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setShowNamePrompt(false)} className="text-xs text-zinc-500 hover:text-zinc-300">Cancel</button>
+                      <button onClick={confirmGoLive} className="text-xs px-2 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white font-semibold">Go Live</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Star rating */}
             <div className="flex gap-0.5">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -292,6 +411,18 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               </select>
             </div>
 
+            {/* Spotify preview toggle */}
+            {song.spotifyTrackId && (
+              <button
+                onClick={() => setShowSpotifyPreview(!showSpotifyPreview)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${
+                  showSpotifyPreview ? 'bg-green-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
+                }`}
+              >
+                &#127925; Preview
+              </button>
+            )}
+
             {/* Export .cho */}
             <button
               onClick={() => setShowExport(!showExport)}
@@ -302,6 +433,23 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           </div>
         </div>
       </header>
+
+      {/* Spotify preview */}
+      {showSpotifyPreview && song.spotifyTrackId && (
+        <div className="border-b border-zinc-800 px-4 py-2">
+          <div className="max-w-5xl mx-auto">
+            <iframe
+              key={song.spotifyTrackId}
+              src={`https://open.spotify.com/embed/track/${song.spotifyTrackId}?utm_source=generator`}
+              width="100%"
+              height="152"
+              style={{ border: 0 }}
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="border-b border-zinc-800 px-4 py-2">
@@ -332,66 +480,86 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           </div>
 
           {/* Auto scroll */}
+          {live.isFollowing ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-3 py-1.5 rounded font-bold bg-zinc-800 text-violet-400">
+                {store.isAutoScrolling ? 'Scrolling (synced)' : 'Auto Scroll (synced)'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={store.toggleAutoScroll}
+                disabled={store.editMode}
+                className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
+                  store.isAutoScrolling
+                    ? 'bg-green-600 text-white'
+                    : store.editMode
+                    ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                {store.isAutoScrolling ? 'Scrolling...' : 'Auto Scroll'}
+              </button>
+              {store.isAutoScrolling && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => store.setAutoScrollSpeed(Math.max(0.05, +(store.autoScrollSpeed - 0.05).toFixed(2)))}
+                    className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
+                  >-</button>
+                  {[
+                    { label: 'Slow', value: 0.3 },
+                    { label: 'Med', value: 0.7 },
+                    { label: 'Fast', value: 1.5 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => store.setAutoScrollSpeed(preset.value)}
+                      className={`text-[10px] px-2 py-1 rounded font-semibold transition-colors ${
+                        Math.abs(store.autoScrollSpeed - preset.value) < 0.03
+                          ? 'bg-green-600 text-white'
+                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => store.setAutoScrollSpeed(Math.min(3.0, +(store.autoScrollSpeed + 0.05).toFixed(2)))}
+                    className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
+                  >+</button>
+                  <span className="text-[10px] font-mono text-zinc-500 w-8 text-center">{store.autoScrollSpeed.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Metronome */}
+          <Metronome readOnly={live.isFollowing} />
+
+          {/* Edit toggle */}
           <div className="flex items-center gap-2">
             <button
-              onClick={store.toggleAutoScroll}
-              disabled={store.editMode}
+              onClick={() => {
+                if (store.editMode) {
+                  setSavedMsg('✓ Saved');
+                  setTimeout(() => setSavedMsg(''), 2000);
+                }
+                store.toggleEditMode();
+                closeOverlay();
+              }}
               className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
-                store.isAutoScrolling
-                  ? 'bg-green-600 text-white'
-                  : store.editMode
-                  ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                store.editMode
+                  ? 'bg-violet-600 text-white'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
             >
-              {store.isAutoScrolling ? 'Scrolling...' : 'Auto Scroll'}
+              {store.editMode ? '✓ Done' : '✎ Edit'}
             </button>
-            {store.isAutoScrolling && (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => store.setAutoScrollSpeed(Math.max(0.05, +(store.autoScrollSpeed - 0.05).toFixed(2)))}
-                  className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
-                >-</button>
-                {[
-                  { label: 'Slow', value: 0.3 },
-                  { label: 'Med', value: 0.7 },
-                  { label: 'Fast', value: 1.5 },
-                ].map((preset) => (
-                  <button
-                    key={preset.label}
-                    onClick={() => store.setAutoScrollSpeed(preset.value)}
-                    className={`text-[10px] px-2 py-1 rounded font-semibold transition-colors ${
-                      Math.abs(store.autoScrollSpeed - preset.value) < 0.03
-                        ? 'bg-green-600 text-white'
-                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-                <button
-                  onClick={() => store.setAutoScrollSpeed(Math.min(3.0, +(store.autoScrollSpeed + 0.05).toFixed(2)))}
-                  className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
-                >+</button>
-                <span className="text-[10px] font-mono text-zinc-500 w-8 text-center">{store.autoScrollSpeed.toFixed(2)}</span>
-              </div>
+            {savedMsg && (
+              <span className="text-xs text-green-400 font-medium">{savedMsg}</span>
             )}
           </div>
-
-          {/* Metronome */}
-          <Metronome />
-
-          {/* Edit toggle */}
-          <button
-            onClick={() => { store.toggleEditMode(); closeOverlay(); }}
-            className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
-              store.editMode
-                ? 'bg-violet-600 text-white'
-                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-            }`}
-          >
-            {store.editMode ? '✓ Done' : '✎ Edit'}
-          </button>
         </div>
       </div>
 
@@ -437,6 +605,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           selectedCoord={selectedCoord}
           onChordSelect={handleChordSelect}
           onAddChord={handleAddChord}
+          onScrollTopChange={(v) => { scrollTopRef.current = v; }}
+          syncCorrection={live.syncCorrection}
         />
         {!store.editMode && (
           <ChordPanel

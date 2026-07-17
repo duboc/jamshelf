@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import type { Song } from '@/lib/types/song';
 import { useSongStore } from '@/lib/stores/song-store';
@@ -11,6 +12,7 @@ interface SongCardProps {
 
 export function SongCard({ song, onRemove }: SongCardProps) {
   const { patchMeta } = useSongStore();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleStar = (e: React.MouseEvent, star: number) => {
     e.preventDefault();
@@ -84,13 +86,44 @@ export function SongCard({ song, onRemove }: SongCardProps) {
       <button
         onClick={(e) => {
           e.preventDefault();
-          onRemove(song.id);
+          setConfirmDelete(true);
         }}
         className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
         title="Remove song"
       >
         &times;
       </button>
+
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={(e) => { e.preventDefault(); setConfirmDelete(false); }}
+        >
+          <div
+            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-sm p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-zinc-100 mb-1">Delete this song?</h3>
+            <p className="text-sm text-zinc-400 mb-4">
+              &ldquo;{song.title}&rdquo; will be permanently removed. This can&rsquo;t be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={(e) => { e.preventDefault(); setConfirmDelete(false); }}
+                className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); onRemove(song.id); setConfirmDelete(false); }}
+                className="text-xs px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
