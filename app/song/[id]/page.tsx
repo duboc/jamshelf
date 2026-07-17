@@ -13,6 +13,7 @@ import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
 import { Metronome } from '@/components/metronome/Metronome';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
 type AddTarget = { sectionIdx: number; lineIdx: number; charPos: number };
@@ -205,14 +206,21 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Top bar */}
       <header className="border-b border-zinc-800 px-4 py-3">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto space-y-1.5">
+        <Breadcrumb
+          items={
+            activeSetlist
+              ? [
+                  { label: 'Home', href: '/' },
+                  { label: 'Setlists', href: '/?tab=setlists' },
+                  { label: activeSetlist.name, href: `/setlists/${activeSetlist.id}` },
+                  { label: song.title },
+                ]
+              : [{ label: 'Home', href: '/' }, { label: song.title }]
+          }
+        />
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/')}
-              className="text-zinc-400 hover:text-white transition-colors text-sm"
-            >
-              &larr; Back
-            </button>
             {activeSetlist && (
               <div className="flex items-center gap-1">
                 <button
@@ -431,6 +439,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               .cho
             </button>
           </div>
+        </div>
         </div>
       </header>
 

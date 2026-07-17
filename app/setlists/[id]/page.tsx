@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
 
 export default function SetlistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -70,14 +71,16 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="border-b border-zinc-800 px-4 py-3">
-        <div className="flex items-center justify-between max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto space-y-1.5">
+        <Breadcrumb
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Setlists', href: '/?tab=setlists' },
+            { label: setlist.name },
+          ]}
+        />
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/')}
-              className="text-zinc-400 hover:text-white transition-colors text-sm"
-            >
-              &larr; Back
-            </button>
             {editingName ? (
               <input
                 autoFocus
@@ -114,6 +117,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
           >
             + Add Song
           </button>
+        </div>
         </div>
       </header>
 

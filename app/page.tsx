@@ -1,21 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { SongCard } from '@/components/song-list/SongCard';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type Tab = 'all' | 'favorites' | 'setlists';
 
+function isTab(value: string | null): value is Tab {
+  return value === 'all' || value === 'favorites' || value === 'setlists';
+}
+
 export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const { getSongs, removeEntry, exportAll, importEntries } = useSongStore();
   const { setlists, createSetlist, deleteSetlist } = useSetlistStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const songs = getSongs();
 
-  const [tab, setTab] = useState<Tab>('all');
+  const tabParam = searchParams.get('tab');
+  const tab: Tab = isTab(tabParam) ? tabParam : 'all';
+  const setTab = (t: Tab) => router.replace(t === 'all' ? '/' : `/?tab=${t}`);
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');

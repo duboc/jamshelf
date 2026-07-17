@@ -7,6 +7,7 @@ import { processWithGemini } from '@/lib/utils/ai-import';
 import { parseChordPro, patchChordProMeta } from '@/lib/utils/chordpro-parser';
 import type { ChordProEntry } from '@/lib/types/song';
 import type { SpotifyTrackResult } from '@/lib/spotify';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
 
 export default function AddSongPage() {
   const router = useRouter();
@@ -74,13 +75,8 @@ export default function AddSongPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-zinc-800 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => router.push('/')}
-            className="text-zinc-400 hover:text-white transition-colors text-sm"
-          >
-            &larr; Back
-          </button>
+        <div className="max-w-3xl mx-auto space-y-1.5">
+          <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Add Song' }]} />
           <h1 className="text-xl font-bold font-display text-zinc-100">Add Song</h1>
         </div>
       </header>
