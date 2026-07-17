@@ -46,13 +46,13 @@ function getAiClient() {
   aiClient = new GoogleGenAI({
     enterprise: true,
     project: process.env.GOOGLE_CLOUD_PROJECT,
-    location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
+    location: process.env.GOOGLE_CLOUD_LOCATION || 'global',
   });
 
   return aiClient;
 }
 
-const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 
 export async function POST(request: Request) {
   try {

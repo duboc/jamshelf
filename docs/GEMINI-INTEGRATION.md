@@ -2,7 +2,7 @@
 
 ## Overview
 
-Jamshelf uses Google's **Gemini 2.5 Flash** (or Gemini 2.0 Flash) model to convert raw chord sheets (pasted text) into structured ChordPro format. The integration is server-side via a Next.js API Route Handler (`/api/process`) using the unified `@google/genai` SDK.
+Jamshelf uses Google's **Gemini 3.5 Flash** model (via the Vertex AI **global** endpoint) to convert raw chord sheets (pasted text) into structured ChordPro format. The integration is server-side via a Next.js API Route Handler (`/api/process`) using the unified `@google/genai` SDK. Override the model or location with `GEMINI_MODEL`/`GOOGLE_CLOUD_LOCATION` in `.env` if needed — see `.env.example`.
 
 Authentication is **Application Default Credentials (ADC) via Vertex AI only** — no API keys are supported. The client browser never requires or collects any credential.
 

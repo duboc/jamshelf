@@ -28,7 +28,7 @@ if (!process.env.GOOGLE_CLOUD_PROJECT) {
 const ai = new GoogleGenAI({
   enterprise: true,
   project: process.env.GOOGLE_CLOUD_PROJECT,
-  location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
+  location: process.env.GOOGLE_CLOUD_LOCATION || 'global',
 });
 
 const batchName = process.argv[2];
@@ -156,7 +156,7 @@ ${songList}`;
 
 async function callGemini(prompt) {
   const response = await ai.models.generateContent({
-    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
     contents: prompt,
     config: {
       temperature: 0.2,
