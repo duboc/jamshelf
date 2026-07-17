@@ -31,6 +31,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
   const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
+  const [autoSearchLoading, setAutoSearchLoading] = useState(false);
+  const [spotifySuggestionDismissed, setSpotifySuggestionDismissed] = useState(false);
+  const [showMoreSuggestions, setShowMoreSuggestions] = useState(false);
   const [showSetlistMenu, setShowSetlistMenu] = useState(false);
   const [setlistMsg, setSetlistMsg] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
@@ -66,6 +69,32 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       router.push(`/song/${live.session.currentSongId}?setlist=${activeSetlist.id}`);
     }
   }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, router]);
+
+  // Auto-search Spotify for songs that don't have a match yet, so a
+  // suggestion card can show up without the user having to search manually.
+  useEffect(() => {
+    if (!song) return;
+    if (song.spotifyTrackId) return;
+    let cancelled = false;
+    // Standard cancelable fetch-on-mount pattern (identical to the one in
+    // app/add-song/page.tsx, which lints clean) — the loading flag just
+    // gates the fallback "Find on Spotify" button below.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAutoSearchLoading(true);
+    const query = `${song.title} ${song.artist}`.trim();
+    fetch(`/api/spotify/search?q=${encodeURIComponent(query)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setSpotifyResults(data.results ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setSpotifyResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setAutoSearchLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [song?.spotifyTrackId, song?.title, song?.artist]);
 
   const handleGoLive = () => {
     if (!live.deviceName) {
@@ -220,6 +249,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const handleSelectSpotify = (trackId: string) => {
     patchMeta(id, 'spotify', trackId);
     setShowSpotifyPicker(false);
+    setShowMoreSuggestions(false);
   };
 
   const handleClearSpotify = () => {
@@ -227,6 +257,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     if (text) updateEntry(id, removeChordProMeta(text, 'spotify'));
     setShowSpotifyPicker(false);
     setShowSpotifyPreview(false);
+    setSpotifySuggestionDismissed(false);
   };
 
   return (
@@ -448,7 +479,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
             {/* Spotify match */}
             <div className="relative flex items-center gap-1">
-              {song.spotifyTrackId ? (
+              {song.spotifyTrackId && (
                 <>
                   <button
                     onClick={() => setShowSpotifyPreview(!showSpotifyPreview)}
@@ -466,7 +497,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                     &#8635;
                   </button>
                 </>
-              ) : (
+              )}
+              {!song.spotifyTrackId && !autoSearchLoading && (spotifyResults.length === 0 || spotifySuggestionDismissed) && (
                 <button
                   onClick={openSpotifyPicker}
                   className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
@@ -549,6 +581,73 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
               loading="lazy"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Spotify suggested match — shown automatically, no click required */}
+      {!song.spotifyTrackId && !spotifySuggestionDismissed && spotifyResults.length > 0 && (
+        <div className="border-b border-violet-900/40 bg-violet-950/10 px-4 py-3">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-3">
+              {spotifyResults[0].albumArt ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={spotifyResults[0].albumArt} alt="" className="w-12 h-12 rounded object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-12 h-12 rounded bg-zinc-800 flex-shrink-0" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-violet-400 font-semibold mb-0.5">Suggested match on Spotify</div>
+                <div className="text-sm text-zinc-100 truncate">{spotifyResults[0].name}</div>
+                <div className="text-xs text-zinc-500 truncate">{spotifyResults[0].artist}</div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handleSelectSpotify(spotifyResults[0].id)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
+                >
+                  Use this
+                </button>
+                {spotifyResults.length > 1 && (
+                  <button
+                    onClick={() => setShowMoreSuggestions(!showMoreSuggestions)}
+                    className="text-xs px-2 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                  >
+                    {showMoreSuggestions ? 'Hide' : `${spotifyResults.length - 1} more`}
+                  </button>
+                )}
+                <button
+                  onClick={() => setSpotifySuggestionDismissed(true)}
+                  title="Dismiss"
+                  className="text-zinc-500 hover:text-zinc-300 text-lg w-7 h-7 flex items-center justify-center rounded hover:bg-zinc-800 transition-colors"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            {showMoreSuggestions && (
+              <div className="mt-2 space-y-1.5 pl-[60px]">
+                {spotifyResults.slice(1).map((track) => (
+                  <button
+                    key={track.id}
+                    onClick={() => handleSelectSpotify(track.id)}
+                    className="w-full flex items-center gap-2 p-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 text-left transition-colors"
+                  >
+                    {track.albumArt ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={track.albumArt} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-zinc-800 flex-shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-xs text-zinc-100 truncate">{track.name}</div>
+                      <div className="text-[10px] text-zinc-500 truncate">{track.artist}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
