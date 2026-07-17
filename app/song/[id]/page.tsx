@@ -8,12 +8,13 @@ import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useLiveSession } from '@/lib/stores/live-session-store';
 import { extractChords, transposeChord, parseLine } from '@/lib/utils/music';
 import { moveChord, renameChord, deleteChord, insertChord } from '@/lib/utils/edit-chordpro';
-import { songToChordPro } from '@/lib/utils/chordpro-parser';
+import { songToChordPro, removeChordProMeta } from '@/lib/utils/chordpro-parser';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
 import { Metronome } from '@/components/metronome/Metronome';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
 type AddTarget = { sectionIdx: number; lineIdx: number; charPos: number };
@@ -27,6 +28,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const store = usePlayerStore();
   const [showExport, setShowExport] = useState(false);
   const [showSpotifyPreview, setShowSpotifyPreview] = useState(false);
+  const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
+  const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
+  const [spotifyLoading, setSpotifyLoading] = useState(false);
   const [showSetlistMenu, setShowSetlistMenu] = useState(false);
   const [setlistMsg, setSetlistMsg] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
@@ -200,6 +204,29 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setSetlistMsg(`Added to "${setlistName}"`);
     setShowSetlistMenu(false);
     setTimeout(() => setSetlistMsg(''), 2000);
+  };
+
+  const openSpotifyPicker = () => {
+    setShowSpotifyPicker(true);
+    setSpotifyLoading(true);
+    const query = `${song.title} ${song.artist}`.trim();
+    fetch(`/api/spotify/search?q=${encodeURIComponent(query)}`)
+      .then((res) => res.json())
+      .then((data) => setSpotifyResults(data.results ?? []))
+      .catch(() => setSpotifyResults([]))
+      .finally(() => setSpotifyLoading(false));
+  };
+
+  const handleSelectSpotify = (trackId: string) => {
+    patchMeta(id, 'spotify', trackId);
+    setShowSpotifyPicker(false);
+  };
+
+  const handleClearSpotify = () => {
+    const text = exportEntry(id);
+    if (text) updateEntry(id, removeChordProMeta(text, 'spotify'));
+    setShowSpotifyPicker(false);
+    setShowSpotifyPreview(false);
   };
 
   return (
@@ -419,17 +446,83 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               </select>
             </div>
 
-            {/* Spotify preview toggle */}
-            {song.spotifyTrackId && (
-              <button
-                onClick={() => setShowSpotifyPreview(!showSpotifyPreview)}
-                className={`text-xs px-2 py-1 rounded transition-colors ${
-                  showSpotifyPreview ? 'bg-green-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
-                }`}
-              >
-                &#127925; Preview
-              </button>
-            )}
+            {/* Spotify match */}
+            <div className="relative flex items-center gap-1">
+              {song.spotifyTrackId ? (
+                <>
+                  <button
+                    onClick={() => setShowSpotifyPreview(!showSpotifyPreview)}
+                    className={`text-xs px-2 py-1 rounded transition-colors ${
+                      showSpotifyPreview ? 'bg-green-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
+                    }`}
+                  >
+                    &#127925; Preview
+                  </button>
+                  <button
+                    onClick={openSpotifyPicker}
+                    title="Change Spotify match"
+                    className="text-xs px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-500 transition-colors"
+                  >
+                    &#8635;
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={openSpotifyPicker}
+                  className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                >
+                  &#127925; Find on Spotify
+                </button>
+              )}
+
+              {showSpotifyPicker && (
+                <div className="absolute right-0 top-full mt-1 w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 p-3 space-y-2">
+                  {spotifyLoading ? (
+                    <div className="text-xs text-zinc-500 py-2 text-center">Searching Spotify...</div>
+                  ) : spotifyResults.length === 0 ? (
+                    <div className="text-xs text-zinc-500 py-2 text-center">No matches found.</div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                      {spotifyResults.map((track) => (
+                        <button
+                          key={track.id}
+                          onClick={() => handleSelectSpotify(track.id)}
+                          className={`w-full flex items-center gap-2 p-1.5 rounded-lg border text-left transition-colors ${
+                            song.spotifyTrackId === track.id
+                              ? 'border-violet-500 bg-violet-500/10'
+                              : 'border-zinc-800 hover:border-zinc-700'
+                          }`}
+                        >
+                          {track.albumArt ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={track.albumArt} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-zinc-800 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-xs text-zinc-100 truncate">{track.name}</div>
+                            <div className="text-[10px] text-zinc-500 truncate">{track.artist}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1">
+                    {song.spotifyTrackId && (
+                      <button onClick={handleClearSpotify} className="text-xs text-red-400 hover:text-red-300">
+                        Clear match
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowSpotifyPicker(false)}
+                      className="text-xs text-zinc-500 hover:text-zinc-300 ml-auto"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Export .cho */}
             <button
@@ -641,6 +734,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {/* Setlist dropdown backdrop */}
       {showSetlistMenu && (
         <div className="fixed inset-0 z-40" onClick={() => setShowSetlistMenu(false)} />
+      )}
+
+      {/* Spotify picker backdrop */}
+      {showSpotifyPicker && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowSpotifyPicker(false)} />
       )}
 
       {/* Export .cho modal */}
