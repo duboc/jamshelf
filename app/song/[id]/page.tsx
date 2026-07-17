@@ -6,7 +6,7 @@ import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useLiveSession } from '@/lib/stores/live-session-store';
-import { extractChords, transposeChord, parseLine } from '@/lib/utils/music';
+import { extractChords, transposeChord, parseLine, transposeSong } from '@/lib/utils/music';
 import { moveChord, renameChord, deleteChord, insertChord } from '@/lib/utils/edit-chordpro';
 import { songToChordPro, removeChordProMeta } from '@/lib/utils/chordpro-parser';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
@@ -37,6 +37,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [showSetlistMenu, setShowSetlistMenu] = useState(false);
   const [setlistMsg, setSetlistMsg] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
+  const [showTransposeConfirm, setShowTransposeConfirm] = useState(false);
 
   // Edit mode state
   const [selectedCoord, setSelectedCoord] = useState<SelectedCoord | null>(null);
@@ -258,6 +259,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setShowSpotifyPicker(false);
     setShowSpotifyPreview(false);
     setSpotifySuggestionDismissed(false);
+  };
+
+  const handleSaveAsKey = () => {
+    const transposed = transposeSong(song, store.transpose, store.useFlats);
+    updateEntry(id, songToChordPro(transposed));
+    store.setTranspose(0);
+    setShowTransposeConfirm(false);
+    setSavedMsg('✓ Saved as new key');
+    setTimeout(() => setSavedMsg(''), 2000);
   };
 
   return (
@@ -671,6 +681,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             >
               {store.useFlats ? 'b' : '#'}
             </button>
+            {store.transpose !== 0 && (
+              <button
+                onClick={() => setShowTransposeConfirm(true)}
+                title="Permanently rewrite the chords in this key"
+                className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-violet-400 transition-colors"
+              >
+                &#128190; Save as Key
+              </button>
+            )}
           </div>
 
           {/* Font size */}
@@ -838,6 +857,43 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {/* Spotify picker backdrop */}
       {showSpotifyPicker && (
         <div className="fixed inset-0 z-40" onClick={() => setShowSpotifyPicker(false)} />
+      )}
+
+      {/* Save as Key confirmation */}
+      {showTransposeConfirm && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowTransposeConfirm(false)}
+        >
+          <div
+            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-sm p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-zinc-100 mb-1">Save as new key?</h3>
+            <p className="text-sm text-zinc-400 mb-4">
+              <span className="font-mono text-zinc-300">{song.displayKey}</span>
+              {' → '}
+              <span className="font-mono text-violet-400">
+                {transposeChord(song.displayKey, store.transpose, store.useFlats)}
+              </span>
+              . This permanently rewrites every chord in the song. The transpose control resets to 0 afterward.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowTransposeConfirm(false)}
+                className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAsKey}
+                className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
+              >
+                Save as Key
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Export .cho modal */}

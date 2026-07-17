@@ -90,3 +90,27 @@ export function extractChords(sections: { lines: string[] }[]): string[] {
   }));
   return [...s];
 }
+
+export function transposeLine(line: string, semitones: number, useFlats: boolean): string {
+  if (!semitones) return line;
+  return line.replace(/\[([^\]]+)\]/g, (_, chord) => `[${transposeChord(chord, semitones, useFlats)}]`);
+}
+
+/** Permanently bakes a transpose into a song's chords and key (used by "Save as Key"). */
+export function transposeSong<T extends { originalKey: string; displayKey: string; sections: { lines: string[] }[] }>(
+  song: T,
+  semitones: number,
+  useFlats: boolean
+): T {
+  if (!semitones) return song;
+  const newKey = transposeChord(song.originalKey, semitones, useFlats);
+  return {
+    ...song,
+    originalKey: newKey,
+    displayKey: newKey,
+    sections: song.sections.map((sec) => ({
+      ...sec,
+      lines: sec.lines.map((line) => transposeLine(line, semitones, useFlats)),
+    })),
+  };
+}
