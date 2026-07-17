@@ -1,9 +1,10 @@
 /**
  * Jamshelf Song Seed Script
- * Generates chord sheet JSON for a batch of songs using Gemini API.
+ * Generates chord sheet JSON for a batch of songs using Gemini via Vertex AI (ADC).
  *
  * Usage:
- *   GEMINI_API_KEY=xxx node scripts/seed-songs-batch.mjs <batch-name>
+ *   gcloud auth application-default login
+ *   GOOGLE_CLOUD_PROJECT=your-gcp-project-id node scripts/seed-songs-batch.mjs <batch-name>
  *
  * batch-name: "english-pop" | "english-rock" | "portuguese"
  *
@@ -13,14 +14,22 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { loadEnvConfig } from '@next/env';
+import { GoogleGenAI } from '@google/genai';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+loadEnvConfig(join(__dirname, '..'));
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GEMINI_API_KEY) {
-  console.error('ERROR: Set GEMINI_API_KEY environment variable');
+if (!process.env.GOOGLE_CLOUD_PROJECT) {
+  console.error('ERROR: Set GOOGLE_CLOUD_PROJECT environment variable');
   process.exit(1);
 }
+
+const ai = new GoogleGenAI({
+  enterprise: true,
+  project: process.env.GOOGLE_CLOUD_PROJECT,
+  location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
+});
 
 const batchName = process.argv[2];
 if (!['english-pop', 'english-rock', 'portuguese'].includes(batchName)) {
@@ -146,24 +155,15 @@ ${songList}`;
 // ─── Gemini API call ─────────────────────────────────────────────────────────
 
 async function callGemini(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 65536,
-      },
-    }),
+  const response = await ai.models.generateContent({
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    contents: prompt,
+    config: {
+      temperature: 0.2,
+      maxOutputTokens: 65536,
+    },
   });
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error ${res.status}: ${errText}`);
-  }
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = response?.text;
   if (!text) throw new Error('No response from Gemini');
   return text;
 }

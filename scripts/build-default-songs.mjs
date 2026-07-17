@@ -10,9 +10,11 @@
 import { readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
+import { loadEnvConfig } from '@next/env';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
+loadEnvConfig(ROOT);
 const CHORDS_DIR = process.env.CHORDS_DIR || join(ROOT, '..', '..', '..', '..', 'chords');
 const OUT_FILE = join(ROOT, 'lib', 'data', 'default-songs.ts');
 

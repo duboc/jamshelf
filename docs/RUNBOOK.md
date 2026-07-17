@@ -1,16 +1,28 @@
 # Runbook
 
+## Environment Variables
+
+Jamshelf reads all configuration from environment variables — see `.env.example` for the full list with descriptions. For local development:
+
+```bash
+cp .env.example .env
+# fill in real values in .env — it's gitignored, never commit it
+```
+
+Next.js loads `.env` automatically for `npm run dev`/`build`/`start`. Standalone scripts (`scripts/seed-songs-batch.mjs`, `scripts/build-default-songs.mjs`) load it the same way via `@next/env`. In deployed environments (Vercel, Cloud Run, etc.), set the same variables in the platform's environment configuration instead of shipping a `.env` file.
+
+Only `GOOGLE_CLOUD_PROJECT` is required (Firestore/Cloud Storage persistence and the Gemini/Vertex AI import feature); Spotify matching (`SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET`) is optional and silently skipped if unset. See `docs/GEMINI-INTEGRATION.md` and `docs/SPOTIFY-INTEGRATION.md` for setup details on each.
+
 ## Deployment
 
-### Vercel (Recommended)
-
-Jamshelf is a standard Next.js app with no backend dependencies. Vercel provides zero-config deployment:
+### Vercel
 
 1. Push the repo to GitHub
 2. Import the project in [Vercel](https://vercel.com)
-3. Deploy — no environment variables required
+3. Configure the environment variables from `.env.example` in the Vercel project settings
+4. Deploy
 
-The app has no server-side data dependencies, so every deployment is self-contained.
+Gemini/Vertex AI auth uses Application Default Credentials — on platforms other than GCP, this typically means attaching a service account key via `GOOGLE_APPLICATION_CREDENTIALS`, since there's no ambient metadata-server identity to fall back on.
 
 ### Manual / Self-Hosted
 
@@ -23,18 +35,6 @@ npm run start
 ```
 
 The production server runs on port 3000 by default. Use a reverse proxy (nginx, Caddy) to serve it behind HTTPS.
-
-### Static Export
-
-Since the app is fully client-side, you can also export it as static HTML:
-
-```bash
-# Add to next.config.ts: output: 'export'
-npm run build
-# Serve the 'out/' directory with any static file server
-```
-
-Note: Static export requires configuring `next.config.ts` with `output: 'export'` and may need `trailingSlash: true` for dynamic routes.
 
 ## Build Verification
 
