@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/gcp';
+import { getDb } from '@/lib/gcp';
 
 export async function PUT(
   request: Request,
@@ -13,7 +13,7 @@ export async function PUT(
     if (body.name !== undefined) updates.name = body.name;
     if (body.songIds !== undefined) updates.songIds = body.songIds;
 
-    await db.collection('setlists').doc(id).set(updates, { merge: true });
+    await getDb().collection('setlists').doc(id).set(updates, { merge: true });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
@@ -30,7 +30,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await db.collection('setlists').doc(id).delete();
+    await getDb().collection('setlists').doc(id).delete();
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

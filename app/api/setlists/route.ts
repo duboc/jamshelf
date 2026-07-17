@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/gcp';
+import { getDb } from '@/lib/gcp';
 
 export async function GET() {
   try {
-    const snapshot = await db.collection('setlists').orderBy('createdAt', 'asc').get();
+    const snapshot = await getDb().collection('setlists').orderBy('createdAt', 'asc').get();
     const setlists = snapshot.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name || '',
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await db.collection('setlists').doc(id).set({
+    await getDb().collection('setlists').doc(id).set({
       name,
       songIds: songIds || [],
       createdAt: createdAt || Date.now(),

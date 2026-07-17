@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/gcp';
+import { getDb } from '@/lib/gcp';
 import { DEFAULT_LIVE_SESSION, type LiveSession } from '@/lib/types/live-session';
 
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const doc = await db.collection('liveSessions').doc(id).get();
+    const doc = await getDb().collection('liveSessions').doc(id).get();
     const session: LiveSession = { ...DEFAULT_LIVE_SESSION, ...doc.data() };
     return NextResponse.json(session);
   } catch (error: unknown) {
@@ -26,7 +26,7 @@ export async function PUT(
     const { id } = await params;
     const updates: Partial<LiveSession> = await request.json();
 
-    await db.collection('liveSessions').doc(id).set(updates, { merge: true });
+    await getDb().collection('liveSessions').doc(id).set(updates, { merge: true });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
@@ -42,7 +42,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await db.collection('liveSessions').doc(id).delete();
+    await getDb().collection('liveSessions').doc(id).delete();
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Error deleting live session:', error);

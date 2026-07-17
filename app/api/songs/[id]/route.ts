@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db, getSongsBucket } from '@/lib/gcp';
+import { getDb, getSongsBucket } from '@/lib/gcp';
 
 export async function PUT(
   request: Request,
@@ -14,7 +14,7 @@ export async function PUT(
     }
 
     // Update in Firestore
-    await db.collection('songs').doc(id).set({
+    await getDb().collection('songs').doc(id).set({
       text,
       updatedAt: new Date(),
     }, { merge: true });
@@ -45,7 +45,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Delete from Firestore
-    await db.collection('songs').doc(id).delete();
+    await getDb().collection('songs').doc(id).delete();
 
     // Delete from GCS bucket
     const bucket = getSongsBucket();

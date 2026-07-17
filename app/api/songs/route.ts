@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db, getSongsBucket } from '@/lib/gcp';
+import { getDb, getSongsBucket } from '@/lib/gcp';
 
 export async function GET() {
   try {
-    const snapshot = await db.collection('songs').get();
+    const snapshot = await getDb().collection('songs').get();
     const entries = snapshot.docs.map(doc => ({
       id: doc.id,
       text: doc.data().text || '',
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     // Save to Firestore
-    await db.collection('songs').doc(id).set({
+    await getDb().collection('songs').doc(id).set({
       text,
       updatedAt: new Date(),
     });
