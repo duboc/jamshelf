@@ -212,7 +212,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                 {idx < setlistSongs.length - 1 && (
                   <Link
                     href={`/song/${setlistSongs[idx + 1].id}?setlist=${id}`}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] text-zinc-500 hover:text-violet-400 transition-all text-center px-2"
+                    className="text-[10px] text-zinc-500 hover:text-violet-400 transition-colors text-center px-2"
                     title={`Next: ${setlistSongs[idx + 1].title}`}
                   >
                     Next &rarr;
@@ -221,7 +221,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
 
                 <button
                   onClick={() => removeSongFromSetlist(id, song.id)}
-                  className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
+                  className="text-zinc-500 hover:text-red-400 transition-colors text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
                   title="Remove from setlist"
                 >
                   &times;

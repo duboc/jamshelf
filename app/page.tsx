@@ -83,26 +83,26 @@ function HomeContent() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="border-b border-zinc-800 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-2xl font-bold font-display tracking-tight text-violet-400">
             Jamshelf
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowImport(true)}
-              className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
+              className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors whitespace-nowrap"
             >
               Import .cho
             </button>
             <button
               onClick={handleExportAll}
-              className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
+              className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors whitespace-nowrap"
             >
               Export All
             </button>
             <Link
               href="/add-song"
-              className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+              className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors whitespace-nowrap"
             >
               + Add Song
             </Link>
@@ -230,7 +230,7 @@ function HomeContent() {
                     onClick={() => {
                       if (confirm(`Delete setlist "${sl.name}"?`)) deleteSetlist(sl.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
+                    className="text-zinc-500 hover:text-red-400 transition-colors text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
                     title="Delete setlist"
                   >
                     &times;

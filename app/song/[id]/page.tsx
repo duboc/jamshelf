@@ -287,14 +287,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               : [{ label: 'Home', href: '/' }, { label: song.title }]
           }
         />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-y-2">
+          <div className="flex items-center gap-2 min-w-0">
             {activeSetlist && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 flex-shrink-0">
                 <button
                   onClick={() => prevSongId && router.push(`/song/${prevSongId}?setlist=${activeSetlist.id}`)}
                   disabled={!prevSongId}
-                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-sm"
+                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-xl w-7 h-7 flex items-center justify-center"
                   title="Previous song in setlist"
                 >
                   &#8249;
@@ -302,16 +302,16 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 <button
                   onClick={() => nextSongId && router.push(`/song/${nextSongId}?setlist=${activeSetlist.id}`)}
                   disabled={!nextSongId}
-                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-sm"
+                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-xl w-7 h-7 flex items-center justify-center"
                   title="Next song in setlist"
                 >
                   &#8250;
                 </button>
               </div>
             )}
-            <div>
-              <h1 className="text-lg font-bold font-display text-zinc-100">{song.title}</h1>
-              <div className="text-xs text-zinc-400">{song.artist}</div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold font-display text-zinc-100 truncate">{song.title}</h1>
+              <div className="text-xs text-zinc-400 truncate">{song.artist}</div>
             </div>
           </div>
 

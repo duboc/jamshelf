@@ -88,7 +88,7 @@ export function SongCard({ song, onRemove }: SongCardProps) {
           e.preventDefault();
           setConfirmDelete(true);
         }}
-        className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
+        className="text-zinc-500 hover:text-red-400 transition-colors text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
         title="Remove song"
       >
         &times;
