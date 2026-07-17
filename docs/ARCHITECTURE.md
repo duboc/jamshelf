@@ -71,6 +71,7 @@ interface ParsedSong {
   sections: Section[];
   rating: number;     // 0 = unrated, 1-5 stars
   favorite: boolean;
+  spotifyTrackId: string | null;  // matched via /api/spotify/search when adding
 }
 
 interface Section {
@@ -109,6 +110,7 @@ Standard ChordPro with custom directives:
 {time: 4/4}
 {rating: 4}         # Custom: 1-5 stars
 {favorite: true}    # Custom: boolean
+{spotify: 3n3Ppam7vgaVa1iaRUc9Lp}  # Custom: Spotify track ID, see docs/SPOTIFY-INTEGRATION.md
 
 [Verse 1]
 [C]I fell by the [Am]wayside
@@ -162,6 +164,17 @@ The parser (`chordpro-parser.ts`) recognizes:
 
 Entering edit mode automatically disables auto-scroll.
 
+### live-session-store (`lib/stores/live-session-store.ts`)
+
+**Purpose**: Cross-device sync while performing a setlist live. Not persisted to localStorage — backed by a `liveSessions/{setlistId}` Firestore doc via `/api/sessions/[id]`.
+
+| Hook | Description |
+| ---- | ----------- |
+| `useLiveSession(setlistId, currentSongId, scrollTopRef)` | Full leader/follower logic for the song viewer: polls every 1.5s, pushes state when leading, mirrors `player-store` when following. Returns `{ session, isLeading, isFollowing, isLeaderStale, startLeading, stopLeading, endSession, syncCorrection }`. |
+| `useLiveSessionStatus(setlistId)` | Read-only polling of the session doc, no push/claim logic. Used on the setlist list page to show "who's leading" without risking two mounted instances fighting over leadership. |
+
+**One device leads at a time** (explicit, "last claim wins" — no auth in this app). The leader reports its own real `scrollTop`/`isAutoScrolling`/`autoScrollSpeed`/`metronomeOn`/`bpm`/`currentSongId` as ground truth; followers poll on the same cadence and mirror those fields into their local `player-store`, and `ChordSheet` snaps to the leader's `scrollTop` on each poll via its `syncCorrection` prop. No device's clock is ever compared to another's — only each device's own `performance.now()`-based extrapolation between polls. See "Live Session Sync" under Key Algorithms below for the full design and its known limitations.
+
 ### setlist-store (`jamshelf-setlists`)
 
 **Purpose**: Ordered song collections. Persisted to localStorage.
@@ -183,6 +196,8 @@ Entering edit mode automatically disables auto-scroll.
 | `/song/[id]` | `app/song/[id]/page.tsx` | Song viewer with chord sheet, controls, chord panel |
 | `/add-song` | `app/add-song/page.tsx` | Add song manually or via Gemini AI import |
 | `/setlists/[id]` | `app/setlists/[id]/page.tsx` | Setlist viewer with ordered song list |
+
+Opening a song via `/song/[id]?setlist={setlistId}` puts the device into that setlist's live session context (see below) and enables Prev/Next navigation within the setlist.
 
 ## Component Hierarchy
 
@@ -243,6 +258,18 @@ Four operations on raw ChordPro line strings:
 ### Auto-Scroll
 
 Uses a stable `useEffect` loop that reads scroll speed from a `useRef` to avoid re-render dependency loops. The scroll amount per frame is calculated from `autoScrollSpeed`.
+
+### Live Session Sync (`live-session-store.ts`, `app/api/sessions/[id]/route.ts`)
+
+`app/api/sessions/[id]/route.ts` is the one route keyed by a singular doc id with its own `GET` — every other `[id]` route (`songs`, `setlists`) only supports `PUT`/`DELETE`, with `GET` at the collection level. This is deliberate: a live session doesn't belong to a "list of sessions" concept, it's addressed directly by setlist id. `GET` always returns `200` with `DEFAULT_LIVE_SESSION` merged under the stored doc (never `404`), so callers never need to special-case "no session yet."
+
+The sync design avoids cross-device clock comparison entirely:
+1. Every device (leader and followers alike) polls `GET /api/sessions/{setlistId}` every ~1.5s.
+2. Whichever device sees `leaderId === its own deviceId` in the freshly-fetched doc pushes its own current state back via `PUT` (plus immediately on discrete changes like toggling auto-scroll or switching songs, not just on the timer). Re-deriving "am I leader" from each fresh poll — rather than trusting local state — is what lets a takeover happen cleanly: a deposed leader's very next poll sees someone else's id and stops pushing.
+3. Every other device mirrors the fetched `isAutoScrolling`/`autoScrollSpeed`/`metronomeOn`/`bpm` into its local `player-store`, and bumps a nonce that makes `ChordSheet` hard-snap `scrollRef.current.scrollTop` to the leader's last-reported value. Between polls, the existing local auto-scroll `requestAnimationFrame` loop keeps running off the synced speed, so motion stays smooth; the snap just bounds drift every cycle.
+4. If `currentSongId` in the doc differs from the song a follower is viewing, it navigates there (`router.push`) to follow the leader through the setlist.
+
+**Known limitations (by design, not bugs)**: small visible scroll jumps every ~1.5s are expected — there's no easing in v1. Metronome sync is on/off + tempo only, not sample-accurate phase — HTTP polling can't give a synced click track, so don't rely on it for anything tighter than "roughly together." A leader that closes their tab without tapping "Stop" is only detected as inactive after ~20s of missed heartbeats (`updatedAt` staleness), not instantly.
 
 ### Chord Lookup (`chord-lookup.ts`)
 

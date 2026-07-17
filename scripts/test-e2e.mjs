@@ -109,6 +109,102 @@ async function runTests() {
   if (!deleteSetlistRes.ok) throw new Error(`DELETE /api/setlists failed: ${deleteSetlistRes.status}`);
   console.log('DELETE /api/setlists/[id] OK');
 
+  // 3. Test Live Session API
+  const sessionId = 'session-test-e2e';
+
+  console.log('Testing GET /api/sessions/[id] (defaults for unseen id)...');
+  const getDefaultRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`);
+  if (!getDefaultRes.ok) throw new Error(`GET /api/sessions/[id] failed: ${getDefaultRes.status}`);
+  const defaultSession = await getDefaultRes.json();
+  if (defaultSession.leaderId !== null || defaultSession.bpm !== 120) {
+    throw new Error('Expected default live session shape for unseen id');
+  }
+  console.log('GET /api/sessions/[id] defaults OK');
+
+  console.log('Testing PUT /api/sessions/[id] (claim leadership)...');
+  const claimRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      leaderId: 'device-a',
+      leaderName: 'Alex',
+      currentSongId: testSong.id,
+      isAutoScrolling: true,
+      autoScrollSpeed: 0.7,
+      scrollTop: 120,
+      metronomeOn: true,
+      bpm: 96,
+      updatedAt: Date.now(),
+    }),
+  });
+  if (!claimRes.ok) throw new Error(`PUT /api/sessions/[id] claim failed: ${claimRes.status}`);
+  const getAfterClaimRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`);
+  const afterClaim = await getAfterClaimRes.json();
+  if (afterClaim.leaderId !== 'device-a' || afterClaim.currentSongId !== testSong.id || afterClaim.bpm !== 96) {
+    throw new Error('Live session claim mismatch in GET response');
+  }
+  console.log('PUT /api/sessions/[id] claim OK');
+
+  console.log('Testing PUT /api/sessions/[id] (partial merge)...');
+  const partialRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scrollTop: 340 }),
+  });
+  if (!partialRes.ok) throw new Error(`PUT /api/sessions/[id] partial failed: ${partialRes.status}`);
+  const getAfterPartialRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`);
+  const afterPartial = await getAfterPartialRes.json();
+  if (afterPartial.scrollTop !== 340 || afterPartial.leaderId !== 'device-a' || afterPartial.bpm !== 96) {
+    throw new Error('Live session partial merge did not preserve other fields');
+  }
+  console.log('PUT /api/sessions/[id] partial merge OK');
+
+  console.log('Testing PUT /api/sessions/[id] (takeover, last-write-wins)...');
+  const takeoverRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leaderId: 'device-b', leaderName: 'Bea' }),
+  });
+  if (!takeoverRes.ok) throw new Error(`PUT /api/sessions/[id] takeover failed: ${takeoverRes.status}`);
+  const getAfterTakeoverRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`);
+  const afterTakeover = await getAfterTakeoverRes.json();
+  if (afterTakeover.leaderId !== 'device-b' || afterTakeover.leaderName !== 'Bea') {
+    throw new Error('Live session takeover did not win last-write');
+  }
+  console.log('PUT /api/sessions/[id] takeover OK');
+
+  console.log('Testing DELETE /api/sessions/[id]...');
+  const deleteSessionRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`, {
+    method: 'DELETE',
+  });
+  if (!deleteSessionRes.ok) throw new Error(`DELETE /api/sessions/[id] failed: ${deleteSessionRes.status}`);
+  const getAfterDeleteRes = await fetch(`${BASE_URL}/api/sessions/${sessionId}`);
+  const afterDelete = await getAfterDeleteRes.json();
+  if (afterDelete.leaderId !== null) {
+    throw new Error('Live session did not reset to defaults after DELETE');
+  }
+  console.log('DELETE /api/sessions/[id] OK');
+
+  // Cleanup: the session test also created testSong via the songs API above,
+  // which was already deleted; nothing further to clean up here.
+
+  // 4. Test Spotify Search API (graceful no-credentials path — no live secrets in CI)
+  console.log('Testing GET /api/spotify/search (missing query)...');
+  const spotifyNoQueryRes = await fetch(`${BASE_URL}/api/spotify/search`);
+  if (spotifyNoQueryRes.status !== 400) {
+    throw new Error(`Expected 400 for missing q param, got ${spotifyNoQueryRes.status}`);
+  }
+  console.log('GET /api/spotify/search missing query OK');
+
+  console.log('Testing GET /api/spotify/search (soft-fail without/with credentials)...');
+  const spotifySearchRes = await fetch(`${BASE_URL}/api/spotify/search?q=test`);
+  if (!spotifySearchRes.ok) throw new Error(`GET /api/spotify/search failed: ${spotifySearchRes.status}`);
+  const spotifyData = await spotifySearchRes.json();
+  if (!Array.isArray(spotifyData.results)) {
+    throw new Error('Expected /api/spotify/search to always return a results array');
+  }
+  console.log(`GET /api/spotify/search OK (results: ${spotifyData.results.length}${spotifyData.error ? ', not configured' : ''})`);
+
   console.log('E2E API Tests Completed Successfully!');
 }
 
