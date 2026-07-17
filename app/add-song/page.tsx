@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { processWithGemini } from '@/lib/utils/ai-import';
-import { parseChordPro } from '@/lib/utils/chordpro-parser';
+import { parseChordPro, patchChordProMeta } from '@/lib/utils/chordpro-parser';
 import type { ChordProEntry } from '@/lib/types/song';
+import type { SpotifyTrackResult } from '@/lib/spotify';
 
 export default function AddSongPage() {
   const router = useRouter();
@@ -14,6 +15,35 @@ export default function AddSongPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<ChordProEntry | null>(null);
+  const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
+  const [spotifyLoading, setSpotifyLoading] = useState(false);
+  const [selectedSpotifyId, setSelectedSpotifyId] = useState<string | null>(null);
+
+  // Parse preview entry for display metadata
+  const previewSong = preview ? parseChordPro(preview.id, preview.text) : null;
+
+  // Auto-search Spotify once we have a title/artist to match
+  useEffect(() => {
+    if (!previewSong?.title) return;
+    let cancelled = false;
+    setSpotifyLoading(true);
+    const query = `${previewSong.title} ${previewSong.artist}`.trim();
+    fetch(`/api/spotify/search?q=${encodeURIComponent(query)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const results: SpotifyTrackResult[] = data.results ?? [];
+        setSpotifyResults(results);
+        setSelectedSpotifyId(results[0]?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSpotifyResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSpotifyLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [previewSong?.title, previewSong?.artist]);
 
   const handleProcess = async () => {
     if (!rawText.trim()) {
@@ -34,12 +64,12 @@ export default function AddSongPage() {
 
   const handleConfirm = () => {
     if (!preview) return;
-    addEntry(preview);
+    const text = selectedSpotifyId
+      ? patchChordProMeta(preview.text, 'spotify', selectedSpotifyId)
+      : preview.text;
+    addEntry({ ...preview, text });
     router.push('/');
   };
-
-  // Parse preview entry for display metadata
-  const previewSong = preview ? parseChordPro(preview.id, preview.text) : null;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -119,6 +149,49 @@ export default function AddSongPage() {
                   {preview.text}
                 </pre>
               </div>
+
+              {/* Spotify match */}
+              {spotifyLoading ? (
+                <div className="text-sm text-zinc-500">Searching Spotify...</div>
+              ) : spotifyResults.length > 0 ? (
+                <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
+                  <div className="text-sm font-medium text-zinc-400 mb-2">Match on Spotify</div>
+                  <div className="space-y-2">
+                    {spotifyResults.map((track) => (
+                      <button
+                        key={track.id}
+                        onClick={() => setSelectedSpotifyId(track.id)}
+                        className={`w-full flex items-center gap-3 p-2 rounded-lg border text-left transition-colors ${
+                          selectedSpotifyId === track.id
+                            ? 'border-violet-500 bg-violet-500/10'
+                            : 'border-zinc-800 hover:border-zinc-700'
+                        }`}
+                      >
+                        {track.albumArt ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={track.albumArt} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-zinc-800 flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm text-zinc-100 truncate">{track.name}</div>
+                          <div className="text-xs text-zinc-500 truncate">{track.artist}</div>
+                        </div>
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setSelectedSpotifyId(null)}
+                      className={`text-xs px-2 py-1 rounded transition-colors ${
+                        selectedSpotifyId === null
+                          ? 'bg-violet-600 text-white'
+                          : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      No match
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex gap-3">
                 <button

@@ -39,6 +39,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     timeSignature: '4/4',
     rating: 0,
     favorite: false,
+    spotifyTrackId: null as string | null,
   };
 
   const sections: Section[] = [];
@@ -85,6 +86,9 @@ export function parseChordPro(id: string, text: string): ParsedSong {
 
     const favM = line.match(/^\{favorite:\s*(true|false)\}$/i);
     if (favM) { meta.favorite = favM[1].toLowerCase() === 'true'; continue; }
+
+    const spotifyM = line.match(/^\{spotify:\s*(.+)\}$/i);
+    if (spotifyM) { meta.spotifyTrackId = spotifyM[1].trim(); continue; }
 
     // ── Ignored directives ─────────────────────────────────────────────────
     if (/^\{define:/i.test(line)) continue;
@@ -156,6 +160,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     timeSignature: meta.timeSignature,
     rating: meta.rating,
     favorite: meta.favorite,
+    spotifyTrackId: meta.spotifyTrackId,
     sections,
   };
 }
@@ -172,6 +177,7 @@ export function songToChordPro(song: ParsedSong): string {
   if (song.timeSignature !== '4/4') lines.push(`{time: ${song.timeSignature}}`);
   if (song.rating > 0)  lines.push(`{rating: ${song.rating}}`);
   if (song.favorite)    lines.push(`{favorite: true}`);
+  if (song.spotifyTrackId) lines.push(`{spotify: ${song.spotifyTrackId}}`);
   lines.push('');
 
   for (const section of song.sections) {

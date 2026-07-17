@@ -38,6 +38,7 @@ export interface ParsedSong {
   sections: Section[];
   rating: number;    // 0 = unrated, 1–5 stars
   favorite: boolean;
+  spotifyTrackId: string | null;
 }
 
 // Alias for backwards compatibility with existing components
