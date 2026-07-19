@@ -14,6 +14,7 @@ import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
 import { Metronome } from '@/components/metronome/Metronome';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { ChordProEditor } from '@/components/ui/ChordProEditor';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -584,12 +585,12 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               )}
             </div>
 
-            {/* Export .cho */}
+            {/* Edit ChordPro source */}
             <button
               onClick={() => { setChoDraft(exportEntry(id) ?? ''); setShowExport(true); }}
               className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
             >
-              .cho
+              ChordPro
             </button>
           </div>
         </div>
@@ -926,11 +927,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {showExport && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={closeExportModal}>
           <div
-            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-4xl h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-              <h3 className="font-bold text-zinc-100">ChordPro Source</h3>
+            <div className="flex items-center justify-between p-4 border-b border-zinc-700 flex-shrink-0">
+              <div>
+                <h3 className="font-bold text-zinc-100">Edit Song Source</h3>
+                <p className="text-xs text-zinc-500">Direct ChordPro editing — delete lines, add sections, anything text can do.</p>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => navigator.clipboard.writeText(choDraft)}
@@ -953,14 +957,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 </button>
               </div>
             </div>
-            <textarea
-              value={choDraft}
-              onChange={(e) => setChoDraft(e.target.value)}
-              spellCheck={false}
-              className="flex-1 overflow-auto p-4 text-xs font-mono text-zinc-300 bg-transparent outline-none resize-none"
-            />
+            <ChordProEditor value={choDraft} onChange={setChoDraft} className="flex-1 min-h-0 rounded-b-xl" />
             {!choIsValid && (
-              <div className="px-4 pb-3 text-xs text-red-400">
+              <div className="px-4 py-2 text-xs text-red-400 border-t border-zinc-800 flex-shrink-0">
                 Must include a {'{title: ...}'} directive before saving.
               </div>
             )}
