@@ -27,6 +27,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const { setlists, addSongToSetlist } = useSetlistStore();
   const store = usePlayerStore();
   const [showExport, setShowExport] = useState(false);
+  const [choDraft, setChoDraft] = useState('');
   const [showSpotifyPreview, setShowSpotifyPreview] = useState(false);
   const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
   const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
@@ -136,6 +137,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const allChords = extractChords(song.sections);
   const totalShift = store.transpose + store.capo;
+  const beatsPerBar = parseInt(song.timeSignature, 10) || 4;
   const displayedKey = totalShift
     ? transposeChord(song.displayKey, totalShift, store.useFlats)
     : song.displayKey;
@@ -267,6 +269,22 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     store.setTranspose(0);
     setShowTransposeConfirm(false);
     setSavedMsg('✓ Saved as new key');
+    setTimeout(() => setSavedMsg(''), 2000);
+  };
+
+  const choIsDirty = choDraft !== (exportEntry(id) ?? '');
+  const choIsValid = /^\{title:/im.test(choDraft.trim());
+
+  const closeExportModal = () => {
+    if (choIsDirty && !window.confirm('Discard unsaved changes?')) return;
+    setShowExport(false);
+  };
+
+  const handleSaveCho = () => {
+    if (!choIsValid) return;
+    updateEntry(id, choDraft);
+    setShowExport(false);
+    setSavedMsg('✓ Saved');
     setTimeout(() => setSavedMsg(''), 2000);
   };
 
@@ -568,7 +586,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
             {/* Export .cho */}
             <button
-              onClick={() => setShowExport(!showExport)}
+              onClick={() => { setChoDraft(exportEntry(id) ?? ''); setShowExport(true); }}
               className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
             >
               .cho
@@ -722,10 +740,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 {store.isAutoScrolling ? 'Scrolling...' : 'Auto Scroll'}
               </button>
               {store.isAutoScrolling && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => store.setAutoScrollSpeed(Math.max(0.05, +(store.autoScrollSpeed - 0.05).toFixed(2)))}
-                    className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
+                    onClick={() => store.setAutoScrollSpeed(+(store.autoScrollSpeed / 1.15).toFixed(2))}
+                    className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-sm transition-colors"
                   >-</button>
                   {[
                     { label: 'Slow', value: 0.3 },
@@ -745,17 +763,25 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                     </button>
                   ))}
                   <button
-                    onClick={() => store.setAutoScrollSpeed(Math.min(3.0, +(store.autoScrollSpeed + 0.05).toFixed(2)))}
-                    className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-xs transition-colors"
+                    onClick={() => store.setAutoScrollSpeed(+(store.autoScrollSpeed * 1.15).toFixed(2))}
+                    className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-sm transition-colors"
                   >+</button>
-                  <span className="text-[10px] font-mono text-zinc-500 w-8 text-center">{store.autoScrollSpeed.toFixed(2)}</span>
+                  <div className="w-16 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 rounded-full transition-all duration-200"
+                      style={{
+                        width: `${((Math.log(store.autoScrollSpeed) - Math.log(0.05)) / (Math.log(3) - Math.log(0.05))) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-mono text-zinc-300 w-9 text-center">{store.autoScrollSpeed.toFixed(2)}</span>
                 </div>
               )}
             </div>
           )}
 
           {/* Metronome */}
-          <Metronome readOnly={live.isFollowing} />
+          <Metronome readOnly={live.isFollowing} beatsPerBar={beatsPerBar} />
 
           {/* Edit toggle */}
           <div className="flex items-center gap-2">
@@ -896,30 +922,48 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         </div>
       )}
 
-      {/* Export .cho modal */}
+      {/* Edit ChordPro source modal */}
       {showExport && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={closeExportModal}>
+          <div
+            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-4 border-b border-zinc-700">
               <h3 className="font-bold text-zinc-100">ChordPro Source</h3>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { const cho = exportEntry(id); if (cho) navigator.clipboard.writeText(cho); }}
-                  className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                  onClick={() => navigator.clipboard.writeText(choDraft)}
+                  className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
                 >
-                  Copy to Clipboard
+                  Copy
                 </button>
                 <button
-                  onClick={() => setShowExport(false)}
+                  onClick={handleSaveCho}
+                  disabled={!choIsValid || !choIsDirty}
+                  className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={closeExportModal}
                   className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
                 >
                   &times;
                 </button>
               </div>
             </div>
-            <pre className="flex-1 overflow-auto p-4 text-xs font-mono text-zinc-300 whitespace-pre-wrap">
-              {exportEntry(id)}
-            </pre>
+            <textarea
+              value={choDraft}
+              onChange={(e) => setChoDraft(e.target.value)}
+              spellCheck={false}
+              className="flex-1 overflow-auto p-4 text-xs font-mono text-zinc-300 bg-transparent outline-none resize-none"
+            />
+            {!choIsValid && (
+              <div className="px-4 pb-3 text-xs text-red-400">
+                Must include a {'{title: ...}'} directive before saving.
+              </div>
+            )}
           </div>
         </div>
       )}

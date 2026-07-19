@@ -3,7 +3,13 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 
-export function Metronome({ readOnly = false }: { readOnly?: boolean }) {
+export function Metronome({
+  readOnly = false,
+  beatsPerBar = 4,
+}: {
+  readOnly?: boolean;
+  beatsPerBar?: number;
+}) {
   const { bpm, metronomeOn, beat, setBeat, setMetronomeOn } = usePlayerStore();
   const audioCtxRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -33,7 +39,7 @@ export function Metronome({ readOnly = false }: { readOnly?: boolean }) {
       const ms = (60 / bpm) * 1000;
       playClick(true);
       intervalRef.current = setInterval(() => {
-        beatRef.current = (beatRef.current + 1) % 4;
+        beatRef.current = (beatRef.current + 1) % beatsPerBar;
         setBeat(beatRef.current);
         playClick(beatRef.current === 0);
       }, ms);
@@ -41,7 +47,25 @@ export function Metronome({ readOnly = false }: { readOnly?: boolean }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [metronomeOn, bpm, playClick, setBeat]);
+  }, [metronomeOn, bpm, beatsPerBar, playClick, setBeat]);
+
+  const beatIndicator = metronomeOn && (
+    <div className="flex items-center gap-2">
+      <div className="flex gap-1.5">
+        {Array.from({ length: beatsPerBar }, (_, b) => (
+          <div
+            key={b}
+            className={`w-3.5 h-3.5 rounded-full transition-colors ${
+              b === 0 ? 'ring-2 ring-amber-400/70' : ''
+            } ${beat === b ? 'bg-violet-400 scale-125' : 'bg-zinc-700'}`}
+          />
+        ))}
+      </div>
+      <span className="text-base font-bold font-mono text-violet-300 tabular-nums w-5 text-center">
+        {beat + 1}
+      </span>
+    </div>
+  );
 
   if (readOnly) {
     return (
@@ -49,18 +73,7 @@ export function Metronome({ readOnly = false }: { readOnly?: boolean }) {
         <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-500 font-mono">
           {metronomeOn ? `${bpm} BPM · synced` : 'Metronome synced'}
         </span>
-        {metronomeOn && (
-          <div className="flex gap-1.5">
-            {[0, 1, 2, 3].map((b) => (
-              <div
-                key={b}
-                className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                  beat === b ? 'bg-violet-400 scale-125' : 'bg-zinc-700'
-                }`}
-              />
-            ))}
-          </div>
-        )}
+        {beatIndicator}
       </div>
     );
   }
@@ -77,18 +90,7 @@ export function Metronome({ readOnly = false }: { readOnly?: boolean }) {
       >
         {metronomeOn ? 'Stop' : 'Metronome'}
       </button>
-      {metronomeOn && (
-        <div className="flex gap-1.5">
-          {[0, 1, 2, 3].map((b) => (
-            <div
-              key={b}
-              className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                beat === b ? 'bg-violet-400 scale-125' : 'bg-zinc-700'
-              }`}
-            />
-          ))}
-        </div>
-      )}
+      {beatIndicator}
     </div>
   );
 }

@@ -49,7 +49,7 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
   transposeDown: () => set((s) => ({ transpose: ((s.transpose - 1) % 12 + 12) % 12 })),
   toggleFlats: () => set((s) => ({ useFlats: !s.useFlats })),
   setFontSize: (sz) => set({ fontSize: Math.max(60, Math.min(160, sz)) }),
-  setAutoScrollSpeed: (sp) => set({ autoScrollSpeed: sp }),
+  setAutoScrollSpeed: (sp) => set({ autoScrollSpeed: Math.max(0.05, Math.min(3, sp)) }),
   toggleAutoScroll: () => set((s) => ({ isAutoScrolling: !s.isAutoScrolling })),
   setAutoScrolling: (on) => set({ isAutoScrolling: on }),
   setActiveChord: (c) => set((s) => ({ activeChord: s.activeChord === c ? null : c })),
