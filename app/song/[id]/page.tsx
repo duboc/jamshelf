@@ -166,6 +166,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     updateEntry(id, songToChordPro(updatedSong));
   }
 
+  function applySectionEdit(sectionIdx: number, lines: string[]) {
+    const updatedSections = currentSong.sections.map((sec, si) =>
+      si === sectionIdx ? { ...sec, lines } : sec
+    );
+    const updatedSong = { ...currentSong, sections: updatedSections };
+    updateEntry(id, songToChordPro(updatedSong));
+  }
+
   function handleChordSelect(sectionIdx: number, lineIdx: number, segIdx: number) {
     if (
       selectedCoord?.sectionIdx === sectionIdx &&
@@ -838,7 +846,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {store.editMode && (
         <div className="border-b border-violet-900/40 bg-violet-950/20 px-4 py-2">
           <p className="max-w-5xl mx-auto text-xs text-violet-400 text-center">
-            Tap a chord chip to select · <span className="font-bold">◀ ▶</span> to move · <span className="font-bold">+</span> to add · tap <span className="font-bold">✓ Done</span> to exit
+            Tap in the lyrics to type · tap a chord to move/rename/delete it · <span className="font-bold">+ Chord</span> to add one · tap <span className="font-bold">✓ Done</span> to exit
           </p>
         </div>
       )}
@@ -852,6 +860,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           selectedCoord={selectedCoord}
           onChordSelect={handleChordSelect}
           onAddChord={handleAddChord}
+          onLinesChange={applySectionEdit}
           onScrollTopChange={(v) => { scrollTopRef.current = v; }}
           syncCorrection={live.syncCorrection}
         />

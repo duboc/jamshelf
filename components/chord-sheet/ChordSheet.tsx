@@ -13,6 +13,7 @@ interface ChordSheetProps {
   selectedCoord?: { sectionIdx: number; lineIdx: number; segIdx: number } | null;
   onChordSelect?: (sectionIdx: number, lineIdx: number, segIdx: number) => void;
   onAddChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
+  onLinesChange?: (sectionIdx: number, lines: string[]) => void;
   // Live-session sync props
   onScrollTopChange?: (scrollTop: number) => void;
   syncCorrection?: { scrollTop: number; nonce: number };
@@ -25,6 +26,7 @@ export function ChordSheet({
   selectedCoord = null,
   onChordSelect,
   onAddChord,
+  onLinesChange,
   onScrollTopChange,
   syncCorrection,
 }: ChordSheetProps) {
@@ -95,6 +97,7 @@ export function ChordSheet({
             selectedCoord={selectedCoord}
             onChordSelect={onChordSelect}
             onAddChord={onAddChord}
+            onLinesChange={onLinesChange}
           />
         ))}
       </div>
