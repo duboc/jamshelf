@@ -93,9 +93,18 @@ export function useLiveSession(
   }, []);
 
   const currentSongIdRef = useRef(currentSongId);
+  const isLeadingRef = useRef(false);
+  useEffect(() => {
+    isLeadingRef.current = isLeading;
+  }, [isLeading]);
   useEffect(() => {
     currentSongIdRef.current = currentSongId;
-  }, [currentSongId]);
+    // Leader's song change should reach followers as fast as possible —
+    // don't wait for the next poll tick, push it the moment it happens.
+    if (setlistId && isLeadingRef.current) {
+      putSession(setlistId, { currentSongId, updatedAt: Date.now() });
+    }
+  }, [currentSongId, setlistId]);
 
   useEffect(() => {
     if (!setlistId) return;

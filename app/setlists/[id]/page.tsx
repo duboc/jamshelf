@@ -39,6 +39,10 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     .map((sid) => allSongs.find((s) => s.id === sid))
     .filter(Boolean) as ReturnType<typeof getSongs>;
 
+  // Join an in-progress show on the leader's actual song, not always song 1.
+  const startSongId =
+    (liveStatus.leaderId && liveStatus.currentSongId) || setlistSongs[0]?.id || null;
+
   const notInSetlist = allSongs.filter((s) => !setlist.songIds.includes(s.id));
   const filtered = notInSetlist.filter(
     (s) =>
@@ -111,12 +115,22 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
             )}
           </div>
 
-          <button
-            onClick={() => setShowAddSong(!showAddSong)}
-            className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
-          >
-            + Add Song
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => startSongId && router.push(`/song/${startSongId}?setlist=${id}&show=1`)}
+              disabled={!startSongId}
+              title={!startSongId ? 'Add a song first' : 'Enter a focused, swipe-through performance view'}
+              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
+            >
+              &#9654; Show Mode
+            </button>
+            <button
+              onClick={() => setShowAddSong(!showAddSong)}
+              className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+            >
+              + Add Song
+            </button>
+          </div>
         </div>
         </div>
       </header>

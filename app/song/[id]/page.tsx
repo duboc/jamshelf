@@ -15,6 +15,7 @@ import { Metronome } from '@/components/metronome/Metronome';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { ChordProEditor } from '@/components/ui/ChordProEditor';
+import { ShowModeView } from '@/components/show-mode/ShowModeView';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -149,6 +150,31 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     activeSetlist && setlistSongIdx >= 0 && setlistSongIdx < activeSetlist.songIds.length - 1
       ? activeSetlist.songIds[setlistSongIdx + 1]
       : null;
+
+  const showMode = searchParams.get('show') === '1';
+  if (activeSetlist && showMode) {
+    return (
+      <ShowModeView
+        song={song}
+        activeSetlist={activeSetlist}
+        setlistSongIdx={setlistSongIdx}
+        prevSongId={prevSongId}
+        nextSongId={nextSongId}
+        beatsPerBar={beatsPerBar}
+        live={live}
+        onNavigate={(songId) => router.push(`/song/${songId}?setlist=${activeSetlist.id}&show=1`)}
+        onExit={() => router.replace(`/song/${id}?setlist=${activeSetlist.id}`)}
+        onChordTap={(chord) => store.setActiveChord(chord)}
+        onScrollTopChange={(v) => { scrollTopRef.current = v; }}
+        handleGoLive={handleGoLive}
+        confirmGoLive={confirmGoLive}
+        showNamePrompt={showNamePrompt}
+        nameInput={nameInput}
+        setNameInput={setNameInput}
+        setShowNamePrompt={setShowNamePrompt}
+      />
+    );
+  }
 
   // ── Edit helpers ────────────────────────────────────────────────────────────
   // Capture the narrowed song in a const so nested functions can access it
