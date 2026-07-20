@@ -846,7 +846,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {store.editMode && (
         <div className="border-b border-violet-900/40 bg-violet-950/20 px-4 py-2">
           <p className="max-w-5xl mx-auto text-xs text-violet-400 text-center">
-            Tap in the lyrics to type · tap a chord to move/rename/delete it · <span className="font-bold">+ Chord</span> to add one · tap <span className="font-bold">✓ Done</span> to exit
+            Tap in the lyrics to type · tap a chord to move/rename/delete it · tap the <span className="font-bold">+</span> at your cursor to add one · tap <span className="font-bold">✓ Done</span> to exit
           </p>
         </div>
       )}

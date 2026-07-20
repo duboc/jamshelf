@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import {
   LINE_CLASS,
@@ -129,6 +129,8 @@ function insertPlainTextAtCaret(root: HTMLElement, text: string) {
 export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLinesChange }: SectionEditorProps) {
   const { transpose, capo, useFlats } = usePlayerStore();
   const rootRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [caretMarker, setCaretMarker] = useState<{ top: number; left: number } | null>(null);
   const lastSerializedRef = useRef<string[]>(lines);
   const composingRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -184,8 +186,43 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
     };
   }, []);
 
+  // Track the caret so a small "+" can appear right where the user clicked,
+  // instead of a static button elsewhere on the section.
+  useEffect(() => {
+    const updateCaretMarker = () => {
+      const root = rootRef.current;
+      const container = containerRef.current;
+      if (!root || !container || document.activeElement !== root) {
+        setCaretMarker(null);
+        return;
+      }
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || !sel.isCollapsed || !root.contains(sel.anchorNode)) {
+        setCaretMarker(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const rects = range.getClientRects();
+      const rect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0 && rects.length === 0) {
+        setCaretMarker(null);
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      setCaretMarker({
+        top: rect.top - containerRect.top - rect.height * 0.9,
+        left: rect.left - containerRect.left,
+      });
+    };
+    document.addEventListener('selectionchange', updateCaretMarker);
+    return () => document.removeEventListener('selectionchange', updateCaretMarker);
+  }, []);
+
   const handleInput = () => scheduleFlush(false);
-  const handleBlur = () => scheduleFlush(true);
+  const handleBlur = () => {
+    setCaretMarker(null);
+    scheduleFlush(true);
+  };
   const handleCompositionStart = () => {
     composingRef.current = true;
   };
@@ -246,21 +283,25 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
     if (!root) return;
     const pos = selectionToLinePos(root, window.getSelection());
     if (!pos) return;
+    setCaretMarker(null);
     scheduleFlush(true); // keep app state fresh before the overlay reads it
     onAddChord(pos.lineIdx, pos.charPos);
   };
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={handleAddChordClick}
-        className="absolute -top-1 right-0 z-10 flex items-center gap-1 px-2 py-1 rounded-full bg-zinc-800 hover:bg-violet-600 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
-        title="Place your cursor where you want a chord, then tap here"
-      >
-        <span className="text-sm leading-none">+</span> Chord
-      </button>
+    <div ref={containerRef} className="relative">
+      {caretMarker && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleAddChordClick}
+          style={{ top: caretMarker.top, left: caretMarker.left }}
+          className="absolute z-20 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-black/40 transition-colors"
+          title="Add a chord here"
+        >
+          +
+        </button>
+      )}
       <div
         ref={rootRef}
         contentEditable
@@ -268,7 +309,7 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
         spellCheck={false}
         autoCorrect="off"
         autoCapitalize="off"
-        className="outline-none pt-6 pr-16"
+        className="outline-none"
         onInput={handleInput}
         onBlur={handleBlur}
         onCompositionStart={handleCompositionStart}
