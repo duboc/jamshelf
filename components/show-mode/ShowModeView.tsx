@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { Metronome } from '@/components/metronome/Metronome';
+import { VisualPulse } from '@/components/metronome/VisualPulse';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import type { Song, Setlist } from '@/lib/types/song';
 
@@ -88,6 +89,7 @@ export function ShowModeView({
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-black">
+      <VisualPulse />
       <header className="border-b border-zinc-800 px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-y-2">
           <div className="min-w-0">

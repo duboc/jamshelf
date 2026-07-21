@@ -30,3 +30,8 @@ body {
 ::selection {
   background: rgba(167, 139, 250, 0.3);
 }
+
+@keyframes metronome-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
