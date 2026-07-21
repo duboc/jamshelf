@@ -8,6 +8,7 @@ import { SectionBlock } from './SectionBlock';
 interface ChordSheetProps {
   song: Song;
   onChordTap: (chord: string) => void;
+  displayMode?: 'both' | 'lyrics-only' | 'chords-only';
   // Edit mode props
   editMode?: boolean;
   selectedCoord?: { sectionIdx: number; lineIdx: number; segIdx: number } | null;
@@ -22,6 +23,7 @@ interface ChordSheetProps {
 export function ChordSheet({
   song,
   onChordTap,
+  displayMode = 'both',
   editMode = false,
   selectedCoord = null,
   onChordSelect,
@@ -80,6 +82,10 @@ export function ChordSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncCorrection?.nonce]);
 
+  // Never let a hidden-lyrics/hidden-chords preference interfere with
+  // editing — force "both" while the WYSIWYG editor is active.
+  const effectiveDisplayMode = editMode ? 'both' : displayMode;
+
   return (
     <div
       ref={scrollRef}
@@ -93,6 +99,7 @@ export function ChordSheet({
             section={section}
             sectionIdx={i}
             onChordTap={onChordTap}
+            displayMode={effectiveDisplayMode}
             editMode={editMode}
             selectedCoord={selectedCoord}
             onChordSelect={onChordSelect}

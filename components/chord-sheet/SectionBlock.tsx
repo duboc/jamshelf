@@ -9,6 +9,7 @@ interface SectionBlockProps {
   section: Section;
   sectionIdx: number;
   onChordTap: (chord: string) => void;
+  displayMode?: 'both' | 'lyrics-only' | 'chords-only';
   // Edit mode props
   editMode?: boolean;
   selectedCoord?: { sectionIdx: number; lineIdx: number; segIdx: number } | null;
@@ -21,6 +22,7 @@ export function SectionBlock({
   section,
   sectionIdx,
   onChordTap,
+  displayMode = 'both',
   editMode = false,
   selectedCoord = null,
   onChordSelect,
@@ -58,7 +60,7 @@ export function SectionBlock({
       ) : (
         <div className="space-y-0.5">
           {section.lines.map((line, lineIdx) => (
-            <ChordLine key={lineIdx} line={line} onChordTap={onChordTap} />
+            <ChordLine key={lineIdx} line={line} onChordTap={onChordTap} displayMode={displayMode} />
           ))}
         </div>
       )}

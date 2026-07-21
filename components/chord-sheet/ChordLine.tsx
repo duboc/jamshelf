@@ -6,6 +6,7 @@ import { ChordBadge } from './ChordBadge';
 interface ChordLineProps {
   line: string;
   onChordTap: (chord: string) => void;
+  displayMode?: 'both' | 'lyrics-only' | 'chords-only';
   // Edit mode props
   editMode?: boolean;
   selectedSegIdx?: number | null;
@@ -16,6 +17,7 @@ interface ChordLineProps {
 export function ChordLine({
   line,
   onChordTap,
+  displayMode = 'both',
   editMode = false,
   selectedSegIdx = null,
   onChordSelect,
@@ -25,6 +27,28 @@ export function ChordLine({
   const hasChords = segments.some((s) => s.chord);
 
   if (!editMode) {
+    if (displayMode === 'lyrics-only') {
+      const text = segments.map((s) => s.text).join('');
+      return (
+        <div className="min-h-[1.8em] whitespace-pre-wrap leading-relaxed text-[1.35em]">
+          {text || '\u00A0'}
+        </div>
+      );
+    }
+
+    if (displayMode === 'chords-only') {
+      if (!hasChords) return null;
+      return (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1">
+          {segments
+            .filter((seg) => seg.chord)
+            .map((seg, i) => (
+              <ChordBadge key={i} chord={seg.chord!} onTap={onChordTap} size="lg" />
+            ))}
+        </div>
+      );
+    }
+
     if (!hasChords) {
       return (
         <div className="min-h-[1.4em] whitespace-pre-wrap leading-relaxed">

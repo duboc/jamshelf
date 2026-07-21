@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
+import { useDisplayStore } from '@/lib/stores/display-store';
 import { useLiveSession } from '@/lib/stores/live-session-store';
 import { extractChords, transposeChord, parseLine, transposeSong } from '@/lib/utils/music';
 import { moveChord, renameChord, deleteChord, insertChord } from '@/lib/utils/edit-chordpro';
@@ -28,6 +29,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const { getSong, patchMeta, exportEntry, updateEntry } = useSongStore();
   const { setlists, addSongToSetlist } = useSetlistStore();
   const store = usePlayerStore();
+  const { displayMode, setDisplayMode } = useDisplayStore();
   const [showExport, setShowExport] = useState(false);
   const [choDraft, setChoDraft] = useState('');
   const [showSpotifyPreview, setShowSpotifyPreview] = useState(false);
@@ -752,6 +754,34 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             <button onClick={() => store.setFontSize(store.fontSize + 10)} className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center text-xs transition-colors">A+</button>
           </div>
 
+          {/* Display mode: per-device, never synced */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-zinc-500">View:</span>
+            {(
+              [
+                { mode: 'both' as const, label: 'Both' },
+                { mode: 'lyrics-only' as const, label: 'Lyrics' },
+                { mode: 'chords-only' as const, label: 'Chords' },
+              ]
+            ).map(({ mode, label }) => (
+              <button
+                key={mode}
+                onClick={() => setDisplayMode(mode)}
+                disabled={store.editMode}
+                title={store.editMode ? 'Not available while editing' : undefined}
+                className={`text-xs px-2 py-1 rounded font-semibold transition-colors ${
+                  displayMode === mode
+                    ? 'bg-violet-600 text-white'
+                    : store.editMode
+                    ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {/* Auto scroll */}
           {live.isFollowing ? (
             <div className="flex items-center gap-2">
@@ -882,6 +912,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         <ChordSheet
           song={song}
           onChordTap={(chord) => store.setActiveChord(chord)}
+          displayMode={displayMode}
           editMode={store.editMode}
           selectedCoord={selectedCoord}
           onChordSelect={handleChordSelect}
