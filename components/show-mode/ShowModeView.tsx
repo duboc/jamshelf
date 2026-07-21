@@ -181,7 +181,7 @@ export function ShowModeView({
         </div>
       </header>
 
-      <div className="flex-1 relative min-h-0" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div className="flex flex-1 relative min-h-0" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <ChordSheet
           song={song}
           onChordTap={onChordTap}
