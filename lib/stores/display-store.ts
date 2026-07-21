@@ -8,6 +8,8 @@ export type DisplayMode = 'both' | 'lyrics-only' | 'chords-only';
 interface DisplayStore {
   displayMode: DisplayMode;
   setDisplayMode: (m: DisplayMode) => void;
+  visualPulseEnabled: boolean;
+  setVisualPulseEnabled: (v: boolean) => void;
 }
 
 // Deliberately its own store, not a field on player-store: this is a
@@ -21,6 +23,8 @@ export const useDisplayStore = create<DisplayStore>()(
     (set) => ({
       displayMode: 'both',
       setDisplayMode: (m) => set({ displayMode: m }),
+      visualPulseEnabled: true,
+      setVisualPulseEnabled: (v) => set({ visualPulseEnabled: v }),
     }),
     { name: 'jamshelf-display-mode' }
   )

@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
+import { useDisplayStore } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { Metronome } from '@/components/metronome/Metronome';
 import { VisualPulse } from '@/components/metronome/VisualPulse';
@@ -55,6 +56,7 @@ export function ShowModeView({
   setShowNamePrompt,
 }: ShowModeViewProps) {
   const store = usePlayerStore();
+  const { visualPulseEnabled, setVisualPulseEnabled } = useDisplayStore();
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
   // Followers mirror the leader's state — they get no navigation control at
@@ -174,6 +176,20 @@ export function ShowModeView({
             )}
 
             <Metronome readOnly={!canNavigate} beatsPerBar={beatsPerBar} />
+
+            {/* Local per-device preference — every device decides this for
+                itself, regardless of who's leading. */}
+            <button
+              onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
+              title="Flash the screen border on each beat (just for you, on this device)"
+              className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
+                visualPulseEnabled
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              &#128161; Flash
+            </button>
 
             <button
               onClick={onExit}
