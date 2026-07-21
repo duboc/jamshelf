@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { getAiClient, GEMINI_MODEL } from '@/lib/gemini';
 
 const GEMINI_PROMPT = `You are a music transcription assistant. Convert the raw chord sheet / lyrics text into a ChordPro format (.cho file).
 
@@ -38,22 +38,6 @@ EXAMPLE OUTPUT:
 
 Convert this raw chord sheet:`;
 
-let aiClient: GoogleGenAI | null = null;
-
-function getAiClient() {
-  if (aiClient) return aiClient;
-
-  aiClient = new GoogleGenAI({
-    enterprise: true,
-    project: process.env.GOOGLE_CLOUD_PROJECT,
-    location: process.env.GOOGLE_CLOUD_LOCATION || 'global',
-  });
-
-  return aiClient;
-}
-
-const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-
 export async function POST(request: Request) {
   try {
     const { rawText } = await request.json();
@@ -67,7 +51,7 @@ export async function POST(request: Request) {
 
     const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: modelName,
+      model: GEMINI_MODEL,
       contents: GEMINI_PROMPT + '\n\n' + rawText,
       config: {
         temperature: 0.1,

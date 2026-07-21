@@ -17,6 +17,8 @@ import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { ChordProEditor } from '@/components/ui/ChordProEditor';
 import { ShowModeView } from '@/components/show-mode/ShowModeView';
+import { EnhanceModal } from '@/components/song/EnhanceModal';
+import { VersionHistoryModal } from '@/components/song/VersionHistoryModal';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -32,6 +34,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const { displayMode, setDisplayMode } = useDisplayStore();
   const [showExport, setShowExport] = useState(false);
   const [choDraft, setChoDraft] = useState('');
+  const [showEnhance, setShowEnhance] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showSpotifyPreview, setShowSpotifyPreview] = useState(false);
   const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
   const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
@@ -629,6 +633,22 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               )}
             </div>
 
+            {/* AI enhance (web-grounded lyrics/chord check) */}
+            <button
+              onClick={() => setShowEnhance(true)}
+              className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+            >
+              &#10024; Enhance
+            </button>
+
+            {/* Version history */}
+            <button
+              onClick={() => setShowHistory(true)}
+              className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+            >
+              &#128337; History
+            </button>
+
             {/* Edit ChordPro source */}
             <button
               onClick={() => { setChoDraft(exportEntry(id) ?? ''); setShowExport(true); }}
@@ -1039,6 +1059,29 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             )}
           </div>
         </div>
+      )}
+
+      {showEnhance && (
+        <EnhanceModal
+          songId={id}
+          onClose={() => setShowEnhance(false)}
+          onApplied={() => {
+            setSavedMsg('✓ Enhanced');
+            setTimeout(() => setSavedMsg(''), 2000);
+          }}
+        />
+      )}
+
+      {showHistory && (
+        <VersionHistoryModal
+          songId={id}
+          currentText={exportEntry(id) ?? ''}
+          onClose={() => setShowHistory(false)}
+          onRestored={() => {
+            setSavedMsg('✓ Restored');
+            setTimeout(() => setSavedMsg(''), 2000);
+          }}
+        />
       )}
     </div>
   );
