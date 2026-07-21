@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { ChordProEntry, ParsedSong } from '@/lib/types/song';
 import { parseEntry, patchChordProMeta } from '@/lib/utils/chordpro-parser';
 import { DEFAULT_CHORDPRO } from '@/lib/data/default-songs';
+import { useSetlistStore } from './setlist-store';
 
 interface SongStore {
   entries: ChordProEntry[];
@@ -67,6 +68,16 @@ export const useSongStore = create<SongStore>()(
         fetch(`/api/songs/${id}`, {
           method: 'DELETE',
         }).catch((err) => console.error('Failed to sync deleted song:', err));
+
+        // A deleted song can't stay referenced by a setlist, or navigating
+        // that setlist (prev/next, Show Mode swipe) would land on a
+        // "Song not found" page.
+        const setlistStore = useSetlistStore.getState();
+        setlistStore.setlists.forEach((sl) => {
+          if (sl.songIds.includes(id)) {
+            setlistStore.removeSongFromSetlist(sl.id, id);
+          }
+        });
       },
 
       updateEntry: (id, text) => {

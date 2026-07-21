@@ -16,6 +16,7 @@ interface ShowModeViewProps {
   song: Song;
   activeSetlist: Setlist;
   setlistSongIdx: number;
+  totalSongs: number;
   prevSongId: string | null;
   nextSongId: string | null;
   beatsPerBar: number;
@@ -36,6 +37,7 @@ export function ShowModeView({
   song,
   activeSetlist,
   setlistSongIdx,
+  totalSongs,
   prevSongId,
   nextSongId,
   beatsPerBar,
@@ -90,7 +92,7 @@ export function ShowModeView({
         <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-y-2">
           <div className="min-w-0">
             <div className="text-xs text-zinc-500">
-              {activeSetlist.name} &middot; Song {setlistSongIdx + 1} of {activeSetlist.songIds.length}
+              {activeSetlist.name} &middot; Song {setlistSongIdx + 1} of {totalSongs}
             </div>
             <h1 className="text-lg font-bold font-display text-zinc-100 truncate">{song.title}</h1>
             <div className="text-xs text-zinc-400 truncate">

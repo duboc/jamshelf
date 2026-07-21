@@ -146,11 +146,18 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     ? transposeChord(song.displayKey, totalShift, store.useFlats)
     : song.displayKey;
 
-  const setlistSongIdx = activeSetlist ? activeSetlist.songIds.indexOf(id) : -1;
-  const prevSongId = setlistSongIdx > 0 ? activeSetlist!.songIds[setlistSongIdx - 1] : null;
+  // A setlist can reference a song that's since been deleted (belt-and-
+  // suspenders on top of the cascade delete in song-store.ts) — filter those
+  // out before computing adjacency, so prev/next/swipe can never land on a
+  // "Song not found" page, and this numbering always matches the setlist page.
+  const existingSetlistSongIds = activeSetlist
+    ? activeSetlist.songIds.filter((sid) => getSong(sid) !== null)
+    : [];
+  const setlistSongIdx = existingSetlistSongIds.indexOf(id);
+  const prevSongId = setlistSongIdx > 0 ? existingSetlistSongIds[setlistSongIdx - 1] : null;
   const nextSongId =
-    activeSetlist && setlistSongIdx >= 0 && setlistSongIdx < activeSetlist.songIds.length - 1
-      ? activeSetlist.songIds[setlistSongIdx + 1]
+    setlistSongIdx >= 0 && setlistSongIdx < existingSetlistSongIds.length - 1
+      ? existingSetlistSongIds[setlistSongIdx + 1]
       : null;
 
   const showMode = searchParams.get('show') === '1';
@@ -160,6 +167,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         song={song}
         activeSetlist={activeSetlist}
         setlistSongIdx={setlistSongIdx}
+        totalSongs={existingSetlistSongIds.length}
         prevSongId={prevSongId}
         nextSongId={nextSongId}
         beatsPerBar={beatsPerBar}
