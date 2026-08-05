@@ -29,6 +29,16 @@ Only point `GOOGLE_CLOUD_PROJECT` at `riojucu` (or any real project) when you sp
 
 ## Deployment
 
+### Cloud Run (production)
+
+Production runs as the `jamshelf` Cloud Run service in project `riojucu` (us-central1). Deploys are manual — nothing is triggered by pushing to GitHub:
+
+```bash
+gcloud run deploy jamshelf --source . --region us-central1 --quiet
+```
+
+This uploads the source, builds it with Cloud Build buildpacks, and rolls out a new revision. Environment variables (`GOOGLE_CLOUD_PROJECT`, `JAMSHELF_STORAGE_BUCKET`, `GEMINI_MODEL`, `SPOTIFY_CLIENT_ID`/`SECRET`, …) are set on the service itself and survive source redeploys; change them with `gcloud run services update jamshelf --region us-central1 --set-env-vars ...`. Gemini/Vertex and Firestore/Storage auth come from the service's ambient service-account identity — no key files needed.
+
 ### Vercel
 
 1. Push the repo to GitHub
