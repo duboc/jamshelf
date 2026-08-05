@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
+import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 
 export default function SetlistPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,9 +20,22 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
   const [nameInput, setNameInput] = useState('');
   const [showAddSong, setShowAddSong] = useState(false);
   const [search, setSearch] = useState('');
-  const [dragging, setDragging] = useState<number | null>(null);
 
   const setlist = setlists.find((sl) => sl.id === id);
+
+  const allSongs = getSongs();
+  // Keep the index into songIds alongside each song, so a reorder still
+  // targets the right store slot if songIds contains ids of deleted songs.
+  const baseEntries = (setlist?.songIds ?? [])
+    .map((sid, storeIdx) => ({ song: allSongs.find((s) => s.id === sid), storeIdx }))
+    .filter((e): e is { song: ReturnType<typeof getSongs>[number]; storeIdx: number } =>
+      e.song !== undefined
+    );
+
+  const { drag, getHandleProps } = usePointerReorder({
+    onReorder: (from, to) =>
+      reorderSong(id, baseEntries[from].storeIdx, baseEntries[to].storeIdx),
+  });
 
   if (!setlist) {
     return (
@@ -34,10 +48,8 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  const allSongs = getSongs();
-  const setlistSongs = setlist.songIds
-    .map((sid) => allSongs.find((s) => s.id === sid))
-    .filter(Boolean) as ReturnType<typeof getSongs>;
+  const displayEntries = drag ? moveItem(baseEntries, drag.from, drag.to) : baseEntries;
+  const setlistSongs = displayEntries.map((e) => e.song);
 
   // Join an in-progress show on the leader's actual song, not always song 1.
   const startSongId =
@@ -59,17 +71,6 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     if (nameInput.trim()) renameSetlist(id, nameInput.trim());
     setEditingName(false);
   };
-
-  // Minimal drag-to-reorder
-  const handleDragStart = (idx: number) => setDragging(idx);
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (dragging !== null && dragging !== idx) {
-      reorderSong(id, dragging, idx);
-      setDragging(idx);
-    }
-  };
-  const handleDragEnd = () => setDragging(null);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -191,18 +192,19 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
             setlistSongs.map((song, idx) => (
               <div
                 key={song.id}
-                draggable
-                onDragStart={() => handleDragStart(idx)}
-                onDragOver={(e) => handleDragOver(e, idx)}
-                onDragEnd={handleDragEnd}
-                className={`group flex items-center gap-3 p-4 rounded-xl bg-zinc-900 border transition-all cursor-grab active:cursor-grabbing ${
-                  dragging === idx
+                data-display-idx={idx}
+                className={`group flex items-center gap-3 p-4 rounded-xl bg-zinc-900 border transition-all ${
+                  drag !== null && drag.to === idx
                     ? 'border-violet-500 bg-zinc-800 opacity-70'
                     : 'border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700'
                 }`}
               >
-                {/* Drag handle + number */}
-                <div className="flex flex-col items-center gap-0.5 text-zinc-600 select-none min-w-[24px]">
+                {/* Drag handle + number — pointer-based so it works on touch */}
+                <div
+                  {...getHandleProps(idx)}
+                  title="Drag to reorder"
+                  className="flex flex-col items-center gap-0.5 text-zinc-600 select-none touch-none cursor-grab active:cursor-grabbing min-w-[32px] -m-2 p-2"
+                >
                   <span className="text-[10px] font-mono text-zinc-500">{idx + 1}</span>
                   <span className="text-xs leading-none">⠿</span>
                 </div>

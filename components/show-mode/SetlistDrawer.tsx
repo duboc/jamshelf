@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
+import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
 import type { Setlist, ParsedSong } from '@/lib/types/song';
 
 interface SetlistDrawerProps {
@@ -20,16 +21,6 @@ interface Entry {
   storeIdx: number;
 }
 
-const EDGE_SCROLL_ZONE_PX = 48;
-const EDGE_SCROLL_STEP_PX = 10;
-
-function moveItem<T>(arr: T[], from: number, to: number): T[] {
-  const copy = [...arr];
-  const [moved] = copy.splice(from, 1);
-  copy.splice(to, 0, moved);
-  return copy;
-}
-
 export function SetlistDrawer({
   setlist,
   currentSongId,
@@ -40,14 +31,16 @@ export function SetlistDrawer({
   const { reorderSong } = useSetlistStore();
   const { getSong } = useSongStore();
   const listRef = useRef<HTMLDivElement>(null);
-  // from = position when the drag started, to = position under the finger now.
-  // The list re-sorts live for feedback, but the store is only written once,
-  // on release — one PUT per drag instead of one per row crossed.
-  const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
 
   const baseEntries: Entry[] = setlist.songIds
     .map((sid, storeIdx) => ({ song: getSong(sid), storeIdx }))
     .filter((e): e is Entry => e.song !== null);
+
+  const { drag, getHandleProps } = usePointerReorder({
+    listRef,
+    onReorder: (from, to) =>
+      reorderSong(setlist.id, baseEntries[from].storeIdx, baseEntries[to].storeIdx),
+  });
 
   const displayEntries = drag ? moveItem(baseEntries, drag.from, drag.to) : baseEntries;
 
@@ -56,40 +49,6 @@ export function SetlistDrawer({
       ?.querySelector('[data-current="true"]')
       ?.scrollIntoView({ block: 'center' });
   }, []);
-
-  const handlePointerDown = (e: React.PointerEvent, displayIdx: number) => {
-    if (!canReorder) return;
-    e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDrag({ from: displayIdx, to: displayIdx });
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!drag) return;
-    const list = listRef.current;
-    if (list) {
-      const rect = list.getBoundingClientRect();
-      if (e.clientY < rect.top + EDGE_SCROLL_ZONE_PX) list.scrollTop -= EDGE_SCROLL_STEP_PX;
-      else if (e.clientY > rect.bottom - EDGE_SCROLL_ZONE_PX) list.scrollTop += EDGE_SCROLL_STEP_PX;
-    }
-    // Pointer capture keeps events on the handle, so hit-test manually.
-    const row = document
-      .elementFromPoint(e.clientX, e.clientY)
-      ?.closest('[data-display-idx]') as HTMLElement | null;
-    if (!row) return;
-    const overIdx = Number(row.dataset.displayIdx);
-    if (!Number.isNaN(overIdx) && overIdx !== drag.to) {
-      setDrag({ from: drag.from, to: overIdx });
-    }
-  };
-
-  const handlePointerEnd = () => {
-    if (!drag) return;
-    if (drag.from !== drag.to) {
-      reorderSong(setlist.id, baseEntries[drag.from].storeIdx, baseEntries[drag.to].storeIdx);
-    }
-    setDrag(null);
-  };
 
   return (
     <>
@@ -173,10 +132,7 @@ export function SetlistDrawer({
                 </button>
                 {canReorder && (
                   <div
-                    onPointerDown={(e) => handlePointerDown(e, displayIdx)}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerEnd}
-                    onPointerCancel={handlePointerEnd}
+                    {...getHandleProps(displayIdx)}
                     title="Drag to reorder"
                     className="touch-none select-none cursor-grab active:cursor-grabbing text-zinc-500 hover:text-zinc-300 px-3 py-3 flex-shrink-0 text-base leading-none"
                   >
