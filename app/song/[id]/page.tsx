@@ -19,6 +19,7 @@ import { ChordProEditor } from '@/components/ui/ChordProEditor';
 import { ShowModeView } from '@/components/show-mode/ShowModeView';
 import { EnhanceModal } from '@/components/song/EnhanceModal';
 import { VersionHistoryModal } from '@/components/song/VersionHistoryModal';
+import { ChordsReference } from '@/components/chord-diagrams/ChordsReference';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -63,6 +64,18 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [nameInput, setNameInput] = useState('');
 
   const song = getSong(id);
+
+  const [titleInput, setTitleInput] = useState(song?.title || '');
+  const [artistInput, setArtistInput] = useState(song?.artist || '');
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (song) {
+      setTitleInput(song.title);
+      setArtistInput(song.artist);
+    }
+  }, [song]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (song) store.setBpm(song.tempo);
@@ -272,6 +285,22 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   // ── Rating / Favorite / Setlist ────────────────────────────────────────────
 
+  const saveTitle = () => {
+    const trimmed = titleInput.trim();
+    if (trimmed && song && trimmed !== song.title) {
+      patchMeta(id, 'title', trimmed);
+    }
+  };
+
+  const saveArtist = () => {
+    if (song) {
+      const trimmed = artistInput.trim();
+      if (trimmed !== song.artist) {
+        patchMeta(id, 'artist', trimmed);
+      }
+    }
+  };
+
   const handleStar = (star: number) => {
     patchMeta(id, 'rating', song.rating === star ? 0 : star);
   };
@@ -376,9 +405,26 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 </button>
               </div>
             )}
-            <div className="min-w-0">
-              <h1 className="text-lg font-bold font-display text-zinc-100 truncate">{song.title}</h1>
-              <div className="text-xs text-zinc-400 truncate">{song.artist}</div>
+            <div className="min-w-0 flex flex-col">
+              <input
+                type="text"
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="text-lg font-bold font-display text-zinc-100 bg-transparent border-b border-transparent hover:border-zinc-700 focus:border-violet-500 outline-none min-w-0 transition-colors"
+                title="Click to edit song title"
+              />
+              <input
+                type="text"
+                value={artistInput}
+                onChange={(e) => setArtistInput(e.target.value)}
+                onBlur={saveArtist}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="text-xs text-zinc-400 bg-transparent border-b border-transparent hover:border-zinc-800 focus:border-violet-500/60 outline-none min-w-0 transition-colors"
+                placeholder="Unknown Artist"
+                title="Click to edit artist name"
+              />
             </div>
           </div>
 
@@ -902,28 +948,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         </div>
       </div>
 
-      {/* Chord buttons bar — hidden in edit mode */}
-      {!store.editMode && (
-        <div className="border-b border-zinc-800 px-4 py-2 overflow-x-auto">
-          <div className="max-w-5xl mx-auto flex gap-1.5 flex-wrap">
-            {allChords.map((chord) => {
-              const displayed = transposeChord(chord, totalShift, store.useFlats);
-              return (
-                <button
-                  key={chord}
-                  onClick={() => store.setActiveChord(displayed)}
-                  className={`text-xs px-2 py-1 rounded font-mono font-bold transition-colors ${
-                    store.activeChord === displayed
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-zinc-800 text-violet-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  {displayed}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* Chords Reference Grid — hidden in edit mode or when lyrics-only mode is active */}
+      {!store.editMode && displayMode !== 'lyrics-only' && (
+        <ChordsReference
+          chords={allChords.map((c) => transposeChord(c, totalShift, store.useFlats))}
+        />
       )}
 
       {/* Edit mode hint */}

@@ -15,6 +15,7 @@ RULES:
 - Section headers use bracket syntax on their own line: [Intro], [Verse 1], [Chorus], [Pre-Chorus], [Bridge], [Outro]
 - Number duplicate sections: [Verse 1], [Verse 2], [Chorus 1], [Chorus 2]
 - Inline chords use [ChordName] notation placed immediately before the syllable they land on
+- For sections without lyrics (like Intro, Solo, Instrumental, Outro), preserve the horizontal chord progression and grid format on the same lines (e.g., | [C] | [Am] | or [C] [Am] [F] [G]) instead of splitting them onto separate lines.
 - Detect and label all sections: Intro, Verse, Pre-Chorus, Chorus, Bridge, Outro, Solo
 - Preserve all lyrics exactly
 - Brazilian Portuguese section labels if applicable: use English equivalents in output
@@ -27,7 +28,7 @@ EXAMPLE OUTPUT:
 {tempo: 76}
 
 [Intro]
-[C]
+| [C] | [Am] | [F] | [G] |
 
 [Verse 1]
 [C]I fell by the wayside like everyone else
@@ -50,19 +51,56 @@ export async function POST(request: Request) {
     }
 
     const ai = getAiClient();
-    const response = await ai.models.generateContent({
+
+    const isUrl = /^https?:\/\/[^\s]+$/i.test(rawText.trim());
+    const searchPrompt = isUrl
+      ? `Extract and transcribe the song from this URL: "${rawText.trim()}".
+Find:
+1. The official key of the song.
+2. The tempo (BPM) of the song.
+3. The capo position (if any).
+4. The complete chords and lyrics sheet.
+
+Output the key, tempo, and capo clearly at the top, followed by the raw chords and lyrics sheet.`
+      : `Search the web to find the following information for "${rawText}":
+1. The official key of the song.
+2. The tempo (BPM) of the song.
+3. The capo position (if any).
+4. The complete chords and lyrics sheet.
+
+Output the key, tempo, and capo clearly at the top, followed by the raw chords and lyrics sheet.`;
+
+    // Call 1: Search and retrieve raw chords, lyrics, and metadata using Google Search grounding
+    const searchResponse = await ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents: GEMINI_PROMPT + '\n\n' + rawText,
+      contents: searchPrompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+
+    const rawChords = searchResponse?.text;
+    if (!rawChords) {
+      return NextResponse.json(
+        { error: 'Failed to retrieve chords via Google Search grounding' },
+        { status: 500 }
+      );
+    }
+
+    // Call 2: Format the raw chords into structured ChordPro (No grounding to avoid API constraints)
+    const formatResponse = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: GEMINI_PROMPT + '\n\n' + rawChords,
       config: {
         temperature: 0.1,
         maxOutputTokens: 8192,
       },
     });
 
-    const text = response?.text;
+    const text = formatResponse?.text;
     if (!text) {
       return NextResponse.json(
-        { error: 'No response from Gemini model' },
+        { error: 'Failed to format ChordPro from retrieved chords' },
         { status: 500 }
       );
     }
@@ -79,10 +117,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id, text: clean });
   } catch (error: unknown) {
-    console.error('API Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    console.error('Detailed API Error:', error);
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'AI processing failed. Please verify raw input or check service configuration.' },
       { status: 500 }
     );
   }
