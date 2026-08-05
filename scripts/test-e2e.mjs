@@ -75,6 +75,22 @@ async function runTests() {
   }
   console.log('GET /api/setlists OK');
 
+  console.log('Testing PUT /api/setlists/[id] (reorder preserves exact songIds order)...');
+  const reorderedIds = ['song-c', 'song-a', 'song-b'];
+  const reorderRes = await fetch(`${BASE_URL}/api/setlists/${testSetlist.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ songIds: reorderedIds }),
+  });
+  if (!reorderRes.ok) throw new Error(`PUT /api/setlists/[id] reorder failed: ${reorderRes.status}`);
+  const getReorderRes = await fetch(`${BASE_URL}/api/setlists`);
+  const setlistsAfterReorder = await getReorderRes.json();
+  const foundReordered = setlistsAfterReorder.find(s => s.id === testSetlist.id);
+  if (!foundReordered || JSON.stringify(foundReordered.songIds) !== JSON.stringify(reorderedIds)) {
+    throw new Error(`Reordered songIds mismatch: got ${JSON.stringify(foundReordered?.songIds)}`);
+  }
+  console.log('PUT /api/setlists/[id] reorder round-trip OK');
+
   console.log('Testing PUT /api/setlists/[id]...');
   const updatedName = 'Updated E2E Setlist';
   const putSetlistRes = await fetch(`${BASE_URL}/api/setlists/${testSetlist.id}`, {

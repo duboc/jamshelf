@@ -1,12 +1,13 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { Metronome } from '@/components/metronome/Metronome';
 import { VisualPulse } from '@/components/metronome/VisualPulse';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
+import { SetlistDrawer } from '@/components/show-mode/SetlistDrawer';
 import type { Song, Setlist } from '@/lib/types/song';
 
 const SWIPE_MIN_DX = 60;
@@ -58,6 +59,7 @@ export function ShowModeView({
   const store = usePlayerStore();
   const { visualPulseEnabled, setVisualPulseEnabled } = useDisplayStore();
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const [showSetlist, setShowSetlist] = useState(false);
 
   // Followers mirror the leader's state — they get no navigation control at
   // all here, matching how Metronome/Auto Scroll already degrade for them
@@ -94,15 +96,20 @@ export function ShowModeView({
       <VisualPulse />
       <header className="border-b border-zinc-800 px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-y-2">
-          <div className="min-w-0">
+          <button
+            onClick={() => setShowSetlist((v) => !v)}
+            title="Open the setlist — tap a song to jump, drag to reorder"
+            className="min-w-0 text-left rounded-lg -mx-2 px-2 py-0.5 hover:bg-zinc-900 transition-colors"
+          >
             <div className="text-xs text-zinc-500">
+              <span className="text-zinc-400 mr-1">&#9776;</span>
               {activeSetlist.name} &middot; Song {setlistSongIdx + 1} of {totalSongs}
             </div>
             <h1 className="text-lg font-bold font-display text-zinc-100 truncate">{song.title}</h1>
             <div className="text-xs text-zinc-400 truncate">
               {song.artist} &middot; <span className="font-mono text-violet-400">{song.displayKey}</span>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex items-center gap-1.5">
@@ -208,6 +215,16 @@ export function ShowModeView({
           onScrollTopChange={onScrollTopChange}
           syncCorrection={live.syncCorrection}
         />
+
+        {showSetlist && (
+          <SetlistDrawer
+            setlist={activeSetlist}
+            currentSongId={song.id}
+            canReorder={canNavigate}
+            onNavigate={onNavigate}
+            onClose={() => setShowSetlist(false)}
+          />
+        )}
 
         {canNavigate && (
           <>
