@@ -104,6 +104,8 @@ export function ShowModeView({
     sheetColumns,
     setSheetColumns,
     singleKeyShortcuts,
+    capoDisplay,
+    setCapoDisplay,
   } = useDisplayStore();
 
   const systemDark = useSyncExternalStore(subscribeSystemDark, getSystemDark, getServerDark);
@@ -331,6 +333,25 @@ export function ShowModeView({
           title="Contagem visual 1-2-3-4 (atalho: C)"
         >
           1·2·3·4
+        </button>
+      )}
+
+      {/* Per-device Capo shapes vs concert sounding chords toggle */}
+      {song.capo > 0 && !chordsHidden && (
+        <button
+          type="button"
+          aria-pressed={capoDisplay === 'shapes'}
+          onClick={() => setCapoDisplay(capoDisplay === 'shapes' ? 'sounding' : 'shapes')}
+          className={`pill-btn px-3.5 h-11 text-xs flex-shrink-0 ${
+            capoDisplay === 'shapes' ? 'pill-btn-tune' : 'bg-[var(--bg)]'
+          }`}
+          title={
+            capoDisplay === 'shapes'
+              ? `Mostrando formas de dedo para Capo ${song.capo}. Clique para ver acordes no tom real (sem capo).`
+              : `Mostrando acordes no tom real (sem capo). Clique para ver formas com Capo ${song.capo}.`
+          }
+        >
+          {capoDisplay === 'shapes' ? `Formas (Capo ${song.capo})` : 'Tom real (sem capo)'}
         </button>
       )}
 

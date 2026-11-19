@@ -1399,6 +1399,8 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
     id: "harry-styles-adore-you",
     text: `{title: Adore You}
 {artist: Harry Styles}
+{key: Cm}
+{capo: 3}
 {tempo: 99}
 {duration: 207}
 {comment: Capo 3rd fret}
@@ -3105,7 +3107,7 @@ I'll [C]take you places that you've [Eb]never, [Bb]never [F]seen [Bb] [F] [Bb]
     id: "sawyer-hill-firestarters",
     text: `{title: Firestarters}
 {artist: Sawyer Hill}
-{key: Am}
+{key: Cm}
 {capo: 3}
 {tempo: 88}
 {duration: 205}
@@ -3311,6 +3313,8 @@ You're gonna get my love to-day-ay-ay-ay-yeah`,
     id: "the-killers-mr-brightside",
     text: `{title: Mr. Brightside}
 {artist: The Killers}
+{key: Db}
+{capo: 1}
 {tempo: 148}
 {duration: 222}
 
@@ -3410,6 +3414,8 @@ And [G] taking control
     id: "the-kooks-seaside",
     text: `{title: Seaside}
 {artist: The Kooks}
+{key: Ebm}
+{capo: 1}
 {tempo: 100}
 {duration: 99}
 

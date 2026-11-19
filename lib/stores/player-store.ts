@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { shouldPreferFlats } from '@/lib/utils/music';
 
 interface PlayerStore {
   transpose: number;
@@ -28,7 +29,7 @@ interface PlayerStore {
   setCapo: (c: number) => void;
   toggleEditMode: () => void;
   setEditMode: (on: boolean) => void;
-  resetForSong: (tempo: number, capo: number, savedScrollSpeed?: number | null) => void;
+  resetForSong: (tempo: number, capo: number, savedScrollSpeed?: number | null, key?: string | null) => void;
 }
 
 function normalizeSignedTranspose(v: number): number {
@@ -71,9 +72,10 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
       editMode: on,
       isAutoScrolling: on ? false : s.isAutoScrolling,
     })),
-  resetForSong: (tempo, capo, savedScrollSpeed) =>
+  resetForSong: (tempo, capo, savedScrollSpeed, key) =>
     set({
       transpose: 0,
+      useFlats: shouldPreferFlats(key),
       isAutoScrolling: false,
       metronomeOn: false,
       activeChord: null,

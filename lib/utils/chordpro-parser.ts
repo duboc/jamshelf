@@ -185,6 +185,17 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     const commentM = line.match(/^\{comment:\s*(.+)\}$/i);
     if (commentM) {
       const val = commentM[1].trim();
+      // Fallback: extract capo from legacy comments like "{comment: Capo 3rd fret}" when {capo:} is absent
+      if (meta.capo === 0) {
+        const capoCommentM = val.match(/^capo(?:traste)?\s*(?:on\s+|na\s+casa\s+|casa\s+)?(\d{1,2})\b/i);
+        if (capoCommentM) {
+          const parsedCapo = parseInt(capoCommentM[1], 10);
+          if (parsedCapo >= 1 && parsedCapo <= 12) {
+            meta.capo = parsedCapo;
+            continue;
+          }
+        }
+      }
       if (looksLikeSection(val)) startSection(val);
       continue;
     }

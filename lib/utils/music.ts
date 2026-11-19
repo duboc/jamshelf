@@ -93,6 +93,19 @@ export function noteIndex(n: string): number {
   return NOTES.indexOf(normalizeNote(n) as typeof NOTES[number]);
 }
 
+const FLAT_KEYS = new Set([
+  'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb',
+  'Dm', 'Gm', 'Cm', 'Fm', 'Bbm', 'Ebm', 'Abm',
+]);
+
+/** Returns true when a key conventionally spells accidentals with flats (e.g. Eb, Db, Cm, Ebm). */
+export function shouldPreferFlats(key: string | null | undefined): boolean {
+  if (!key) return false;
+  const clean = key.trim().replace(/min(or)?$/i, 'm').replace(/maj(or)?$/i, '');
+  if (clean.includes('b')) return true;
+  return FLAT_KEYS.has(clean);
+}
+
 export function transposeChord(chord: string, semitones: number, useFlats: boolean): string {
   if (!semitones) return chord;
   const slashIdx = chord.indexOf('/');
