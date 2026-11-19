@@ -76,9 +76,9 @@ export function SongToolbar({
   // Dedicated clean edit toolbar when visual editor is active
   if (store.editMode) {
     return (
-      <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-2">
-        <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
+        <div className="w-full rounded-2xl bg-[var(--surface-high)] px-4 py-2 flex items-center justify-between flex-nowrap overflow-x-auto no-scrollbar gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)] font-semibold">
               Modo edição
             </span>
@@ -86,7 +86,7 @@ export function SongToolbar({
               type="button"
               disabled={!canUndo}
               onClick={onUndo}
-              className="pill-btn px-3 py-1 text-xs"
+              className="pill-btn px-3 h-8 text-xs"
               title="Desfazer última alteração (Ctrl+Z)"
             >
               ↶ Desfazer
@@ -95,30 +95,30 @@ export function SongToolbar({
               type="button"
               disabled={!canRedo}
               onClick={onRedo}
-              className="pill-btn px-3 py-1 text-xs"
+              className="pill-btn px-3 h-8 text-xs"
               title="Refazer alteração (Ctrl+Y)"
             >
               ↷ Refazer
             </button>
             {editDirty && (
-              <span className="font-mono text-[11px] text-[var(--muted)] hidden sm:inline">
+              <span className="font-mono text-xs text-[var(--muted)] hidden sm:inline">
                 Alterações pendentes
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={onCancelEdit}
-              className={`pill-btn px-3.5 py-1.5 text-xs ${editDiscardArmed ? 'pill-btn-rec' : ''}`}
+              className={`pill-btn px-3.5 h-8 text-xs ${editDiscardArmed ? 'pill-btn-rec' : ''}`}
             >
               {editDiscardArmed ? 'Descartar edições' : 'Cancelar'}
             </button>
             <button
               type="button"
               onClick={onSaveEdit}
-              className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
+              className="pill-btn pill-btn-primary px-4 h-8 text-xs"
             >
               ✓ Salvar e sair
             </button>
@@ -129,17 +129,18 @@ export function SongToolbar({
   }
 
   return (
-    <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-2">
-      <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center flex-wrap gap-2 sm:gap-3">
+    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
+      <div className="relative rounded-2xl bg-[var(--surface-high)] overflow-hidden lg:overflow-visible">
+        <div className="w-full px-3.5 py-2 pr-10 lg:pr-3.5 flex items-center justify-between flex-nowrap overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible gap-2">
+        <div className="flex items-center flex-nowrap lg:flex-wrap gap-2 flex-shrink-0">
           {/* Transpose controls: hidden in Singer (lyrics-only) mode */}
           {!isSingerMode && (
-            <div className="flex items-center gap-1.5">
-              <span className="eyebrow hidden sm:inline">Tom</span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="field-label hidden sm:inline mr-0.5">Tom</span>
               <button
                 type="button"
                 onClick={store.transposeDown}
-                className="pill-btn w-7 h-7 font-mono text-xs"
+                className="pill-btn w-8 h-8 font-mono text-xs"
                 title="Baixar meio tom"
               >
                 -
@@ -150,7 +151,7 @@ export function SongToolbar({
               <button
                 type="button"
                 onClick={store.transposeUp}
-                className="pill-btn w-7 h-7 font-mono text-xs"
+                className="pill-btn w-8 h-8 font-mono text-xs"
                 title="Subir meio tom"
               >
                 +
@@ -158,7 +159,7 @@ export function SongToolbar({
               <button
                 type="button"
                 onClick={store.toggleFlats}
-                className={`pill-btn px-2 h-7 font-mono text-xs ${
+                className={`pill-btn w-8 h-8 font-mono text-xs ${
                   store.useFlats ? 'pill-btn-primary' : ''
                 }`}
                 title="Alternar sustenidos (#) e bemóis (b)"
@@ -170,7 +171,7 @@ export function SongToolbar({
                   type="button"
                   onClick={onRequestSaveTranspose}
                   title="Salvar este novo tom permanentemente na música"
-                  className="pill-btn px-2.5 h-7 text-[11.5px] text-[var(--accent-ink)] border-[var(--accent)]/50"
+                  className="pill-btn px-2.5 h-8 text-xs text-[var(--accent-ink)] border-[var(--accent)]/50"
                 >
                   Salvar tom
                 </button>
@@ -179,22 +180,22 @@ export function SongToolbar({
           )}
 
           {/* Font size */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button
               type="button"
               onClick={() => setFontSize(fontSize - 10)}
-              className="pill-btn w-7 h-7 font-mono text-[11px]"
+              className="pill-btn w-8 h-8 font-mono text-xs"
               title="Diminuir letra"
             >
               A-
             </button>
-            <span className="font-mono text-[11px] text-[var(--muted)] w-10 text-center tabular-nums hidden sm:inline">
+            <span className="font-mono text-xs text-[var(--muted)] w-10 text-center tabular-nums hidden sm:inline">
               {fontSize}%
             </span>
             <button
               type="button"
               onClick={() => setFontSize(fontSize + 10)}
-              className="pill-btn w-7 h-7 font-mono text-[11px]"
+              className="pill-btn w-8 h-8 font-mono text-xs"
               title="Aumentar letra"
             >
               A+
@@ -207,12 +208,12 @@ export function SongToolbar({
               {store.isAutoScrolling ? 'Rolando (sinc.)' : 'Rolagem (sinc.)'}
             </span>
           ) : (
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-nowrap lg:flex-wrap flex-shrink-0">
               <button
                 type="button"
                 onClick={store.toggleAutoScroll}
                 disabled={calibrating}
-                className={`pill-btn px-3 py-1.5 text-xs ${
+                className={`pill-btn px-3 h-8 text-xs ${
                   store.isAutoScrolling ? 'pill-btn-tune' : ''
                 }`}
                 title="Atalho: barra de espaço"
@@ -221,11 +222,11 @@ export function SongToolbar({
               </button>
 
               {store.isAutoScrolling && (
-                <div className="flex items-center gap-1 flex-wrap">
+                <div className="flex items-center gap-1 flex-nowrap">
                   <button
                     type="button"
                     onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
-                    className="pill-btn w-7 h-7 font-mono text-xs"
+                    className="pill-btn w-8 h-8 font-mono text-xs"
                     aria-label="Mais devagar"
                   >
                     -
@@ -239,7 +240,7 @@ export function SongToolbar({
                       key={preset.label}
                       type="button"
                       onClick={() => store.setAutoScrollSpeed(preset.value)}
-                      className={`pill-btn px-2 h-7 font-mono text-[10.5px] ${
+                      className={`pill-btn px-2 h-8 font-mono text-xs ${
                         Math.abs(store.autoScrollSpeed - preset.value) < 0.04
                           ? 'pill-btn-tune'
                           : ''
@@ -251,12 +252,12 @@ export function SongToolbar({
                   <button
                     type="button"
                     onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
-                    className="pill-btn w-7 h-7 font-mono text-xs"
+                    className="pill-btn w-8 h-8 font-mono text-xs"
                     aria-label="Mais rápido"
                   >
                     +
                   </button>
-                  <span className="font-mono text-[11px] text-[var(--muted)] tabular-nums px-1">
+                  <span className="font-mono text-xs text-[var(--muted)] tabular-nums px-1">
                     {store.autoScrollSpeed.toFixed(2)}×
                   </span>
                 </div>
@@ -266,7 +267,7 @@ export function SongToolbar({
                 <button
                   type="button"
                   onClick={onSaveScrollSpeed}
-                  className="pill-btn px-2.5 h-7 text-[11px] text-[var(--tune)] border-[var(--tune)]/50"
+                  className="pill-btn px-2.5 h-8 text-xs text-[var(--tune)] border-[var(--tune)]/50"
                   title="Salvar esta velocidade como padrão desta música"
                 >
                   Salvar ritmo
@@ -279,7 +280,7 @@ export function SongToolbar({
                     <button
                       type="button"
                       onClick={onStartCalibration}
-                      className="pill-btn px-2.5 h-7 text-[11px] text-[var(--tune)] border-[var(--tune)]/45"
+                      className="pill-btn px-2.5 h-8 text-xs text-[var(--tune)] border-[var(--tune)]/45"
                       title="Esta música tem marcos por seção salvos. Clique para recalibrar."
                     >
                       ✓ Calibrada
@@ -287,7 +288,7 @@ export function SongToolbar({
                     <button
                       type="button"
                       onClick={onClearCalibration}
-                      className="w-6 h-6 rounded-full text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] text-xs flex items-center justify-center cursor-pointer"
+                      className="w-7 h-7 rounded-full text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] text-xs flex items-center justify-center cursor-pointer"
                       title="Remover calibração por seção e voltar ao modo linear"
                       aria-label="Remover calibração"
                     >
@@ -298,7 +299,7 @@ export function SongToolbar({
                   <button
                     type="button"
                     onClick={onStartCalibration}
-                    className="pill-btn px-2.5 h-7 text-[11px] text-[var(--muted)]"
+                    className="pill-btn px-2.5 h-8 text-xs text-[var(--muted)]"
                     title="Gravar em 1 ensaio o momento exato de cada seção para o auto-scroll acompanhar solos e viradas"
                   >
                     Calibrar
@@ -316,7 +317,7 @@ export function SongToolbar({
             <button
               type="button"
               onClick={onTriggerCountIn}
-              className="pill-btn px-2.5 py-1.5 font-mono text-xs"
+              className="pill-btn px-2.5 h-8 font-mono text-xs"
               title="Contagem visual 1-2-3-4 (atalho: C). Sincroniza com a banda se estiver liderando o Ao Vivo."
             >
               1·2·3·4
@@ -328,7 +329,7 @@ export function SongToolbar({
             <button
               type="button"
               onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
-              className={`pill-btn px-2.5 py-1 text-xs ${
+              className={`pill-btn px-2.5 h-8 text-xs ${
                 visualPulseEnabled ? 'pill-btn-primary' : ''
               }`}
               title="Piscar a borda da tela no tempo do metrônomo"
@@ -338,13 +339,13 @@ export function SongToolbar({
           )}
         </div>
 
-        {/* Right: Diagrams / Show chords / Edit */}
-        <div className="flex items-center gap-2">
+        {/* Right: Diagrams / Show chords / Notes / Edit */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {isSingerMode ? (
             <button
               type="button"
               onClick={() => setDisplayMode('both')}
-              className="pill-btn px-3 py-1.5 text-xs text-[var(--accent-ink)]"
+              className="pill-btn px-3 h-8 text-xs text-[var(--accent-ink)]"
               title="Voltar a exibir os acordes acima da letra"
             >
               Mostrar acordes
@@ -355,7 +356,7 @@ export function SongToolbar({
                 type="button"
                 onClick={() => setChordsRefOpen(!chordsRefOpen)}
                 aria-expanded={chordsRefOpen}
-                className={`pill-btn px-3 py-1.5 text-xs ${
+                className={`pill-btn px-3 h-8 text-xs ${
                   chordsRefOpen ? 'border-[var(--accent)] text-[var(--accent-ink)]' : ''
                 }`}
                 title="Abrir ou recolher os diagramas dos acordes desta música"
@@ -370,8 +371,8 @@ export function SongToolbar({
               <button
                 type="button"
                 onClick={onToggleEditNotes}
-                className={`pill-btn px-3 py-1.5 text-xs ${
-                  hasNotes ? 'border-[var(--warn)]/60 text-[var(--warn)]' : ''
+                className={`pill-btn px-3 h-8 text-xs ${
+                  hasNotes ? 'bg-[var(--warn-dim)] text-[var(--warn-ink)]' : ''
                 }`}
                 title="Adicionar ou editar deixas de palco e notas de ensaio"
               >
@@ -380,13 +381,18 @@ export function SongToolbar({
               <button
                 type="button"
                 onClick={onEnterEdit}
-                className="pill-btn px-3 py-1.5 text-xs"
+                className="pill-btn px-3 h-8 text-xs"
               >
                 ✎ Editar
               </button>
             </>
           )}
         </div>
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none lg:hidden absolute right-0 top-0 bottom-0 w-9 bg-gradient-to-l from-[var(--surface-high)] to-transparent"
+        />
       </div>
     </div>
   );

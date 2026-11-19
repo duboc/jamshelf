@@ -52,52 +52,54 @@ export function FocusDock({
   return (
     <>
       {/* Minimal top bar so singer/musician always knows song title & can exit in one tap */}
-      <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-2">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            {hasSetlist && (
-              <button
-                type="button"
-                onClick={onOpenSetlistDrawer}
-                className="pill-btn px-2.5 py-1 text-xs flex-shrink-0"
-                title="Abrir setlist"
-              >
-                ☰
-              </button>
-            )}
-            <span className="font-display text-lg text-[var(--ink)] truncate">{songTitle}</span>
-            {displayedKey && !chordsHidden && (
-              <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)] flex-shrink-0">
-                {displayedKey}
-              </span>
-            )}
-            {wakeLockActive && (
-              <span
-                className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] hidden sm:inline-flex flex-shrink-0"
-                title="Bloqueio automático de tela desativado enquanto você lê"
-              >
-                Tela ativa
-              </span>
-            )}
-          </div>
+      <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-2.5 pb-1.5">
+        <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 py-2 space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              {hasSetlist && (
+                <button
+                  type="button"
+                  onClick={onOpenSetlistDrawer}
+                  className="pill-btn bg-[var(--bg)] px-2.5 h-8 text-xs flex-shrink-0"
+                  title="Abrir setlist"
+                >
+                  ☰
+                </button>
+              )}
+              <span className="font-display font-bold text-lg text-[var(--ink)] truncate">{songTitle}</span>
+              {displayedKey && !chordsHidden && (
+                <span className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] flex-shrink-0">
+                  {displayedKey}
+                </span>
+              )}
+              {wakeLockActive && (
+                <span
+                  className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] hidden sm:inline-flex flex-shrink-0"
+                  title="Bloqueio automático de tela desativado enquanto você lê"
+                >
+                  Tela ativa
+                </span>
+              )}
+            </div>
 
-          <button
-            type="button"
-            onClick={onExit}
-            className="pill-btn px-3 py-1 text-xs flex-shrink-0"
-            title="Voltar para a tela completa (Esc)"
-          >
-            Sair da tela limpa
-          </button>
-        </div>
-        {stageNotes && (
-          <div className="max-w-3xl mx-auto mt-1.5 flex items-center gap-2 text-xs text-[var(--ink)]">
-            <span className="studio-chip bg-[color-mix(in_srgb,var(--warn)_18%,var(--surface))] text-[var(--warn)] flex-shrink-0">
-              Deixa
-            </span>
-            <span className="truncate">{stageNotes}</span>
+            <button
+              type="button"
+              onClick={onExit}
+              className="pill-btn bg-[var(--bg)] px-3.5 h-8 text-xs flex-shrink-0"
+              title="Voltar para a tela completa (Esc)"
+            >
+              Sair da tela limpa
+            </button>
           </div>
-        )}
+          {stageNotes && (
+            <div className="flex items-center gap-2 text-xs text-[var(--ink)]">
+              <span className="studio-chip bg-[var(--warn-dim)] text-[var(--warn-ink)] flex-shrink-0">
+                Deixa
+              </span>
+              <span className="truncate">{stageNotes}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Floating bottom dock */}
@@ -106,7 +108,7 @@ export function FocusDock({
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div
-          className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5"
+          className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center rounded-[24px] sm:rounded-full bg-[var(--surface)] px-3 py-2"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           {hasSetlist && !isFollowing && (
@@ -115,7 +117,7 @@ export function FocusDock({
                 type="button"
                 disabled={!prevSongId}
                 onClick={() => prevSongId && onNavigateSong(prevSongId)}
-                className="pill-btn w-8 h-8 text-base"
+                className="pill-btn bg-[var(--bg)] w-9 h-9 text-base"
                 title="Música anterior"
                 aria-label="Música anterior"
               >
@@ -125,7 +127,7 @@ export function FocusDock({
                 type="button"
                 disabled={!nextSongId}
                 onClick={() => nextSongId && onNavigateSong(nextSongId)}
-                className="pill-btn w-8 h-8 text-base"
+                className="pill-btn bg-[var(--bg)] w-9 h-9 text-base"
                 title="Próxima música"
                 aria-label="Próxima música"
               >
@@ -138,8 +140,8 @@ export function FocusDock({
             <button
               type="button"
               onClick={store.toggleAutoScroll}
-              className={`pill-btn px-3 h-8 text-xs ${
-                store.isAutoScrolling ? 'pill-btn-tune' : ''
+              className={`pill-btn px-3.5 h-9 text-xs ${
+                store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
               }`}
             >
               {store.isAutoScrolling ? '⏸ Pausar' : '▶ Rolar'}
@@ -151,18 +153,18 @@ export function FocusDock({
               <button
                 type="button"
                 onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
-                className="pill-btn w-7 h-7 font-mono text-xs"
+                className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
                 aria-label="Diminuir velocidade"
               >
                 -
               </button>
-              <span className="font-mono text-[10.5px] text-[var(--muted)] tabular-nums px-0.5">
+              <span className="font-mono text-xs text-[var(--muted)] tabular-nums px-0.5">
                 {store.autoScrollSpeed.toFixed(1)}×
               </span>
               <button
                 type="button"
                 onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
-                className="pill-btn w-7 h-7 font-mono text-xs"
+                className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
                 aria-label="Aumentar velocidade"
               >
                 +
@@ -174,7 +176,7 @@ export function FocusDock({
             <button
               type="button"
               onClick={() => setFontSize(fontSize - 10)}
-              className="pill-btn w-8 h-8 font-mono text-[11px]"
+              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
               aria-label="Diminuir letra"
             >
               A-
@@ -182,7 +184,7 @@ export function FocusDock({
             <button
               type="button"
               onClick={() => setFontSize(fontSize + 10)}
-              className="pill-btn w-8 h-8 font-mono text-[11px]"
+              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
               aria-label="Aumentar letra"
             >
               A+
@@ -193,8 +195,8 @@ export function FocusDock({
             <button
               type="button"
               onClick={handlePlayPitch}
-              className={`pill-btn px-2.5 h-8 text-xs ${
-                pitchRinging ? 'pill-btn-primary' : 'text-[var(--accent-ink)]'
+              className={`pill-btn px-3 h-9 text-xs ${
+                pitchRinging ? 'pill-btn-primary' : 'bg-[var(--bg)] text-[var(--accent-ink)]'
               }`}
               title={`Tocar acorde-guia (${pitchTarget})`}
             >
@@ -206,7 +208,7 @@ export function FocusDock({
             <button
               type="button"
               onClick={onTriggerCountIn}
-              className="pill-btn px-2.5 h-8 font-mono text-xs"
+              className="pill-btn bg-[var(--bg)] px-3 h-9 font-mono text-xs"
               title="Contagem visual 1-2-3-4 (atalho: C)"
             >
               1·2·3·4
@@ -216,8 +218,8 @@ export function FocusDock({
           <button
             type="button"
             onClick={toggleHideChords}
-            className={`pill-btn px-3 h-8 text-xs ${
-              chordsHidden ? 'pill-btn-primary' : ''
+            className={`pill-btn px-3.5 h-9 text-xs ${
+              chordsHidden ? 'pill-btn-primary' : 'bg-[var(--bg)]'
             }`}
             title="Alternar entre só letra (para cantar) e cifra completa"
           >

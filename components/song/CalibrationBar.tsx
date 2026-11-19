@@ -27,8 +27,8 @@ export function CalibrationBar({
   const nextSection = !allMarked ? sections[nextSectionIdx] : null;
 
   return (
-    <div className="flex-shrink-0 border-b border-[var(--tune)]/45 bg-[var(--tune-dim)] px-4 sm:px-6 py-2.5">
-      <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
+    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+      <div className="w-full rounded-2xl bg-[var(--tune-dim)] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-3 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-[var(--rec)] animate-pulse flex-shrink-0" />
           <div className="min-w-0">
@@ -36,7 +36,7 @@ export function CalibrationBar({
               <span className="font-mono text-xs font-bold text-[var(--ink)] tabular-nums">
                 {formatDuration(elapsedSec)}
               </span>
-              <span className="font-mono text-[11px] text-[var(--muted)]">
+              <span className="font-mono text-xs text-[var(--muted)]">
                 {markedCount}/{sections.length} seções marcadas
               </span>
             </div>
@@ -66,7 +66,7 @@ export function CalibrationBar({
             type="button"
             onClick={onSave}
             disabled={markedCount < 2}
-            className="pill-btn pill-btn-tune px-3.5 py-1.5 text-xs"
+            className="pill-btn bg-[var(--surface)] text-[var(--tune)] font-semibold px-3.5 py-1.5 text-xs"
             title={markedCount < 2 ? 'Marque pelo menos 2 seções antes de salvar' : 'Salvar tempos das seções'}
           >
             Salvar calibração

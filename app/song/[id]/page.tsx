@@ -580,6 +580,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   }
 
   function applySectionEdit(sectionIdx: number, lines: string[]) {
+    const prevLines = currentSong.sections[sectionIdx]?.lines;
+    if (prevLines && prevLines.length === lines.length && prevLines.every((l, i) => l === lines[i])) {
+      return;
+    }
     const updatedSections = currentSong.sections.map((sec, si) =>
       si === sectionIdx ? { ...sec, lines } : sec
     );
@@ -1017,8 +1021,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
           {/* Edit mode guidance banner */}
           {store.editMode && (
-            <div className="flex-shrink-0 border-b border-[var(--accent)]/40 bg-[var(--accent-dim)] px-4 py-2">
-              <p className="max-w-5xl mx-auto text-xs text-[var(--accent-ink)] text-center font-medium">
+            <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+              <p className="w-full rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] px-4 py-2 text-xs text-center font-medium">
                 {totalShift !== 0 && (
                   <span className="font-mono font-bold mr-2">
                     [Editando no tom original {song.originalKey || ''}]
@@ -1133,19 +1137,16 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           <div
             role="dialog"
             aria-modal="true"
-            className="bg-[var(--surface)] border border-[var(--line)] rounded-lg w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
+            className="bg-[var(--surface)] rounded-[28px] w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 border-b border-[var(--line)] flex-shrink-0">
-              <div>
-                <div className="eyebrow">ChordPro (.cho)</div>
-                <h3 className="font-display text-lg text-[var(--ink)]">Editar fonte da música</h3>
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 bg-[var(--surface-high)] flex-shrink-0">
+              <h3 className="font-display text-lg text-[var(--ink)]">Editar fonte ChordPro (.cho)</h3>
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* View mode switch */}
-                <div className="inline-flex rounded-[4px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
+                <div className="inline-flex p-1 rounded-full bg-[var(--bg)] gap-0.5">
                   {(
                     [
                       { id: 'editor', label: 'Código' },
@@ -1157,10 +1158,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                       key={v.id}
                       type="button"
                       onClick={() => setChoView(v.id)}
-                      className={`px-2.5 py-1 font-display text-xs font-medium transition-colors cursor-pointer border-r border-[var(--line-subtle)] last:border-r-0 ${
+                      className={`px-3 py-1 rounded-full font-display text-xs font-medium transition-colors cursor-pointer ${
                         choView === v.id
-                          ? 'bg-[var(--nav-active-bg)] text-[var(--accent-ink)]'
-                          : 'text-[var(--muted)] hover:bg-[var(--surface2)] hover:text-[var(--ink)]'
+                          ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                          : 'text-[var(--muted)] hover:text-[var(--ink)]'
                       }`}
                     >
                       {v.label}
@@ -1217,8 +1218,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               {choView !== 'editor' && choPreviewSong && (
                 <div className="min-h-0 flex flex-col bg-[var(--bg)]/50">
                   <div className="px-4 py-2 border-b border-[var(--line)] flex items-center justify-between flex-shrink-0">
-                    <span className="eyebrow">Prévia ao vivo</span>
-                    <span className="font-mono text-[10.5px] text-[var(--muted)]">
+                    <span className="field-label">Prévia ao vivo</span>
+                    <span className="font-mono text-xs text-[var(--muted)]">
                       {choPreviewSong.sections.length}{' '}
                       {choPreviewSong.sections.length === 1 ? 'seção' : 'seções'}
                     </span>

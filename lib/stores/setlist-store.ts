@@ -172,6 +172,7 @@ export const useSetlistStore = create<SetlistStore>()(
     }),
     {
       name: 'jamshelf-setlists',
+      skipHydration: true,
       partialize: (s) => ({ setlists: s.setlists }),
     }
   )

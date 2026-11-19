@@ -64,6 +64,23 @@ export function ChordLine({
       );
     }
 
+    // Compact horizontal chord grid for instrumental / chord-only lines (no phantom blank lyric row)
+    if (!lineHasLyrics(line)) {
+      return (
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 py-0.5 text-[var(--ink)]">
+          {segments.map((seg, i) => {
+            const extra = seg.text.trim();
+            return (
+              <span key={i} className="inline-flex items-center gap-1.5">
+                {seg.chord ? <ChordBadge chord={seg.chord} onTap={onChordTap} /> : null}
+                {extra ? <span className="text-[var(--muted)] text-[0.9em]">{extra}</span> : null}
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-wrap items-end leading-relaxed text-[var(--ink)]">
         {segments.map((seg, i) => (

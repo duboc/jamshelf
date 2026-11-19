@@ -99,15 +99,15 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
       <div
         role="dialog"
         aria-label="Busca rápida"
-        className="w-full max-w-xl rounded-lg border border-[var(--line)] bg-[var(--surface)] overflow-hidden"
+        className="w-full max-w-xl rounded-[28px] bg-[var(--surface)] overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--line)]">
-          <svg width="16" height="16" viewBox="0 0 16 16" className="text-[var(--muted)] flex-shrink-0" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <path d="m10.8 10.8 3.2 3.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--line-subtle)]/40">
+          <svg width="18" height="18" viewBox="0 0 24 24" className="text-[var(--muted)] flex-shrink-0" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.9" />
+            <path d="m16 16 4.2 4.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
           </svg>
           <input
             ref={inputRef}
@@ -118,14 +118,14 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
               setActiveIdx(0);
             }}
             placeholder="Pesquisar músicas, artistas, tons e setlists..."
-            className="flex-1 bg-transparent text-sm text-[var(--ink)] placeholder-[var(--muted)] outline-none"
+            className="flex-1 bg-transparent text-[15px] text-[var(--ink)] placeholder-[var(--muted)] outline-none"
           />
-          <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface2)] border border-[var(--line)] text-[var(--muted)]">
-            ESC
+          <kbd className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-[var(--bg)] text-[var(--muted)]">
+            Esc
           </kbd>
         </div>
 
-        <div className="max-h-[55vh] overflow-y-auto py-1">
+        <div className="max-h-[55vh] overflow-y-auto p-2 space-y-0.5">
           {results.length === 0 ? (
             <div className="py-10 text-center text-sm text-[var(--muted)]">
               Nada encontrado para &ldquo;{query}&rdquo;.
@@ -139,27 +139,27 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
                   type="button"
                   onMouseEnter={() => setActiveIdx(idx)}
                   onClick={() => selectItem(item)}
-                  className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
-                    active ? 'bg-[var(--nav-active-bg)]' : 'hover:bg-[var(--surface2)]'
+                  className={`w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-colors cursor-pointer ${
+                    active ? 'bg-[var(--secondary-container)]/75' : 'hover:bg-[var(--surface-high)]'
                   }`}
                 >
-                  <div className="min-w-0 flex items-center gap-2.5">
+                  <div className="min-w-0 flex items-center gap-3">
                     <span
-                      className={`font-display text-[10.5px] font-medium uppercase px-1.5 py-0.5 rounded ${
+                      className={`text-xs font-medium px-2.5 py-0.5 rounded-full flex-shrink-0 ${
                         item.kind === 'setlist'
                           ? 'bg-[var(--tune-dim)] text-[var(--tune)]'
-                          : 'bg-[var(--nav-active-bg)] text-[var(--accent-ink)]'
+                          : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]'
                       }`}
                     >
                       {item.kind === 'setlist' ? 'Setlist' : 'Música'}
                     </span>
                     <div className="min-w-0">
-                      <div className="text-[13.5px] font-display font-medium text-[var(--ink)] truncate">{item.title}</div>
+                      <div className="text-sm font-display font-medium text-[var(--ink)] truncate">{item.title}</div>
                       <div className="text-xs text-[var(--muted)] truncate">{item.subtitle}</div>
                     </div>
                   </div>
                   {item.meta && (
-                    <span className="font-mono text-[11px] text-[var(--muted)] flex-shrink-0">
+                    <span className="font-mono text-xs text-[var(--muted)] flex-shrink-0">
                       {item.meta}
                     </span>
                   )}
@@ -169,9 +169,9 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-[var(--line-subtle)] bg-[var(--bg)] flex items-center justify-between text-[11px] font-mono text-[var(--muted)]">
+        <div className="px-5 py-2.5 bg-[var(--bg)] flex items-center justify-between text-xs text-[var(--muted)]">
           <span>↑↓ navegar · Enter abrir</span>
-          <span>/ ou Ctrl+K</span>
+          <span className="font-mono">/ ou Ctrl+K</span>
         </div>
       </div>
     </div>

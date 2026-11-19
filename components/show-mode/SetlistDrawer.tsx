@@ -67,20 +67,20 @@ export function SetlistDrawer({
       />
       <aside
         aria-label={`Setlist ${setlist.name}`}
-        className="fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col bg-[var(--surface)] border-r border-[var(--line)]"
+        className="fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col rounded-r-[28px] bg-[var(--surface)] overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)] flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line-subtle)]/40 flex-shrink-0">
           <div className="min-w-0">
-            <div className="eyebrow">
-              Setlist · {displayEntries.length}{' '}
+            <div className="text-lg font-display font-bold text-[var(--ink)] truncate">{setlist.name}</div>
+            <div className="font-mono text-xs text-[var(--muted)] mt-0.5">
+              {displayEntries.length}{' '}
               {displayEntries.length === 1 ? 'música' : 'músicas'}
               {durLabel ? ` · ${durLabel}` : ''}
             </div>
-            <div className="text-lg font-display text-[var(--ink)] truncate">{setlist.name}</div>
-            <div className="font-mono text-[10.5px] text-[var(--muted)] mt-0.5">
+            <div className="text-xs text-[var(--muted)] mt-0.5">
               {canReorder
                 ? 'Toque para pular · arraste ⣿ para ordenar'
                 : 'Seguindo o líder da sessão'}
@@ -89,7 +89,7 @@ export function SetlistDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="text-[var(--muted)] hover:text-[var(--ink)] text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] transition-colors flex-shrink-0 cursor-pointer"
+            className="text-[var(--muted)] hover:text-[var(--ink)] text-xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-high)] transition-colors flex-shrink-0 cursor-pointer"
             title="Fechar setlist"
             aria-label="Fechar setlist"
           >
@@ -97,7 +97,7 @@ export function SetlistDrawer({
           </button>
         </div>
 
-        <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+        <div ref={listRef} className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1">
           {displayEntries.map(({ song }, displayIdx) => {
             const isCurrent = song.id === currentSongId;
             const isDragged = drag !== null && displayIdx === drag.to;
@@ -106,17 +106,17 @@ export function SetlistDrawer({
                 key={song.id}
                 data-display-idx={displayIdx}
                 data-current={isCurrent || undefined}
-                className={`flex items-center gap-1 rounded-md border transition-colors ${
+                className={`flex items-center gap-1 rounded-2xl transition-colors ${
                   isDragged
-                    ? 'border-[var(--accent)] bg-[var(--surface2)]'
+                    ? 'bg-[var(--secondary-container)]/60 ring-2 ring-[var(--accent)]'
                     : isCurrent
-                    ? 'border-[var(--accent)]/50 bg-[var(--nav-active-bg)]'
-                    : 'border-transparent hover:bg-[var(--surface2)]/70'
+                    ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                    : 'hover:bg-[var(--surface-high)]'
                 }`}
               >
                 <span
-                  className={`text-[10.5px] font-mono w-7 text-center flex-shrink-0 tabular-nums ${
-                    isCurrent ? 'text-[var(--accent-ink)] font-semibold' : 'text-[var(--muted)]'
+                  className={`text-xs font-mono w-7 text-center flex-shrink-0 tabular-nums ${
+                    isCurrent ? 'text-[var(--on-secondary-container)] font-semibold' : 'text-[var(--muted)]'
                   }`}
                 >
                   {displayIdx + 1}
@@ -132,19 +132,19 @@ export function SetlistDrawer({
                   className="flex-1 min-w-0 py-2.5 text-left disabled:cursor-default cursor-pointer"
                 >
                   <div
-                    className={`text-sm truncate ${
-                      isCurrent ? 'font-bold text-[var(--accent-ink)]' : 'font-medium text-[var(--ink)]'
+                    className={`text-[15px] font-display font-bold truncate ${
+                      isCurrent ? 'text-[var(--on-secondary-container)]' : 'text-[var(--ink)]'
                     }`}
                   >
                     {song.title}
                   </div>
-                  <div className="text-[11px] text-[var(--muted)] truncate">
+                  <div className="text-xs text-[var(--muted)] truncate">
                     {song.artist || 'Artista não informado'}
                     {song.displayKey && (
                       <span className="font-mono text-[var(--accent-ink)]"> · {song.displayKey}</span>
                     )}
                     {song.notes && (
-                      <span className="text-[var(--warn)]"> · {song.notes}</span>
+                      <span className="text-[var(--warn-ink)]"> · {song.notes}</span>
                     )}
                   </div>
                 </button>

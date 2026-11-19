@@ -22,19 +22,16 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
   return (
     <aside
       aria-label={`Diagramas do acorde ${chord}`}
-      className="fixed right-0 top-0 bottom-0 w-72 max-w-[85vw] bg-[var(--surface)] border-l border-[var(--line)] z-50 flex flex-col"
+      className="fixed right-0 top-0 bottom-0 w-72 max-w-[85vw] rounded-l-[28px] bg-[var(--surface)] z-50 flex flex-col overflow-hidden"
       style={{ boxShadow: 'var(--shadow-md)' }}
     >
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)]">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line-subtle)]/40">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div>
-            <div className="eyebrow">Acorde</div>
-            <h3 className="text-2xl font-display text-[var(--accent-ink)] leading-tight">{chord}</h3>
-          </div>
+          <h3 className="text-2xl font-display font-bold text-[var(--accent-ink)] leading-tight">{chord}</h3>
           <button
             type="button"
             onClick={() => playReferencePitch(chord, { mode: 'chord' })}
-            className="pill-btn px-2.5 py-1 text-xs text-[var(--accent-ink)]"
+            className="pill-btn bg-[var(--bg)] px-2.5 h-8 text-xs text-[var(--accent-ink)]"
             title="Ouvir referência sonora deste acorde"
           >
             ♪ Ouvir
@@ -43,7 +40,7 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
         <button
           type="button"
           onClick={onClose}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] transition-colors cursor-pointer text-lg"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] transition-colors cursor-pointer text-lg"
           aria-label="Fechar painel de acorde"
         >
           &times;
@@ -51,8 +48,8 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 border-b border-[var(--line)]">
-          <div className="eyebrow mb-3">Violão / Guitarra</div>
+        <div className="p-5 border-b border-[var(--line-subtle)]/40">
+          <div className="field-label mb-3">Violão / Guitarra</div>
           {currentVoicing ? (
             <>
               <div className="flex justify-center">
@@ -63,7 +60,7 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
                   <button
                     type="button"
                     onClick={() => setVoicingIdx((v) => (v - 1 + positions.length) % positions.length)}
-                    className="pill-btn px-2.5 py-1 text-xs"
+                    className="pill-btn bg-[var(--bg)] px-3 py-1.5 text-xs"
                   >
                     Anterior
                   </button>
@@ -73,7 +70,7 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
                   <button
                     type="button"
                     onClick={() => setVoicingIdx((v) => (v + 1) % positions.length)}
-                    className="pill-btn px-2.5 py-1 text-xs"
+                    className="pill-btn bg-[var(--bg)] px-3 py-1.5 text-xs"
                   >
                     Próxima
                   </button>
@@ -88,7 +85,7 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
         </div>
 
         <div className="p-4">
-          <div className="eyebrow mb-3">Teclado / Piano</div>
+          <div className="field-label mb-3">Teclado / Piano</div>
           {pianoNotes.length > 0 ? (
             <div className="flex justify-center">
               <PianoChordDiagram notes={pianoNotes} label={chord} />

@@ -14,9 +14,9 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
   if (!chords || chords.length === 0) return null;
 
   return (
-    <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-3">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
+      <div className="w-full rounded-[20px] bg-[var(--surface)] px-3.5 py-3">
+        <div className="flex gap-2.5 overflow-x-auto pb-0.5 no-scrollbar">
           {chords.map((chord) => {
             const positions = getGuitarPositions(chord);
             const currentVoicing = positions[0];
@@ -29,10 +29,10 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
                 key={chord}
                 type="button"
                 onClick={() => store.setActiveChord(chord)}
-                className={`flex-shrink-0 rounded-lg border p-2 flex flex-col items-center justify-center min-w-[86px] transition-all cursor-pointer ${
+                className={`flex-shrink-0 rounded-2xl p-2 flex flex-col items-center justify-center min-w-[86px] transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-[var(--nav-active-bg)] border-[var(--accent)]'
-                    : 'bg-[var(--surface)] border-[var(--line)] hover:border-[var(--muted)]'
+                    ? 'bg-[var(--primary-container)] ring-2 ring-[var(--accent)]'
+                    : 'bg-[var(--bg)] hover:bg-[var(--surface-high)]'
                 }`}
               >
                 <div className="w-16 h-[74px] flex items-center justify-center">

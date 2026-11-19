@@ -174,18 +174,23 @@ function OverlayInner({
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Fechar editor de acorde"
+        onClick={onClose}
+        className="fixed inset-0 z-40 bg-transparent border-0 p-0 cursor-default"
+      />
 
       <div
-        className="fixed bottom-0 inset-x-0 z-50 bg-[var(--surface)] border-t border-[var(--line)] max-h-[78vh] overflow-y-auto"
+        className="fixed bottom-0 inset-x-0 z-50 rounded-t-[28px] bg-[var(--surface)] max-h-[78vh] overflow-y-auto"
         style={{ boxShadow: 'var(--shadow-md)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="max-w-xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           {mode === 'main' && isEdit && selected && (
             <div className="px-4 py-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="eyebrow">Acorde selecionado</span>
+                  <span className="field-label">Acorde selecionado</span>
                   <span className="text-base font-bold font-mono text-[var(--accent-ink)]">
                     {selected.chord}
                   </span>
@@ -202,7 +207,7 @@ function OverlayInner({
 
               {/* Move row with hold-to-repeat */}
               <div className="flex items-center gap-2">
-                <span className="eyebrow w-14">Mover</span>
+                <span className="field-label w-14">Mover</span>
                 <button
                   type="button"
                   onPointerDown={(e) => {
@@ -212,7 +217,7 @@ function OverlayInner({
                   onPointerUp={stopHold}
                   onPointerLeave={stopHold}
                   onPointerCancel={stopHold}
-                  className="flex-1 h-12 rounded-xl border border-[var(--line)] bg-[var(--surface2)] hover:border-[var(--muted)] active:bg-[var(--accent-dim)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
+                  className="flex-1 h-12 rounded-2xl bg-[var(--surface-high)] hover:bg-[var(--surface2)] active:bg-[var(--primary-container)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
                   title="Mover para esquerda (segure ou use seta ←)"
                 >
                   ◀
@@ -226,7 +231,7 @@ function OverlayInner({
                   onPointerUp={stopHold}
                   onPointerLeave={stopHold}
                   onPointerCancel={stopHold}
-                  className="flex-1 h-12 rounded-xl border border-[var(--line)] bg-[var(--surface2)] hover:border-[var(--muted)] active:bg-[var(--accent-dim)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
+                  className="flex-1 h-12 rounded-2xl bg-[var(--surface-high)] hover:bg-[var(--surface2)] active:bg-[var(--primary-container)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
                   title="Mover para direita (segure ou use seta →)"
                 >
                   ▶
@@ -236,17 +241,17 @@ function OverlayInner({
               {/* Quick 1-tap swap with chords already in the song */}
               {songChords.length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="eyebrow block">Troca rápida (acordes da música)</span>
+                  <span className="field-label block">Troca rápida (acordes da música)</span>
                   <div className="flex flex-wrap gap-1.5">
                     {songChords.map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => commitChord(c)}
-                        className={`px-2.5 py-1 rounded-lg font-mono text-xs font-bold border transition-colors cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-full font-mono text-xs font-bold transition-colors cursor-pointer ${
                           c === selected.chord
-                            ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]'
-                            : 'bg-[var(--surface2)] border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)]'
+                            ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                            : 'bg-[var(--surface-high)] text-[var(--ink)] hover:bg-[var(--primary-container)] hover:text-[var(--on-primary-container)]'
                         }`}
                       >
                         {c}
@@ -260,7 +265,7 @@ function OverlayInner({
                 <button
                   type="button"
                   onClick={openChangeMode}
-                  className="flex-1 h-10 rounded-[4px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] font-display font-medium text-sm transition-colors cursor-pointer"
+                  className="flex-1 h-10 pill-btn pill-btn-primary text-sm"
                 >
                   Outro acorde…
                 </button>
@@ -270,7 +275,7 @@ function OverlayInner({
                     onDelete(selected.sectionIdx, selected.lineIdx, selected.segIdx);
                     onClose();
                   }}
-                  className="flex-1 h-10 rounded-[4px] bg-[var(--rec)]/10 hover:bg-[var(--rec)] text-[var(--rec)] hover:text-[var(--on-rec)] border border-[var(--rec)]/40 font-display font-medium text-sm transition-colors cursor-pointer"
+                  className="flex-1 h-10 pill-btn bg-[var(--rec-dim)] text-[var(--on-rec-container)] hover:bg-[var(--rec)] hover:text-[var(--on-rec)] text-sm"
                 >
                   Remover
                 </button>
@@ -291,14 +296,14 @@ function OverlayInner({
                   <button
                     type="button"
                     onClick={() => setUseFlats((f) => !f)}
-                    className={`pill-btn px-2.5 py-1 text-xs font-mono ${useFlats ? 'pill-btn-primary' : ''}`}
+                    className={`pill-btn px-3 py-1.5 text-xs font-mono ${useFlats ? 'pill-btn-primary' : 'bg-[var(--bg)]'}`}
                   >
                     {useFlats ? '♭ Bemóis' : '♯ Sustenidos'}
                   </button>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
                     aria-label="Fechar"
                   >
                     ×
@@ -309,14 +314,14 @@ function OverlayInner({
               {/* Quick 1-tap chords from this song */}
               {songChords.length > 0 && (
                 <div className="space-y-1">
-                  <span className="eyebrow block">Acordes desta música</span>
+                  <span className="field-label block">Acordes desta música</span>
                   <div className="flex flex-wrap gap-1.5">
                     {songChords.map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => commitChord(c)}
-                        className="px-2.5 py-1 rounded-lg font-mono text-xs font-bold bg-[var(--accent-dim)] border border-[var(--accent)]/40 text-[var(--accent-ink)] hover:bg-[var(--accent)] hover:text-[var(--on-accent)] transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded-full font-mono text-xs font-bold bg-[var(--primary-container)] text-[var(--on-primary-container)] hover:bg-[var(--accent)] hover:text-[var(--on-accent)] transition-colors cursor-pointer"
                       >
                         {c}
                       </button>
@@ -358,10 +363,10 @@ function OverlayInner({
                       setPickedRoot(note);
                       setCustomInput(`${note}${pickedSuffix}${pickedBass ? `/${pickedBass}` : ''}`);
                     }}
-                    className={`h-9 rounded-xl text-xs font-bold font-mono transition-colors cursor-pointer border ${
+                    className={`h-9 rounded-xl text-xs font-bold font-mono transition-colors cursor-pointer ${
                       pickedRoot === note
-                        ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]'
-                        : 'bg-[var(--surface2)] border-[var(--line)] text-[var(--ink)] hover:border-[var(--muted)]'
+                        ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                        : 'bg-[var(--surface-high)] text-[var(--ink)] hover:bg-[var(--surface2)]'
                     }`}
                   >
                     {note}
@@ -379,10 +384,10 @@ function OverlayInner({
                       setPickedSuffix(suf);
                       setCustomInput(`${pickedRoot}${suf}${pickedBass ? `/${pickedBass}` : ''}`);
                     }}
-                    className={`px-2.5 h-8 rounded-[4px] text-[11px] font-mono font-bold transition-colors cursor-pointer border ${
+                    className={`px-3 h-8 rounded-full text-xs font-mono font-bold transition-colors cursor-pointer ${
                       pickedSuffix === suf
-                        ? 'bg-[var(--tune)] border-[var(--tune)] text-[var(--on-tune)]'
-                        : 'bg-[var(--surface2)] border-[var(--line)] text-[var(--muted)] hover:text-[var(--ink)]'
+                        ? 'bg-[var(--tune)] text-[var(--on-tune)]'
+                        : 'bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)]'
                     }`}
                   >
                     {suf || 'maior'}
@@ -396,7 +401,7 @@ function OverlayInner({
                   <button
                     type="button"
                     onClick={() => setShowBassPicker((v) => !v)}
-                    className="font-mono text-[11px] text-[var(--accent-ink)] hover:underline cursor-pointer"
+                    className="font-mono text-xs text-[var(--accent-ink)] hover:underline cursor-pointer"
                   >
                     {showBassPicker ? '▾ Baixo invertido (/nota)' : '▸ Baixo invertido (/F#, /G, /B…)'}
                     {pickedBass ? ` · /${pickedBass}` : ''}
@@ -408,7 +413,7 @@ function OverlayInner({
                         setPickedBass('');
                         setCustomInput(`${pickedRoot}${pickedSuffix}`);
                       }}
-                      className="font-mono text-[11px] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+                      className="font-mono text-xs text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
                     >
                       Limpar baixo
                     </button>
@@ -425,10 +430,10 @@ function OverlayInner({
                           setPickedBass(nextBass);
                           setCustomInput(`${pickedRoot}${pickedSuffix}${nextBass ? `/${nextBass}` : ''}`);
                         }}
-                        className={`h-8 rounded-lg text-[11px] font-bold font-mono transition-colors cursor-pointer border ${
+                        className={`h-8 rounded-xl text-xs font-bold font-mono transition-colors cursor-pointer ${
                           pickedBass === bass
-                            ? 'bg-[var(--flat)] border-[var(--flat)] text-white'
-                            : 'bg-[var(--bg)] border-[var(--line)] text-[var(--muted)] hover:text-[var(--ink)]'
+                            ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                            : 'bg-[var(--bg)] text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
                         }`}
                       >
                         /{bass}
@@ -444,7 +449,7 @@ function OverlayInner({
                   <button
                     type="button"
                     onClick={() => setMode('main')}
-                    className="flex-1 h-10 pill-btn text-sm"
+                    className="flex-1 h-10 pill-btn bg-[var(--bg)] text-sm"
                   >
                     Voltar
                   </button>

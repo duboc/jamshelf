@@ -157,206 +157,234 @@ export function ShowModeView({
       <VisualPulse />
 
       {/* Stage header */}
-      <header className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-2.5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
-          <button
-            type="button"
-            onClick={() => setShowSetlist((v) => !v)}
-            title="Abrir setlist (atalho: S) — toque para pular ou arraste para reordenar"
-            className="min-w-0 text-left rounded-md -mx-2 px-2.5 py-1 hover:bg-[var(--surface2)] transition-colors cursor-pointer"
-          >
-            <div className="font-mono text-[10.5px] uppercase tracking-wider text-[var(--muted)]">
-              <span className="mr-1.5">☰</span>
-              {activeSetlist.name} · {setlistSongIdx + 1} de {totalSongs}
-            </div>
-            <div className="flex items-baseline gap-2 min-w-0">
-              <h1 className="font-display text-xl sm:text-2xl text-[var(--ink)] truncate leading-tight">
-                {song.title}
-              </h1>
-              {song.displayKey && !chordsHidden && (
-                <span className="font-mono text-xs font-semibold text-[var(--accent-ink)] flex-shrink-0">
-                  {song.displayKey}
+      <header className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-3 pb-2.5">
+        <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 sm:px-5 py-2.5 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          <div className="flex items-center justify-between gap-2 min-w-0 lg:contents">
+            <button
+              type="button"
+              onClick={() => setShowSetlist((v) => !v)}
+              title="Abrir setlist (atalho: S) - toque para pular ou arraste para reordenar"
+              className="min-w-0 text-left rounded-2xl -mx-2 px-3 py-1 hover:bg-[var(--surface-high)] transition-colors cursor-pointer lg:order-1 lg:mr-auto"
+            >
+              <div className="text-xs font-medium text-[var(--muted)] truncate">
+                <span className="mr-1.5">☰</span>
+                {activeSetlist.name} · {setlistSongIdx + 1} de {totalSongs}
+              </div>
+              <div className="flex items-baseline gap-2.5 min-w-0">
+                <h1 className="font-display font-bold text-xl sm:text-2xl text-[var(--ink)] truncate leading-tight">
+                  {song.title}
+                </h1>
+                {song.displayKey && !chordsHidden && (
+                  <span className="font-expressive text-lg text-[var(--accent)] flex-shrink-0">
+                    {song.displayKey}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            <div className="flex items-center gap-2 flex-shrink-0 lg:order-3">
+              {wakeLockActive && (
+                <span
+                  className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] hidden sm:inline-flex"
+                  title="Tela mantida acesa automaticamente no Modo Show"
+                >
+                  Tela ativa
                 </span>
               )}
+              <button
+                type="button"
+                onClick={onExit}
+                className="pill-btn bg-[var(--bg)] px-4 h-10 sm:h-11 text-xs sm:text-sm"
+                title="Sair do Modo Show (Esc)"
+              >
+                Sair
+              </button>
             </div>
-          </button>
+          </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Live session controls */}
-            <div className="relative flex items-center gap-1.5">
-              {live.isLeading ? (
-                <>
-                  <span className="studio-chip text-[var(--rec)] border border-[var(--rec)]/40 bg-[var(--rec)]/10">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--rec)] animate-pulse" />
-                    Liderando
+          <div className="relative min-w-0 lg:order-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar pr-8 lg:pr-0 lg:flex-wrap lg:overflow-visible">
+              {/* Live session controls */}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {live.isLeading ? (
+                  <>
+                    <span className="studio-chip text-[var(--rec)] border border-[var(--rec)]/40 bg-[var(--rec)]/10">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--rec)] animate-pulse" />
+                      Liderando
+                    </span>
+                    <button
+                      type="button"
+                      onClick={live.stopLeading}
+                      className="pill-btn bg-[var(--bg)] px-3.5 h-10 sm:h-11 text-xs"
+                    >
+                      Parar
+                    </button>
+                  </>
+                ) : live.isFollowing ? (
+                  <span className="studio-chip text-[var(--tune)] border border-[var(--tune)]/40 bg-[var(--tune-dim)]">
+                    {live.isLeaderStale
+                      ? `${live.session.leaderName} inativo`
+                      : `Seguindo ${live.session.leaderName}`}
                   </span>
+                ) : (
                   <button
                     type="button"
-                    onClick={live.stopLeading}
-                    className="pill-btn px-2.5 py-1 text-xs"
+                    onClick={handleGoLive}
+                    className="pill-btn pill-btn-rec px-4 h-10 sm:h-11 text-xs flex-shrink-0"
                   >
-                    Parar
+                    <span className="w-2 h-2 rounded-full bg-current" />
+                    Iniciar Ao Vivo
                   </button>
-                </>
-              ) : live.isFollowing ? (
-                <span className="studio-chip text-[var(--tune)] border border-[var(--tune)]/40 bg-[var(--tune-dim)]">
-                  {live.isLeaderStale
-                    ? `${live.session.leaderName} inativo`
-                    : `Seguindo ${live.session.leaderName}`}
-                </span>
-              ) : (
+                )}
+              </div>
+
+              {/* Pitch guide for singers/musicians */}
+              {pitchTarget && (
                 <button
                   type="button"
-                  onClick={handleGoLive}
-                  className="pill-btn pill-btn-rec px-3 py-1.5 text-xs"
+                  onClick={handlePlayPitch}
+                  className={`pill-btn px-3.5 h-10 sm:h-11 text-xs flex-shrink-0 ${
+                    pitchRinging ? 'pill-btn-primary' : 'bg-[var(--bg)] text-[var(--accent-ink)]'
+                  }`}
+                  title={`Tocar acorde-guia (${pitchTarget})`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-current" />
-                  Iniciar Ao Vivo
+                  ♪ {pitchTarget}
                 </button>
               )}
 
-              {showNamePrompt && (
-                <div
-                  role="dialog"
-                  className="absolute right-0 top-[calc(100%+8px)] w-60 bg-[var(--surface)] border border-[var(--line)] rounded-lg z-50 p-3.5 space-y-2.5"
-                  style={{ boxShadow: 'var(--shadow-md)' }}
+              {/* Synchronized 1-2-3-4 count-in */}
+              {canNavigate && (
+                <button
+                  type="button"
+                  onClick={onTriggerCountIn}
+                  className="pill-btn bg-[var(--bg)] px-3.5 h-10 sm:h-11 font-mono text-xs flex-shrink-0"
+                  title="Contagem visual 1-2-3-4 (atalho: C)"
                 >
-                  <div className="text-xs text-[var(--muted)]">
-                    Seu nome, para a banda saber quem está puxando o show:
-                  </div>
-                  <input
-                    autoFocus
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') confirmGoLive();
-                      if (e.key === 'Escape') setShowNamePrompt(false);
-                    }}
-                    placeholder="Ex.: Alex - Violão"
-                    className="studio-input w-full px-2.5 py-1.5 text-sm"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowNamePrompt(false)}
-                      className="pill-btn px-3 py-1 text-xs"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={confirmGoLive}
-                      className="pill-btn pill-btn-primary px-3 py-1 text-xs"
-                    >
-                      Iniciar
-                    </button>
-                  </div>
-                </div>
+                  1·2·3·4
+                </button>
               )}
-            </div>
 
-            {/* Pitch guide for singers/musicians */}
-            {pitchTarget && (
+              {/* Per-device singer toggle (hides/shows chords without affecting anyone else) */}
               <button
                 type="button"
-                onClick={handlePlayPitch}
-                className={`pill-btn px-2.5 py-1.5 text-xs ${
-                  pitchRinging ? 'pill-btn-primary' : 'text-[var(--accent-ink)]'
+                onClick={toggleHideChords}
+                className={`pill-btn px-3.5 h-10 sm:h-11 text-xs flex-shrink-0 ${
+                  chordsHidden ? 'pill-btn-primary' : 'bg-[var(--bg)]'
                 }`}
-                title={`Tocar acorde-guia (${pitchTarget})`}
+                title="Esconder ou mostrar acordes só neste aparelho (atalho: L)"
               >
-                ♪ {pitchTarget}
+                {chordsHidden ? 'Só letra' : 'Com acordes'}
               </button>
-            )}
 
-            {/* Synchronized 1-2-3-4 count-in */}
-            {canNavigate && (
+              {/* Font size */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setFontSize(fontSize - 10)}
+                  className="pill-btn bg-[var(--bg)] w-10 h-10 sm:w-11 sm:h-11 font-mono text-xs"
+                  aria-label="Diminuir fonte"
+                >
+                  A-
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFontSize(fontSize + 10)}
+                  className="pill-btn bg-[var(--bg)] w-10 h-10 sm:w-11 sm:h-11 font-mono text-xs"
+                  aria-label="Aumentar fonte"
+                >
+                  A+
+                </button>
+              </div>
+
+              {canNavigate && (
+                <button
+                  type="button"
+                  onClick={store.toggleAutoScroll}
+                  className={`pill-btn px-3.5 h-10 sm:h-11 text-xs flex-shrink-0 ${
+                    store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
+                  }`}
+                  title="Atalho: Espaço"
+                >
+                  {store.isAutoScrolling ? '⏸ Pausar' : '▶ Auto-scroll'}
+                </button>
+              )}
+
+              <Metronome
+                readOnly={!canNavigate}
+                beatsPerBar={beatsPerBar}
+                buttonClass="bg-[var(--bg)]"
+                heightClass="h-10 sm:h-11"
+              />
+
               <button
                 type="button"
-                onClick={onTriggerCountIn}
-                className="pill-btn px-2.5 py-1.5 font-mono text-xs"
-                title="Contagem visual 1-2-3-4 (atalho: C)"
+                onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
+                title="Piscar a borda da tela no tempo (só neste aparelho)"
+                className={`pill-btn px-3.5 h-10 sm:h-11 text-xs flex-shrink-0 ${
+                  visualPulseEnabled ? 'pill-btn-tonal' : 'bg-[var(--bg)]'
+                }`}
               >
-                1·2·3·4
-              </button>
-            )}
-
-            {/* Per-device singer toggle (hides/shows chords without affecting anyone else) */}
-            <button
-              type="button"
-              onClick={toggleHideChords}
-              className={`pill-btn px-3 py-1.5 text-xs ${chordsHidden ? 'pill-btn-primary' : ''}`}
-              title="Esconder ou mostrar acordes só neste aparelho (atalho: L)"
-            >
-              {chordsHidden ? 'Só letra' : 'Com acordes'}
-            </button>
-
-            {/* Font size */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setFontSize(fontSize - 10)}
-                className="pill-btn w-7 h-7 font-mono text-[11px]"
-                aria-label="Diminuir fonte"
-              >
-                A-
-              </button>
-              <button
-                type="button"
-                onClick={() => setFontSize(fontSize + 10)}
-                className="pill-btn w-7 h-7 font-mono text-[11px]"
-                aria-label="Aumentar fonte"
-              >
-                A+
+                Pulso
               </button>
             </div>
-
-            {canNavigate && (
-              <button
-                type="button"
-                onClick={store.toggleAutoScroll}
-                className={`pill-btn px-3 py-1.5 text-xs ${
-                  store.isAutoScrolling ? 'pill-btn-tune' : ''
-                }`}
-                title="Atalho: Espaço"
-              >
-                {store.isAutoScrolling ? '⏸ Pausar' : '▶ Auto-scroll'}
-              </button>
-            )}
-
-            <Metronome readOnly={!canNavigate} beatsPerBar={beatsPerBar} />
-
-            <button
-              type="button"
-              onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
-              title="Piscar a borda da tela no tempo (só neste aparelho)"
-              className={`pill-btn px-2.5 py-1.5 text-xs ${
-                visualPulseEnabled ? 'border-[var(--accent)] text-[var(--accent-ink)]' : ''
-              }`}
-            >
-              Pulso
-            </button>
-
-            {wakeLockActive && (
-              <span
-                className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] hidden md:inline-flex"
-                title="Tela mantida acesa automaticamente no Modo Show"
-              >
-                Tela ativa
-              </span>
-            )}
-
-            <button
-              type="button"
-              onClick={onExit}
-              className="pill-btn px-3 py-1.5 text-xs"
-              title="Sair do Modo Show (Esc)"
-            >
-              Sair
-            </button>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none lg:hidden absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[var(--surface)] to-transparent"
+            />
           </div>
         </div>
       </header>
+
+      {/* Go-live name modal (centered overlay so it never clips inside horizontal stage bar) */}
+      {showNamePrompt && (
+        <div
+          className="fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
+          onClick={() => setShowNamePrompt(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Iniciar sessão Ao Vivo"
+            className="w-full max-w-xs bg-[var(--surface)] rounded-[28px] p-6 space-y-4"
+            style={{ boxShadow: 'var(--shadow-md)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-1">
+              <h2 className="font-display text-lg font-bold text-[var(--ink)]">Iniciar Ao Vivo</h2>
+              <p className="text-xs text-[var(--muted)] leading-relaxed">
+                Seu nome, para a banda saber quem está puxando o show:
+              </p>
+            </div>
+            <input
+              autoFocus
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmGoLive();
+                if (e.key === 'Escape') setShowNamePrompt(false);
+              }}
+              placeholder="Ex.: Alex - Violão"
+              className="studio-input w-full px-3.5 py-2 text-sm"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowNamePrompt(false)}
+                className="pill-btn bg-[var(--bg)] h-9 px-4 text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmGoLive}
+                className="pill-btn pill-btn-primary h-9 px-4 text-xs"
+              >
+                Iniciar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rehearsal / stage cues strip when defined */}
       <StageNotesBar notes={song.notes} editing={false} readOnly />
@@ -389,22 +417,22 @@ export function ShowModeView({
 
       {/* Bottom stage bar: clean Prev / Next preview without overlapping lyrics */}
       <footer
-        className="flex-shrink-0 border-t border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-md px-4 sm:px-6 py-2"
-        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
+        className="flex-shrink-0 bg-[var(--bg)]/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5"
+        style={{ paddingBottom: 'max(0.65rem, env(safe-area-inset-bottom, 0px))' }}
       >
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+        <div className="w-full flex items-center justify-between gap-3">
           {canNavigate ? (
             <button
               type="button"
               onClick={() => prevSongId && onNavigate(prevSongId)}
               disabled={!prevSongId}
-              className="pill-btn px-3.5 py-1.5 text-xs"
+              className="pill-btn h-11 px-5 text-sm"
               title="Música anterior (←)"
             >
               ‹ Anterior
             </button>
           ) : (
-            <span className="font-mono text-[11px] text-[var(--muted)]">
+            <span className="font-mono text-xs text-[var(--muted)]">
               Seguindo {live.session.leaderName}
             </span>
           )}
@@ -412,7 +440,7 @@ export function ShowModeView({
           <button
             type="button"
             onClick={() => setShowSetlist(true)}
-            className="font-mono text-[11px] text-[var(--muted)] hover:text-[var(--ink)] transition-colors cursor-pointer hidden sm:inline"
+            className="font-expressive text-sm text-[var(--muted)] hover:text-[var(--ink)] transition-colors cursor-pointer hidden sm:inline"
           >
             {setlistSongIdx + 1} / {totalSongs} · Setlist (S)
           </button>
@@ -422,7 +450,7 @@ export function ShowModeView({
               type="button"
               onClick={() => nextSongId && onNavigate(nextSongId)}
               disabled={!nextSongId}
-              className="pill-btn pill-btn-primary px-3.5 py-1.5 text-xs max-w-[60vw]"
+              className="pill-btn pill-btn-primary h-11 px-5 text-sm max-w-[60vw]"
               title="Próxima música (→)"
             >
               <span className="truncate">
@@ -435,7 +463,7 @@ export function ShowModeView({
               {nextSongId && <span>›</span>}
             </button>
           ) : (
-            <span className="font-mono text-[11px] text-[var(--muted)] truncate">
+            <span className="font-mono text-xs text-[var(--muted)] truncate">
               {nextSongMeta ? `Próxima: ${nextSongMeta.title}` : 'Última música'}
             </span>
           )}

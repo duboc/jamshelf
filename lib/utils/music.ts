@@ -47,7 +47,7 @@ export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string
   'pre-chorus': {
     bg: 'color-mix(in srgb, var(--warn) 6%, var(--surface))',
     bd: 'var(--warn)',
-    lb: 'var(--warn)',
+    lb: 'var(--warn-ink)',
   },
   chorus: {
     bg: 'color-mix(in srgb, var(--sharp) 6%, var(--surface))',

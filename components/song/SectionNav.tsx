@@ -15,10 +15,9 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
   return (
     <div
       aria-label="Seções da música"
-      className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6"
+      className="relative flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2"
     >
-      <div className="max-w-6xl mx-auto flex items-center gap-0.5 overflow-x-auto no-scrollbar">
-        <span className="eyebrow flex-shrink-0 mr-2 hidden sm:inline">Seções</span>
+      <div className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar pr-6">
         {sections.map((sec, idx) => {
           const colors = SECTION_COLORS[sec.type] || SECTION_COLORS.verse;
           const isActive = idx === activeIdx;
@@ -27,14 +26,14 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
               key={`${sec.label}-${idx}`}
               type="button"
               onClick={() => onJump(idx)}
-              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 font-display text-[12.5px] transition-colors cursor-pointer border-b-2 ${
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                 isActive
-                  ? 'border-[var(--accent)] text-[var(--accent-ink)] font-medium'
-                  : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)]/60'
+                  ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                  : 'bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
               }`}
             >
               <span
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: colors.bd }}
               />
               {sec.label}
@@ -42,6 +41,10 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
           );
         })}
       </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[var(--bg)] to-transparent"
+      />
     </div>
   );
 }

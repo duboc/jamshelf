@@ -67,27 +67,29 @@ export function SectionBlock({
         id={`section-${sectionIdx}`}
         data-section-idx={sectionIdx}
         onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-        className={`scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-lg border border-[var(--line)] border-l-[3px] px-4 py-2.5 ${
-          onCalibrationTap ? 'cursor-pointer hover:border-[var(--accent)]' : ''
+        className={`scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-[20px] px-5 py-3 ${
+          onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''
         } ${isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''}`}
-        style={{
-          background: colors.bg,
-          borderLeftColor: colors.bd,
-        }}
+        style={{ background: colors.bg }}
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <span
-            className="font-mono text-[11px] uppercase tracking-wider font-semibold"
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: colors.bd }}
+            aria-hidden="true"
+          />
+          <span
+            className="font-display text-xs font-semibold"
             style={{ color: colors.lb }}
           >
-            ♪ {section.label}
+            {section.label}
           </span>
-          <span className="font-mono text-[11px] text-[var(--muted)]">
-            trecho instrumental
+          <span className="text-xs text-[var(--muted)]">
+            · trecho instrumental
           </span>
         </div>
         {calibrationMarkSec !== null && (
-          <span className="studio-chip text-[var(--tune)]">{formatMark(calibrationMarkSec)}</span>
+          <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]">{formatMark(calibrationMarkSec)}</span>
         )}
       </div>
     );
@@ -98,32 +100,36 @@ export function SectionBlock({
       id={`section-${sectionIdx}`}
       data-section-idx={sectionIdx}
       onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-      className={`scroll-mt-4 relative rounded-lg border border-[var(--line)] border-l-[3px] ${
-        isSingerMode ? 'px-5 sm:px-7 py-5 mb-4' : 'p-4 sm:p-5 mb-3.5'
-      } ${onCalibrationTap ? 'cursor-pointer hover:border-[var(--accent)]' : ''} ${
+      className={`scroll-mt-4 relative rounded-[24px] ${
+        isSingerMode ? 'px-6 sm:px-8 py-6 mb-4' : 'p-5 sm:p-6 mb-4'
+      } ${onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''} ${
         isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''
       }`}
-      style={{
-        background: colors.bg,
-        borderLeftColor: colors.bd,
-      }}
+      style={{ background: colors.bg }}
     >
       {editMode ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-[var(--line)]/70">
-          <input
-            type="text"
-            value={section.label}
-            onChange={(e) => onRenameSection?.(sectionIdx, e.target.value)}
-            aria-label={`Nome da seção ${sectionIdx + 1}`}
-            className="font-mono text-[11px] font-semibold uppercase tracking-[0.09em] bg-transparent border-b border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] outline-none min-w-[100px]"
-            style={{ color: colors.lb }}
-          />
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-[var(--line-subtle)]">
+          <div className="flex items-center gap-2">
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: colors.bd }}
+              aria-hidden="true"
+            />
+            <input
+              type="text"
+              value={section.label}
+              onChange={(e) => onRenameSection?.(sectionIdx, e.target.value)}
+              aria-label={`Nome da seção ${sectionIdx + 1}`}
+              className="font-display text-xs font-semibold bg-transparent border-b border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] outline-none min-w-[100px]"
+              style={{ color: colors.lb }}
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               disabled={sectionIdx === 0}
               onClick={() => onMoveSection?.(sectionIdx, 'up')}
-              className="pill-btn w-7 h-7 text-xs"
+              className="pill-btn bg-[var(--bg)] w-8 h-8 text-xs"
               title="Mover seção para cima"
               aria-label="Mover seção para cima"
             >
@@ -133,7 +139,7 @@ export function SectionBlock({
               type="button"
               disabled={sectionIdx >= totalSections - 1}
               onClick={() => onMoveSection?.(sectionIdx, 'down')}
-              className="pill-btn w-7 h-7 text-xs"
+              className="pill-btn bg-[var(--bg)] w-8 h-8 text-xs"
               title="Mover seção para baixo"
               aria-label="Mover seção para baixo"
             >
@@ -142,7 +148,7 @@ export function SectionBlock({
             <button
               type="button"
               onClick={() => onDuplicateSection?.(sectionIdx)}
-              className="pill-btn px-2.5 h-7 text-[11px]"
+              className="pill-btn bg-[var(--bg)] px-3 h-8 text-xs"
               title="Duplicar esta seção"
             >
               Duplicar
@@ -151,7 +157,7 @@ export function SectionBlock({
               type="button"
               disabled={totalSections <= 1}
               onClick={() => onDeleteSection?.(sectionIdx)}
-              className="pill-btn px-2.5 h-7 text-[11px] text-[var(--rec)]"
+              className="pill-btn bg-[var(--rec-dim)] px-3 h-8 text-xs text-[var(--on-rec-container)]"
               title="Remover esta seção"
             >
               Excluir
@@ -160,11 +166,18 @@ export function SectionBlock({
         </div>
       ) : (
         <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div
-            className="font-display text-[11.5px] font-semibold uppercase tracking-[0.06em]"
-            style={{ color: colors.lb }}
-          >
-            {section.label}
+          <div className="flex items-center gap-2">
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: colors.bd }}
+              aria-hidden="true"
+            />
+            <div
+              className="font-display text-xs font-semibold"
+              style={{ color: colors.lb }}
+            >
+              {section.label}
+            </div>
           </div>
           {calibrationMarkSec !== null && (
             <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]">

@@ -14,7 +14,7 @@ function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
   const changes = useMemo(() => diffLines(oldText, newText), [oldText, newText]);
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto rounded-xl bg-[var(--bg)] border border-[var(--line)] p-3 font-mono text-xs whitespace-pre-wrap">
+    <div className="flex-1 min-h-0 overflow-auto rounded-2xl bg-[var(--bg)] p-3.5 font-mono text-xs whitespace-pre-wrap">
       {changes.map((part, i) => {
         const lines = part.value.replace(/\n$/, '').split('\n');
         const cls = part.added
@@ -93,15 +93,12 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
       <div
         role="dialog"
         aria-modal="true"
-        className="bg-[var(--surface)] border border-[var(--line)] rounded-lg w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden"
+        className="bg-[var(--surface)] rounded-[28px] w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line)]">
-          <div>
-            <div className="eyebrow">Revisão com IA</div>
-            <h2 className="font-display text-xl text-[var(--ink)]">Revisar letra e acordes</h2>
-          </div>
+        <div className="flex items-center justify-between px-6 py-4 bg-[var(--surface-high)]">
+          <h2 className="font-display text-lg text-[var(--ink)]">Revisar letra e acordes com IA</h2>
           <button
             type="button"
             onClick={onClose}
@@ -132,11 +129,11 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
               </p>
               <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex flex-col min-h-0">
-                  <div className="eyebrow mb-1.5">Comparação</div>
+                  <div className="field-label mb-1.5">Comparação</div>
                   <DiffView oldText={originalText} newText={editedText} />
                 </div>
                 <div className="flex flex-col min-h-0">
-                  <div className="eyebrow mb-1.5">Texto proposto (editável)</div>
+                  <div className="field-label mb-1.5">Texto proposto (editável)</div>
                   <textarea
                     value={editedText}
                     onChange={(e) => setEditedText(e.target.value)}
@@ -149,15 +146,15 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--line)]">
-          <button type="button" onClick={onClose} className="pill-btn px-4 py-1.5 text-xs">
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[var(--line-subtle)]/40">
+          <button type="button" onClick={onClose} className="pill-btn bg-[var(--bg)] px-4 h-9 text-xs">
             Cancelar
           </button>
           <button
             type="button"
             onClick={handleApply}
             disabled={loading || !!error || applying || !hasChanges}
-            className="pill-btn pill-btn-primary px-5 py-1.5 text-xs"
+            className="pill-btn pill-btn-primary px-5 h-9 text-xs"
           >
             {applying ? 'Aplicando…' : 'Aplicar alterações'}
           </button>

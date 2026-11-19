@@ -33,15 +33,15 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
   return (
     <nav
       aria-label="Onde você está"
-      className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]"
+      className="flex-shrink-0 bg-[var(--bg)]"
     >
-      <div className="px-3 sm:px-6 min-h-[42px] py-1 flex items-center justify-between gap-3">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-3 pb-1 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {parentItem && (
             <button
               type="button"
               onClick={handleBack}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--accent-ink)] hover:bg-[var(--nav-active-bg)] transition-colors flex-shrink-0 cursor-pointer"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--ink)] bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors flex-shrink-0 cursor-pointer"
               title={`Voltar para ${parentItem.label}`}
               aria-label={`Voltar para ${parentItem.label}`}
             >
@@ -50,7 +50,7 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
                   d="M13 8H3.5M7.5 3.8 3.3 8l4.2 4.2"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.6"
+                  strokeWidth="1.7"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />

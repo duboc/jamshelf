@@ -87,15 +87,12 @@ export function VersionHistoryModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="bg-[var(--surface)] border border-[var(--line)] rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+        className="bg-[var(--surface)] rounded-[28px] w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line)]">
-          <div>
-            <div className="eyebrow">Snapshots salvos</div>
-            <h2 className="font-display text-xl text-[var(--ink)]">Histórico de versões</h2>
-          </div>
+        <div className="flex items-center justify-between px-6 py-4 bg-[var(--surface-high)]">
+          <h2 className="font-display text-lg text-[var(--ink)]">Histórico de versões</h2>
           <button
             type="button"
             onClick={onClose}
@@ -123,10 +120,10 @@ export function VersionHistoryModal({
             versions.map((v) => (
               <div
                 key={v.versionId}
-                className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[var(--bg)]/60 border border-[var(--line)]"
+                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--bg)]"
               >
                 <div className="min-w-0">
-                  <div className="font-mono text-[11px] text-[var(--muted)]">
+                  <div className="font-mono text-xs text-[var(--muted)]">
                     {formatRelativeTime(v.createdAt)}
                   </div>
                   <div className="text-sm text-[var(--ink)] truncate mt-0.5">

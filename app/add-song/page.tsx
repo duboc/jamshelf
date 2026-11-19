@@ -91,19 +91,19 @@ export default function AddSongPage() {
     <div className="flex-1 flex flex-col">
       <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Nova música' }]} />
 
-      <main className="flex-1 w-full px-4 sm:px-6 py-5 sm:py-6">
-        <div className={`${preview ? 'max-w-5xl' : 'max-w-3xl'} mx-auto space-y-5 transition-all duration-300`}>
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+        <div className="w-full space-y-5">
           <div className="space-y-1">
-            <h1 className="font-display text-2xl text-[var(--ink)]">Nova música</h1>
+            <h1 className="font-display text-3xl text-[var(--ink)]">Nova música</h1>
             <p className="text-sm text-[var(--muted)]">
               Cole uma cifra pronta (formatada direto sem alterar sua versão) ou digite o nome e artista para buscar com IA.
             </p>
           </div>
 
           {!preview ? (
-            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 space-y-4">
+            <div className="rounded-[24px] bg-[var(--surface)] p-6 space-y-4">
               <div>
-                <label htmlFor="raw-song-input" className="eyebrow block mb-2">
+                <label htmlFor="raw-song-input" className="field-label block mb-2">
                   Cifra colada, nome da música ou URL
                 </label>
                 <textarea
@@ -112,12 +112,12 @@ export default function AddSongPage() {
                   onChange={(e) => setRawText(e.target.value)}
                   rows={14}
                   placeholder="Ex.: 'Evidências Chitãozinho e Xororó' ou cole aqui a cifra completa com letra e acordes..."
-                  className="studio-input w-full px-3.5 py-2.5 font-mono text-xs sm:text-sm resize-y"
+                  className="studio-input w-full px-4 py-3 font-mono text-xs sm:text-sm resize-y"
                 />
               </div>
 
               {error && (
-                <div className="text-sm text-[var(--rec)] bg-[var(--rec)]/10 border border-[var(--rec)]/30 rounded-[4px] px-4 py-2.5">
+                <div className="text-sm font-medium text-[var(--on-rec-container)] bg-[var(--rec-dim)] rounded-2xl px-4 py-3">
                   {error}
                 </div>
               )}
@@ -127,7 +127,7 @@ export default function AddSongPage() {
                   type="button"
                   onClick={handleProcess}
                   disabled={loading}
-                  className="pill-btn pill-btn-primary px-5 py-2 text-sm"
+                  className="pill-btn pill-btn-primary h-11 px-6 text-sm"
                 >
                   {loading ? 'Processando com IA...' : 'Converter para ChordPro'}
                 </button>
@@ -136,11 +136,11 @@ export default function AddSongPage() {
           ) : previewSong ? (
             <div className="space-y-5">
               {/* Metadata editor */}
-              <div className="bg-[var(--surface)] rounded-lg border border-[var(--line)] p-5 space-y-4">
-                <div className="eyebrow">Dados da música</div>
+              <div className="bg-[var(--surface)] rounded-[24px] p-6 space-y-4">
+                <h2 className="font-display text-sm text-[var(--ink)]">Dados da música</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block eyebrow mb-1.5">Título</label>
+                    <label className="block field-label mb-1.5">Título</label>
                     <input
                       type="text"
                       value={previewSong.title}
@@ -149,7 +149,7 @@ export default function AddSongPage() {
                     />
                   </div>
                   <div>
-                    <label className="block eyebrow mb-1.5">Artista</label>
+                    <label className="block field-label mb-1.5">Artista</label>
                     <input
                       type="text"
                       value={previewSong.artist}
@@ -161,7 +161,7 @@ export default function AddSongPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <label className="block eyebrow mb-1.5">Tom</label>
+                    <label className="block field-label mb-1.5">Tom</label>
                     <input
                       type="text"
                       value={previewSong.originalKey}
@@ -170,7 +170,7 @@ export default function AddSongPage() {
                     />
                   </div>
                   <div>
-                    <label className="block eyebrow mb-1.5">Capo</label>
+                    <label className="block field-label mb-1.5">Capo</label>
                     <input
                       type="number"
                       value={previewSong.capo}
@@ -181,7 +181,7 @@ export default function AddSongPage() {
                     />
                   </div>
                   <div>
-                    <label className="block eyebrow mb-1.5">Tempo (BPM)</label>
+                    <label className="block field-label mb-1.5">Tempo (BPM)</label>
                     <input
                       type="number"
                       value={previewSong.tempo}
@@ -192,7 +192,7 @@ export default function AddSongPage() {
                     />
                   </div>
                   <div>
-                    <label className="block eyebrow mb-1.5">Compasso</label>
+                    <label className="block field-label mb-1.5">Compasso</label>
                     <select
                       value={previewSong.timeSignature}
                       onChange={(e) => updatePreviewMeta('time', e.target.value)}
@@ -211,26 +211,26 @@ export default function AddSongPage() {
 
               {/* Split ChordPro + Preview */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                <div className="lg:col-span-5 bg-[var(--surface)] rounded-lg border border-[var(--line)] overflow-hidden flex flex-col">
-                  <div className="px-4 py-2.5 border-b border-[var(--line)] bg-[var(--surface2)]/60 flex justify-between items-center">
-                    <span className="eyebrow">Fonte ChordPro</span>
-                    <span className="font-mono text-[10.5px] text-[var(--muted)]">Editável</span>
+                <div className="lg:col-span-5 bg-[var(--surface)] rounded-[24px] overflow-hidden flex flex-col">
+                  <div className="px-5 py-3 bg-[var(--surface-high)] flex justify-between items-center">
+                    <span className="field-label">Fonte ChordPro</span>
+                    <span className="font-mono text-xs text-[var(--muted)]">Editável</span>
                   </div>
                   <textarea
                     value={preview.text}
                     onChange={(e) => setPreview({ ...preview, text: e.target.value })}
                     rows={18}
-                    className="w-full p-4 bg-[var(--surface)] text-[var(--ink)] font-mono text-xs leading-relaxed outline-none resize-none h-[420px] overflow-y-auto"
+                    className="w-full p-5 bg-[var(--surface)] text-[var(--ink)] font-mono text-xs leading-relaxed outline-none resize-none h-[460px] overflow-y-auto"
                     title="Editar código ChordPro"
                   />
                 </div>
 
-                <div className="lg:col-span-7 bg-[var(--surface)] rounded-lg border border-[var(--line)] overflow-hidden flex flex-col">
-                  <div className="px-4 py-2.5 border-b border-[var(--line)] bg-[var(--surface2)]/60 flex justify-between items-center">
-                    <span className="eyebrow">Prévia da cifra</span>
-                    <span className="font-mono text-[10.5px] text-[var(--muted)]">Em tempo real</span>
+                <div className="lg:col-span-7 bg-[var(--surface)] rounded-[24px] overflow-hidden flex flex-col">
+                  <div className="px-5 py-3 bg-[var(--surface-high)] flex justify-between items-center">
+                    <span className="field-label">Prévia da cifra</span>
+                    <span className="font-mono text-xs text-[var(--muted)]">Em tempo real</span>
                   </div>
-                  <div className="h-[420px] overflow-y-auto bg-[var(--bg)]">
+                  <div className="h-[460px] overflow-y-auto bg-[var(--bg)]">
                     <ChordSheet song={previewSong} onChordTap={() => {}} />
                   </div>
                 </div>
@@ -240,25 +240,25 @@ export default function AddSongPage() {
               {spotifyLoading ? (
                 <div className="text-xs font-mono text-[var(--muted)]">Buscando referência no Spotify...</div>
               ) : spotifyResults.length > 0 ? (
-                <div className="bg-[var(--surface)] rounded-lg border border-[var(--line)] p-4 space-y-2.5">
-                  <div className="eyebrow">Referência no Spotify (opcional)</div>
+                <div className="bg-[var(--surface)] rounded-[24px] p-5 space-y-3">
+                  <div className="field-label">Referência no Spotify (opcional)</div>
                   <div className="space-y-1.5">
                     {spotifyResults.map((track) => (
                       <button
                         key={track.id}
                         type="button"
                         onClick={() => setSelectedSpotifyId(track.id)}
-                        className={`w-full flex items-center gap-3 p-2 rounded-md border text-left transition-colors cursor-pointer ${
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-colors cursor-pointer ${
                           selectedSpotifyId === track.id
-                            ? 'border-[var(--accent)] bg-[var(--nav-active-bg)]'
-                            : 'border-[var(--line)] hover:bg-[var(--surface2)]'
+                            ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                            : 'bg-[var(--bg)] hover:bg-[var(--surface-high)]'
                         }`}
                       >
                         {track.albumArt ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={track.albumArt} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                          <img src={track.albumArt} alt="" width={40} height={40} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded bg-[var(--surface2)] flex-shrink-0" />
+                          <div className="w-10 h-10 rounded-xl bg-[var(--surface2)] flex-shrink-0" />
                         )}
                         <div className="min-w-0">
                           <div className="text-sm font-display font-medium text-[var(--ink)] truncate">{track.name}</div>
@@ -269,8 +269,8 @@ export default function AddSongPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedSpotifyId(null)}
-                      className={`pill-btn px-3 py-1 text-xs ${
-                        selectedSpotifyId === null ? 'pill-btn-primary' : ''
+                      className={`pill-btn px-3.5 py-1.5 text-xs ${
+                        selectedSpotifyId === null ? 'pill-btn-primary' : 'bg-[var(--bg)]'
                       }`}
                     >
                       Sem vínculo com Spotify

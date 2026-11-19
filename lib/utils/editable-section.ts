@@ -1,7 +1,7 @@
 import { parseLine, transposeChord } from './music';
 
 export const CHORD_WIDGET_CLASS =
-  'inline-block rounded px-1 py-0.5 text-[0.85em] font-bold text-[var(--accent-ink)] font-mono relative -top-[1.35em] select-none';
+  'inline-block rounded-lg px-1.5 py-0.5 text-[0.85em] font-bold text-[var(--accent-ink)] font-mono relative -top-[1.35em] select-none';
 
 export const LINE_CLASS = 'whitespace-pre-wrap leading-relaxed pt-[1.4em] min-h-[2.8em]';
 

@@ -6,9 +6,13 @@ import { usePlayerStore } from '@/lib/stores/player-store';
 export function Metronome({
   readOnly = false,
   beatsPerBar = 4,
+  buttonClass = '',
+  heightClass = 'h-8',
 }: {
   readOnly?: boolean;
   beatsPerBar?: number;
+  buttonClass?: string;
+  heightClass?: string;
 }) {
   const { bpm, metronomeOn, beat, setBeat, setMetronomeOn } = usePlayerStore();
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -51,17 +55,21 @@ export function Metronome({
 
   const beatIndicator = metronomeOn && (
     <div className="flex items-center gap-2">
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         {Array.from({ length: beatsPerBar }, (_, b) => (
           <div
             key={b}
             className={`w-3 h-3 rounded-full transition-all ${
-              b === 0 ? 'ring-2 ring-[var(--accent)]/70' : ''
-            } ${beat === b ? 'bg-[var(--tune)] scale-125' : 'bg-[var(--surface2)]'}`}
+              beat === b
+                ? b === 0
+                  ? 'bg-[var(--accent)] scale-125'
+                  : 'bg-[var(--tune-dot)] scale-120'
+                : 'bg-[var(--line-subtle)]'
+            }`}
           />
         ))}
       </div>
-      <span className="text-xs font-bold font-mono text-[var(--tune)] tabular-nums w-4 text-center">
+      <span className="font-expressive text-sm text-[var(--accent)] w-4 text-center">
         {beat + 1}
       </span>
     </div>
@@ -79,12 +87,12 @@ export function Metronome({
   }
 
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-2.5 flex-shrink-0">
       <button
         type="button"
         onClick={() => setMetronomeOn(!metronomeOn)}
-        className={`pill-btn px-3 py-1.5 text-xs ${
-          metronomeOn ? 'pill-btn-primary' : ''
+        className={`pill-btn px-3.5 ${heightClass} text-xs flex-shrink-0 ${
+          metronomeOn ? 'pill-btn-primary' : buttonClass
         }`}
       >
         {metronomeOn ? `Parar (${bpm})` : 'Metrônomo'}

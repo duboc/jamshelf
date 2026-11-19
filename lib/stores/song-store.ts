@@ -238,6 +238,7 @@ export const useSongStore = create<SongStore>()(
     }),
     {
       name: 'jamshelf-songs',
+      skipHydration: true,
       partialize: (s) => ({ entries: s.entries }),
     }
   )

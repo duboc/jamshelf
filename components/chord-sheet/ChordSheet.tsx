@@ -377,14 +377,14 @@ export function ChordSheet({
   return (
     <div
       ref={scrollRef}
-      className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-5 relative ${bottomPaddingClass}`}
+      className={`flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 pt-3 relative ${bottomPaddingClass}`}
       style={{ fontSize: `${fontSize}%` }}
     >
       {/* Lead-in countdown banner */}
       {leadInLeft > 0 && (
         <div className="sticky top-2 z-20 flex justify-center mb-3 pointer-events-none">
           <div
-            className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--accent)] bg-[var(--surface)] px-4 py-2 text-xs"
+            className="pointer-events-auto flex items-center gap-3 rounded-full bg-[var(--surface)] px-4 py-2 text-xs"
             style={{ boxShadow: 'var(--shadow-md)' }}
           >
             <span className="font-mono font-bold text-[var(--accent-ink)] tabular-nums">
@@ -399,14 +399,14 @@ export function ChordSheet({
                 }
                 setLeadInLeft(0);
               }}
-              className="pill-btn pill-btn-tune px-2.5 py-0.5 text-[11px]"
+              className="pill-btn pill-btn-tune px-2.5 h-7 text-xs"
             >
               Iniciar já
             </button>
             <button
               type="button"
               onClick={() => setAutoScrolling(false)}
-              className="text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer text-[11px]"
+              className="text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer text-xs"
             >
               Cancelar
             </button>
@@ -417,15 +417,18 @@ export function ChordSheet({
       {/* Subtle manual-scroll yield indicator */}
       {userPausedNotice && isAutoScrolling && leadInLeft === 0 && (
         <div className="sticky top-2 z-20 flex justify-center mb-2 pointer-events-none">
-          <span className="studio-chip border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]">
+          <span
+            className="studio-chip bg-[var(--surface)] text-[var(--muted)]"
+            style={{ boxShadow: 'var(--shadow-sm)' }}
+          >
             Rolagem manual detectada · retomando daqui…
           </span>
         </div>
       )}
 
       <div
-        className={`mx-auto ${
-          isSingerMode ? 'max-w-2xl font-display' : 'max-w-3xl font-mono'
+        className={`w-full ${
+          isSingerMode ? 'font-display' : 'font-mono'
         }`}
       >
         {song.sections.map((section, i) => (
@@ -457,8 +460,8 @@ export function ChordSheet({
 
         {/* Add new section bar in visual edit mode */}
         {editMode && onAddSection && (
-          <div className="mt-4 mb-6 rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-4 space-y-2.5">
-            <div className="eyebrow">Adicionar nova seção</div>
+          <div className="mt-4 mb-6 rounded-[24px] border border-dashed border-[var(--line-subtle)] bg-[var(--surface)] p-5 space-y-2.5">
+            <div className="field-label">Adicionar nova seção</div>
             <div className="flex flex-wrap gap-1.5">
               {QUICK_SECTION_PRESETS.map((preset) => (
                 <button

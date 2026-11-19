@@ -71,15 +71,15 @@ export function CountInOverlay({
       role="status"
       aria-live="assertive"
       onClick={onCancel}
-      className="fixed inset-0 z-[75] bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[75] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-xs rounded-lg border border-[var(--line)] bg-[var(--surface)] px-6 py-7 text-center space-y-5"
+        className="w-full max-w-xs rounded-[28px] bg-[var(--surface)] px-7 py-8 text-center space-y-6"
         style={{ boxShadow: 'var(--shadow-md)' }}
       >
         <div className="space-y-1">
-          <div className="eyebrow">
+          <div className="field-label">
             {leaderName ? `Contagem ao vivo · ${leaderName}` : 'Contagem de entrada'}
           </div>
           <div className="font-mono text-xs text-[var(--muted)] tabular-nums">
@@ -89,14 +89,14 @@ export function CountInOverlay({
 
         <div
           key={currentBeat}
-          className={`font-display text-[96px] leading-none tabular-nums select-none transition-transform ${
+          className={`font-expressive text-[104px] leading-none select-none transition-transform ${
             currentBeat === 1 ? 'text-[var(--accent)]' : 'text-[var(--ink)]'
           }`}
         >
           {currentBeat}
         </div>
 
-        <div className="flex items-center justify-center gap-2.5">
+        <div className="flex items-center justify-center gap-3">
           {Array.from({ length: safeBeats }, (_, idx) => {
             const beatNum = idx + 1;
             const passed = beatNum < currentBeat;
@@ -106,10 +106,10 @@ export function CountInOverlay({
                 key={beatNum}
                 className={`rounded-full transition-all ${
                   isNow
-                    ? 'w-4 h-4 bg-[var(--accent)] scale-110'
+                    ? 'w-4 h-4 bg-[var(--accent)] scale-115'
                     : passed
-                    ? 'w-3 h-3 bg-[var(--tune)]'
-                    : 'w-3 h-3 bg-[var(--line)]'
+                    ? 'w-3.5 h-3.5 bg-[var(--tune-dot)]'
+                    : 'w-3 h-3 bg-[var(--line-subtle)]'
                 }`}
               />
             );
@@ -120,14 +120,14 @@ export function CountInOverlay({
           <button
             type="button"
             onClick={() => setMuted((m) => !m)}
-            className="pill-btn px-3 py-1 text-xs"
+            className="pill-btn bg-[var(--bg)] px-4 py-2 text-xs"
           >
             {muted ? 'Som desligado' : 'Som ligado'}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="pill-btn px-3 py-1 text-xs"
+            className="pill-btn bg-[var(--bg)] px-4 py-2 text-xs"
           >
             Cancelar (Esc)
           </button>

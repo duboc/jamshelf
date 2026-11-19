@@ -52,6 +52,7 @@ export const useDisplayStore = create<DisplayStore>()(
     }),
     {
       name: 'jamshelf-display-mode',
+      skipHydration: true,
       partialize: (s) => ({
         displayMode: s.displayMode,
         visualPulseEnabled: s.visualPulseEnabled,
