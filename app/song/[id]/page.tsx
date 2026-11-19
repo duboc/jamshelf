@@ -179,7 +179,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     if (!storedSong) return;
     if (songIdRef.current !== storedSong.id) {
       songIdRef.current = storedSong.id;
-      store.resetForSong(storedSong.tempo, storedSong.capo, storedSong.scrollSpeed);
+      store.resetForSong(storedSong.tempo, storedSong.capo, storedSong.scrollSpeed, storedSong.displayKey);
       setActiveSectionIdx(0);
       setSelectedCoord(null);
       setAddTarget(null);
@@ -1100,6 +1100,39 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             }}
             onEditNotes={() => setEditingNotes(true)}
             statusMsg={statusMsg}
+            toolbarSlot={
+              <SongToolbar
+                beatsPerBar={beatsPerBar}
+                savedTempo={song.tempo}
+                tempoConfirmed={song.tempoConfirmed}
+                chordCount={allChords.length}
+                isFollowing={live.isFollowing}
+                savedScrollSpeed={song.scrollSpeed}
+                hasCalibration={songHasCalibration}
+                calibrating={calibrating}
+                canCalibrate={song.sections.length >= 2}
+                canUndo={undoStack.length > 0}
+                canRedo={redoStack.length > 0}
+                editDirty={editDirty}
+                editDiscardArmed={editDiscardArmed}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                onSaveEdit={handleSaveVisualEdit}
+                onCancelEdit={handleCancelVisualEdit}
+                onEnterEdit={enterVisualEdit}
+                hasNotes={Boolean(song.notes)}
+                onSaveBpm={(nextBpm) => {
+                  patchMeta(id, 'tempo', nextBpm);
+                  flashStatus(`✓ BPM salvo (${nextBpm})`);
+                }}
+                onSaveScrollSpeed={handleSaveScrollSpeed}
+                onStartCalibration={handleStartCalibration}
+                onClearCalibration={() => setShowClearCalConfirm(true)}
+                onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
+                onTriggerCountIn={handleTriggerCountIn}
+                onToggleEditNotes={() => setEditingNotes((v) => !v)}
+              />
+            }
           />
 
           <SpotifySection
@@ -1115,38 +1148,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onDismissSuggestion={() => setSpotifySuggestionDismissed(true)}
             onToggleMoreSuggestions={() => setShowMoreSuggestions((v) => !v)}
             onClosePicker={() => setShowSpotifyPicker(false)}
-          />
-
-          <SongToolbar
-            beatsPerBar={beatsPerBar}
-            savedTempo={song.tempo}
-            tempoConfirmed={song.tempoConfirmed}
-            chordCount={allChords.length}
-            isFollowing={live.isFollowing}
-            savedScrollSpeed={song.scrollSpeed}
-            hasCalibration={songHasCalibration}
-            calibrating={calibrating}
-            canCalibrate={song.sections.length >= 2}
-            canUndo={undoStack.length > 0}
-            canRedo={redoStack.length > 0}
-            editDirty={editDirty}
-            editDiscardArmed={editDiscardArmed}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            onSaveEdit={handleSaveVisualEdit}
-            onCancelEdit={handleCancelVisualEdit}
-            onEnterEdit={enterVisualEdit}
-            hasNotes={Boolean(song.notes)}
-            onSaveBpm={(nextBpm) => {
-              patchMeta(id, 'tempo', nextBpm);
-              flashStatus(`✓ BPM salvo (${nextBpm})`);
-            }}
-            onSaveScrollSpeed={handleSaveScrollSpeed}
-            onStartCalibration={handleStartCalibration}
-            onClearCalibration={() => setShowClearCalConfirm(true)}
-            onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
-            onTriggerCountIn={handleTriggerCountIn}
-            onToggleEditNotes={() => setEditingNotes((v) => !v)}
           />
 
           {!store.editMode && (

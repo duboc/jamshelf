@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import { Metronome } from '@/components/metronome/Metronome';
@@ -15,7 +14,6 @@ import {
   PlayIcon,
   PlusIcon,
   RedoIcon,
-  SlidersIcon,
   UndoIcon,
 } from '@/components/ui/Icons';
 
@@ -92,8 +90,6 @@ export function SongToolbar({
     setSheetColumns,
   } = useDisplayStore();
 
-  const [mobileExtraOpen, setMobileExtraOpen] = useState(false);
-
   const isSingerMode = !store.editMode && displayMode === 'lyrics-only';
   const baselineSpeed = savedScrollSpeed ?? 1;
   const speedChanged = Math.abs(store.autoScrollSpeed - baselineSpeed) >= 0.04;
@@ -103,85 +99,87 @@ export function SongToolbar({
   // Dedicated clean edit toolbar when visual editor is active
   if (store.editMode) {
     return (
-      <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
-        <div className="w-full rounded-2xl bg-[var(--surface-high)] px-4 py-2 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)] font-semibold">
-              Modo edição
+      <div className="flex items-center justify-between flex-nowrap gap-2 flex-shrink-0 lg:col-span-3 lg:row-start-3 lg:w-full lg:rounded-2xl lg:bg-[var(--surface-high)] lg:px-4 lg:py-2">
+        <div className="flex items-center gap-1.5 flex-nowrap flex-shrink-0">
+          <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)] font-semibold">
+            Modo edição
+          </span>
+          <button
+            type="button"
+            disabled={!canUndo}
+            onClick={onUndo}
+            className="pill-btn px-3 h-9 text-xs"
+            title="Desfazer última alteração (Ctrl+Z)"
+          >
+            <UndoIcon size={14} />
+            Desfazer
+          </button>
+          <button
+            type="button"
+            disabled={!canRedo}
+            onClick={onRedo}
+            className="pill-btn px-3 h-9 text-xs"
+            title="Refazer alteração (Ctrl+Y)"
+          >
+            <RedoIcon size={14} />
+            Refazer
+          </button>
+          {editDirty && (
+            <span className="font-mono text-xs text-[var(--muted)] hidden sm:inline">
+              Alterações pendentes
             </span>
-            <button
-              type="button"
-              disabled={!canUndo}
-              onClick={onUndo}
-              className="pill-btn px-3 h-9 text-xs"
-              title="Desfazer última alteração (Ctrl+Z)"
-            >
-              <UndoIcon size={14} />
-              Desfazer
-            </button>
-            <button
-              type="button"
-              disabled={!canRedo}
-              onClick={onRedo}
-              className="pill-btn px-3 h-9 text-xs"
-              title="Refazer alteração (Ctrl+Y)"
-            >
-              <RedoIcon size={14} />
-              Refazer
-            </button>
-            {editDirty && (
-              <span className="font-mono text-xs text-[var(--muted)] hidden sm:inline">
-                Alterações pendentes
-              </span>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              type="button"
-              onClick={onCancelEdit}
-              className={`pill-btn px-3.5 h-9 text-xs ${editDiscardArmed ? 'pill-btn-rec' : ''}`}
-            >
-              {editDiscardArmed ? 'Descartar edições' : 'Cancelar'}
-            </button>
-            <button
-              type="button"
-              onClick={onSaveEdit}
-              className="pill-btn pill-btn-primary px-4 h-9 text-xs"
-            >
-              <CheckIcon size={14} />
-              Salvar e sair
-            </button>
-          </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onCancelEdit}
+            className={`pill-btn px-3.5 h-9 text-xs ${editDiscardArmed ? 'pill-btn-rec' : ''}`}
+          >
+            {editDiscardArmed ? 'Descartar edições' : 'Cancelar'}
+          </button>
+          <button
+            type="button"
+            onClick={onSaveEdit}
+            className="pill-btn pill-btn-primary px-4 h-9 text-xs"
+          >
+            <CheckIcon size={14} />
+            Salvar e sair
+          </button>
         </div>
       </div>
     );
   }
 
-  const secondaryControls = (
-    <>
-      {/* Sharp/flat toggle on mobile (< sm) lives inside expanded controls to keep row 1 compact */}
-      {!isSingerMode && (
+  // Unified pill strip: flows horizontally inside SongHeader's single scroll rail on < lg,
+  // and becomes a sleek full-width GM3 toolbar capsule on >= lg.
+  return (
+    <div className="flex items-center flex-nowrap gap-1.5 sm:gap-2 flex-shrink-0 lg:col-span-3 lg:row-start-3 lg:w-full lg:rounded-2xl lg:bg-[var(--surface-high)] lg:px-3 lg:py-2 lg:overflow-x-auto lg:no-scrollbar">
+      {/* Primary Auto-scroll (first in mobile scroll right after Cifra/Show, inline on desktop) */}
+      {isFollowing ? (
+        <span className="studio-chip text-[var(--tune)] flex-shrink-0">
+          {store.isAutoScrolling ? 'Rolando (sinc.)' : 'Rolagem (sinc.)'}
+        </span>
+      ) : (
         <button
           type="button"
-          aria-pressed={store.useFlats}
-          onClick={store.toggleFlats}
-          className={`sm:hidden pill-btn px-3 h-9 font-mono text-xs ${
-            store.useFlats ? 'pill-btn-primary' : ''
+          aria-pressed={store.isAutoScrolling}
+          onClick={store.toggleAutoScroll}
+          disabled={calibrating}
+          className={`pill-btn px-3 h-9 text-xs flex-shrink-0 lg:order-3 ${
+            store.isAutoScrolling ? 'pill-btn-tune' : ''
           }`}
-          title="Alternar sustenidos (#) e bemóis (b)"
+          title="Atalho: barra de espaço"
         >
-          {store.useFlats ? '♭ Bemóis' : '♯ Sustenidos'}
+          {store.isAutoScrolling ? <PauseIcon size={12} /> : <PlayIcon size={12} />}
+          {store.isAutoScrolling ? 'Pausar' : 'Auto-scroll'}
         </button>
       )}
 
-      {/* Speed stepper + presets (shown while scrolling on desktop, always available inside mobile Controles) */}
-      {!isFollowing && !calibrating && (
-        <div
-          className={`${
-            store.isAutoScrolling ? 'flex' : 'flex md:hidden'
-          } items-center gap-1 flex-wrap`}
-        >
+      {/* Speed stepper + presets while scrolling */}
+      {!isFollowing && !calibrating && store.isAutoScrolling && (
+        <div className="flex items-center gap-1 flex-nowrap flex-shrink-0 lg:order-4">
           <button
             type="button"
             onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
@@ -206,24 +204,23 @@ export function SongToolbar({
           >
             +
           </button>
-          {store.isAutoScrolling &&
-            [
-              { label: '0.75×', value: 0.75 },
-              { label: '1.0×', value: 1 },
-              { label: '1.25×', value: 1.25 },
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                aria-pressed={Math.abs(store.autoScrollSpeed - preset.value) < 0.04}
-                onClick={() => store.setAutoScrollSpeed(preset.value)}
-                className={`pill-btn px-2.5 h-9 font-mono text-xs ${
-                  Math.abs(store.autoScrollSpeed - preset.value) < 0.04 ? 'pill-btn-tune' : ''
-                }`}
-              >
-                {preset.label}
-              </button>
-            ))}
+          {[
+            { label: '0.75×', value: 0.75 },
+            { label: '1.0×', value: 1 },
+            { label: '1.25×', value: 1.25 },
+          ].map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              aria-pressed={Math.abs(store.autoScrollSpeed - preset.value) < 0.04}
+              onClick={() => store.setAutoScrollSpeed(preset.value)}
+              className={`pill-btn px-2.5 h-9 font-mono text-xs ${
+                Math.abs(store.autoScrollSpeed - preset.value) < 0.04 ? 'pill-btn-tune' : ''
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -231,16 +228,111 @@ export function SongToolbar({
         <button
           type="button"
           onClick={onSaveScrollSpeed}
-          className="pill-btn px-3 h-9 text-xs text-[var(--tune)] border-[var(--tune)]/50"
+          className="pill-btn px-3 h-9 text-xs text-[var(--tune)] border-[var(--tune)]/50 flex-shrink-0 lg:order-4"
           title="Salvar esta velocidade como padrão desta música"
         >
           Salvar ritmo
         </button>
       )}
 
+      {/* Transpose controls: hidden in Singer (lyrics-only) mode */}
+      {!isSingerMode && (
+        <div className="flex items-center gap-1 flex-shrink-0 lg:order-1">
+          <span className="field-label hidden sm:inline mr-0.5">Tom</span>
+          <button
+            type="button"
+            onClick={store.transposeDown}
+            className="pill-btn w-9 h-9 font-mono text-xs"
+            title="Baixar meio tom"
+            aria-label="Baixar meio tom"
+          >
+            -
+          </button>
+          <button
+            type="button"
+            disabled={store.transpose === 0}
+            onClick={() => store.setTranspose(0)}
+            className={`font-mono text-xs min-w-[32px] h-9 px-1.5 rounded-full text-center tabular-nums transition-colors ${
+              store.transpose !== 0
+                ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--on-accent)]'
+                : 'text-[var(--ink)] cursor-default'
+            }`}
+            title={store.transpose !== 0 ? 'Clique para resetar transposição para 0' : 'Tom original'}
+            aria-label={
+              store.transpose !== 0
+                ? `Transposição ${transposeLabel} semitons, clique para resetar para 0`
+                : 'Transposição 0 semitons'
+            }
+          >
+            {transposeLabel}
+          </button>
+          <button
+            type="button"
+            onClick={store.transposeUp}
+            className="pill-btn w-9 h-9 font-mono text-xs"
+            title="Subir meio tom"
+            aria-label="Subir meio tom"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            aria-pressed={store.useFlats}
+            onClick={store.toggleFlats}
+            className={`pill-btn w-9 h-9 font-mono text-xs ${
+              store.useFlats ? 'pill-btn-primary' : ''
+            }`}
+            title="Alternar sustenidos (#) e bemóis (b)"
+            aria-label={
+              store.useFlats
+                ? 'Usando bemóis, alternar para sustenidos'
+                : 'Usando sustenidos, alternar para bemóis'
+            }
+          >
+            {store.useFlats ? '♭' : '♯'}
+          </button>
+          {store.transpose !== 0 && (
+            <button
+              type="button"
+              onClick={onRequestSaveTranspose}
+              title="Salvar este novo tom permanentemente na música"
+              className="pill-btn px-2.5 h-9 text-xs text-[var(--accent-ink)] border-[var(--accent)]/50"
+            >
+              Salvar tom
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Font size */}
+      <div className="flex items-center gap-1 flex-shrink-0 lg:order-2">
+        <button
+          type="button"
+          onClick={() => setFontSize(fontSize - 10)}
+          className="pill-btn w-9 h-9 font-mono text-xs"
+          title="Diminuir letra"
+          aria-label="Diminuir letra"
+        >
+          A-
+        </button>
+        <span className="font-mono text-xs text-[var(--muted)] w-10 text-center tabular-nums hidden sm:inline">
+          {fontSize}%
+        </span>
+        <button
+          type="button"
+          onClick={() => setFontSize(fontSize + 10)}
+          className="pill-btn w-9 h-9 font-mono text-xs"
+          title="Aumentar letra"
+          aria-label="Aumentar letra"
+        >
+          A+
+        </button>
+      </div>
+
+      {/* Calibration */}
       {!isFollowing && canCalibrate && !calibrating && !store.isAutoScrolling && (
         hasCalibration ? (
-          <div className="inline-flex items-center gap-1">
+          <div className="inline-flex items-center gap-1 flex-shrink-0 lg:order-5">
             <button
               type="button"
               onClick={onStartCalibration}
@@ -264,7 +356,7 @@ export function SongToolbar({
           <button
             type="button"
             onClick={onStartCalibration}
-            className="pill-btn px-3 h-9 text-xs text-[var(--muted)]"
+            className="pill-btn px-3 h-9 text-xs text-[var(--muted)] flex-shrink-0 lg:order-5"
             title="Gravar em 1 ensaio o momento exato de cada seção para o auto-scroll acompanhar solos e viradas"
           >
             Calibrar
@@ -273,21 +365,23 @@ export function SongToolbar({
       )}
 
       {/* Metronome + Tap Tempo */}
-      <Metronome
-        readOnly={isFollowing}
-        beatsPerBar={beatsPerBar}
-        savedTempo={savedTempo}
-        tempoConfirmed={tempoConfirmed}
-        onSaveBpm={onSaveBpm}
-        heightClass="h-9"
-      />
+      <div className="flex-shrink-0 lg:order-6">
+        <Metronome
+          readOnly={isFollowing}
+          beatsPerBar={beatsPerBar}
+          savedTempo={savedTempo}
+          tempoConfirmed={tempoConfirmed}
+          onSaveBpm={onSaveBpm}
+          heightClass="h-9"
+        />
+      </div>
 
       {/* Visual 1-2-3-4 count-in */}
       {!isFollowing && !calibrating && (
         <button
           type="button"
           onClick={onTriggerCountIn}
-          className="pill-btn px-3 h-9 font-mono text-xs"
+          className="pill-btn px-3 h-9 font-mono text-xs flex-shrink-0 lg:order-7"
           title="Contagem visual 1-2-3-4 (atalho: C). Sincroniza com a banda se estiver liderando o Ao Vivo."
         >
           1·2·3·4
@@ -300,7 +394,9 @@ export function SongToolbar({
           type="button"
           aria-pressed={visualPulseEnabled}
           onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
-          className={`pill-btn px-3 h-9 text-xs ${visualPulseEnabled ? 'pill-btn-primary' : ''}`}
+          className={`pill-btn px-3 h-9 text-xs flex-shrink-0 lg:order-8 ${
+            visualPulseEnabled ? 'pill-btn-primary' : ''
+          }`}
           title="Exibir barra rítmica discreta no topo durante o metrônomo"
         >
           Pulso
@@ -313,7 +409,7 @@ export function SongToolbar({
           type="button"
           aria-pressed={sheetColumns === 2}
           onClick={() => setSheetColumns(sheetColumns === 2 ? 1 : 2)}
-          className={`hidden xl:inline-flex pill-btn px-3 h-9 text-xs ${
+          className={`hidden xl:inline-flex pill-btn px-3 h-9 text-xs flex-shrink-0 lg:order-9 ${
             sheetColumns === 2 ? 'pill-btn-tonal' : ''
           }`}
           title="Alternar entre 1 e 2 colunas para aproveitar telas largas"
@@ -323,8 +419,8 @@ export function SongToolbar({
         </button>
       )}
 
-      {/* Diagrams / Show chords / Notes / Edit */}
-      <div className="flex items-center gap-1.5 flex-wrap md:ml-auto">
+      {/* Right cluster: Diagrams / Show chords / Notes / Edit */}
+      <div className="flex items-center gap-1.5 flex-nowrap flex-shrink-0 lg:order-10 lg:ml-auto">
         {isSingerMode ? (
           <button
             type="button"
@@ -373,150 +469,6 @@ export function SongToolbar({
               Editar
             </button>
           </>
-        )}
-      </div>
-    </>
-  );
-
-  return (
-    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
-      <div className="w-full rounded-2xl bg-[var(--surface-high)] px-3 py-2 space-y-2">
-        <div className="w-full flex items-center flex-wrap gap-2">
-          {/* Transpose controls: hidden in Singer (lyrics-only) mode */}
-          {!isSingerMode && (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <span className="field-label hidden sm:inline mr-0.5">Tom</span>
-              <button
-                type="button"
-                onClick={store.transposeDown}
-                className="pill-btn w-9 h-9 font-mono text-xs"
-                title="Baixar meio tom"
-                aria-label="Baixar meio tom"
-              >
-                -
-              </button>
-              <button
-                type="button"
-                disabled={store.transpose === 0}
-                onClick={() => store.setTranspose(0)}
-                className={`font-mono text-xs min-w-[32px] h-9 px-1.5 rounded-full text-center tabular-nums transition-colors ${
-                  store.transpose !== 0
-                    ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--on-accent)]'
-                    : 'text-[var(--ink)] cursor-default'
-                }`}
-                title={store.transpose !== 0 ? 'Clique para resetar transposição para 0' : 'Tom original'}
-                aria-label={
-                  store.transpose !== 0
-                    ? `Transposição ${transposeLabel} semitons, clique para resetar para 0`
-                    : 'Transposição 0 semitons'
-                }
-              >
-                {transposeLabel}
-              </button>
-              <button
-                type="button"
-                onClick={store.transposeUp}
-                className="pill-btn w-9 h-9 font-mono text-xs"
-                title="Subir meio tom"
-                aria-label="Subir meio tom"
-              >
-                +
-              </button>
-              <button
-                type="button"
-                aria-pressed={store.useFlats}
-                onClick={store.toggleFlats}
-                className={`hidden sm:inline-flex pill-btn w-9 h-9 font-mono text-xs ${
-                  store.useFlats ? 'pill-btn-primary' : ''
-                }`}
-                title="Alternar sustenidos (#) e bemóis (b)"
-                aria-label={store.useFlats ? 'Usando bemóis, alternar para sustenidos' : 'Usando sustenidos, alternar para bemóis'}
-              >
-                {store.useFlats ? '♭' : '♯'}
-              </button>
-              {store.transpose !== 0 && (
-                <button
-                  type="button"
-                  onClick={onRequestSaveTranspose}
-                  title="Salvar este novo tom permanentemente na música"
-                  className="pill-btn px-2.5 h-9 text-xs text-[var(--accent-ink)] border-[var(--accent)]/50"
-                >
-                  Salvar tom
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Font size */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setFontSize(fontSize - 10)}
-              className="pill-btn w-9 h-9 font-mono text-xs"
-              title="Diminuir letra"
-              aria-label="Diminuir letra"
-            >
-              A-
-            </button>
-            <span className="font-mono text-xs text-[var(--muted)] w-10 text-center tabular-nums hidden sm:inline">
-              {fontSize}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setFontSize(fontSize + 10)}
-              className="pill-btn w-9 h-9 font-mono text-xs"
-              title="Aumentar letra"
-              aria-label="Aumentar letra"
-            >
-              A+
-            </button>
-          </div>
-
-          {/* Primary Auto-scroll */}
-          {isFollowing ? (
-            <span className="studio-chip text-[var(--tune)]">
-              {store.isAutoScrolling ? 'Rolando (sinc.)' : 'Rolagem (sinc.)'}
-            </span>
-          ) : (
-            <button
-              type="button"
-              aria-pressed={store.isAutoScrolling}
-              onClick={store.toggleAutoScroll}
-              disabled={calibrating}
-              className={`pill-btn px-2.5 sm:px-3 h-9 text-xs flex-shrink-0 ${
-                store.isAutoScrolling ? 'pill-btn-tune' : ''
-              }`}
-              title="Atalho: barra de espaço"
-            >
-              {store.isAutoScrolling ? <PauseIcon size={12} /> : <PlayIcon size={12} />}
-              <span className="sm:hidden">{store.isAutoScrolling ? 'Pausar' : 'Rolar'}</span>
-              <span className="hidden sm:inline">{store.isAutoScrolling ? 'Pausar' : 'Auto-scroll'}</span>
-            </button>
-          )}
-
-          {/* Mobile (< md) toggle to keep song sheet spacious without clipping controls */}
-          <button
-            type="button"
-            onClick={() => setMobileExtraOpen((v) => !v)}
-            aria-expanded={mobileExtraOpen}
-            className={`md:hidden pill-btn w-9 h-9 ml-auto ${
-              mobileExtraOpen ? 'pill-btn-tonal' : ''
-            }`}
-            title="Mostrar ou esconder metrônomo, diagramas, ritmo e edição"
-            aria-label="Mais ferramentas da música"
-          >
-            <SlidersIcon size={15} />
-          </button>
-
-          {/* Tablet/Desktop (>= md) inline wrapped controls */}
-          <div className="hidden md:contents">{secondaryControls}</div>
-        </div>
-
-        {/* Mobile expanded secondary controls */}
-        {mobileExtraOpen && (
-          <div className="md:hidden pt-2 border-t border-[var(--line-subtle)]/40 flex flex-wrap items-center gap-2">
-            {secondaryControls}
-          </div>
         )}
       </div>
     </div>
