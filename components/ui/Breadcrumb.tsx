@@ -1,7 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { navigateWithTransition } from '@/lib/utils/view-transition';
+import { TransitionLink } from './TransitionLink';
 
 export interface BreadcrumbItem {
   label: string;
@@ -12,9 +13,10 @@ interface BreadcrumbProps {
   items: BreadcrumbItem[];
   onBack?: () => void;
   rightSlot?: React.ReactNode;
+  vtSongId?: string;
 }
 
-export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
+export function Breadcrumb({ items, onBack, rightSlot, vtSongId }: BreadcrumbProps) {
   const router = useRouter();
   const parentItem = items.length >= 2 ? items[items.length - 2] : null;
 
@@ -24,7 +26,10 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
       return;
     }
     if (parentItem?.href) {
-      router.push(parentItem.href);
+      navigateWithTransition(router, parentItem.href, {
+        songId: vtSongId,
+        direction: 'back',
+      });
     } else {
       router.back();
     }
@@ -79,12 +84,14 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
                     </span>
                   )}
                   {item.href && !isLast ? (
-                    <Link
+                    <TransitionLink
                       href={item.href}
+                      vtSongId={vtSongId}
+                      vtDirection="back"
                       className="text-[var(--muted)] hover:text-[var(--accent-ink)] hover:underline underline-offset-2 transition-colors truncate max-w-[180px]"
                     >
                       {item.label}
-                    </Link>
+                    </TransitionLink>
                   ) : (
                     <span
                       aria-current={isLast ? 'page' : undefined}

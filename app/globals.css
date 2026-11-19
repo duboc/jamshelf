@@ -1170,6 +1170,109 @@
       gm3-fade-in var(--motion-press-duration) var(--motion-effects-fast) both;
   }
 
+  /* GM3 Scroll-Collapsible Top App Bar rows (smooth 1fr <-> 0fr grid collapse, zero height reflow hacks) */
+  .gm3-collapsible {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition-property: grid-template-rows, opacity;
+    transition-duration: var(--motion-spring-standard-default-duration), var(--motion-effects-fast-duration);
+    transition-timing-function: var(--motion-spring-standard-default), var(--motion-effects-fast);
+  }
+
+  .gm3-collapsible[data-collapsed="true"] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Mobile/Tablet (< 1024px) collapsible strip that dissolves via display: contents on >= 1024px */
+  .gm3-collapsible-mobile {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition-property: grid-template-rows, opacity;
+    transition-duration: var(--motion-spring-standard-default-duration), var(--motion-effects-fast-duration);
+    transition-timing-function: var(--motion-spring-standard-default), var(--motion-effects-fast);
+  }
+
+  .gm3-collapsible-mobile[data-collapsed="true"] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media (min-width: 1024px) {
+    .gm3-collapsible-mobile,
+    .gm3-collapsible-mobile[data-collapsed="true"] {
+      display: contents;
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  /* Desktop-only (>= 1024px) vertical collapse (dissolves via display: contents on < 1024px) */
+  .gm3-collapsible-desktop {
+    display: contents;
+  }
+
+  @media (min-width: 1024px) {
+    .gm3-collapsible-desktop {
+      display: grid;
+      grid-template-rows: 1fr;
+      opacity: 1;
+      transition-property: grid-template-rows, opacity;
+      transition-duration: var(--motion-spring-standard-default-duration), var(--motion-effects-fast-duration);
+      transition-timing-function: var(--motion-spring-standard-default), var(--motion-effects-fast);
+    }
+
+    .gm3-collapsible-desktop[data-collapsed="true"] {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
+  /* Desktop-only (>= 1024px) horizontal collapse for Row 1 action pills when scrolled */
+  .gm3-collapsible-desktop-x {
+    display: contents;
+  }
+
+  @media (min-width: 1024px) {
+    .gm3-collapsible-desktop-x {
+      display: grid;
+      grid-template-columns: 1fr;
+      opacity: 1;
+      transition-property: grid-template-columns, opacity;
+      transition-duration: var(--motion-spring-standard-default-duration), var(--motion-effects-fast-duration);
+      transition-timing-function: var(--motion-spring-standard-default), var(--motion-effects-fast);
+    }
+
+    .gm3-collapsible-desktop-x[data-collapsed="true"] {
+      grid-template-columns: 0fr;
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
+  .gm3-collapsible-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .gm3-collapsible-inner-open {
+    min-height: 0;
+    overflow: visible;
+  }
+
+  /* Cascading entrance for initial chord-sheet blocks (capped at first 4 via --block-idx) */
+  .gm3-sheet-block {
+    animation:
+      gm3-block-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
+      gm3-fade-in var(--motion-effects-default-duration) var(--motion-effects-default) both;
+    animation-delay: calc(var(--block-idx, 0) * 32ms);
+  }
+
   .no-scrollbar {
     scrollbar-width: none;
   }
@@ -1299,6 +1402,113 @@
   100% { transform: translateX(100%); }
 }
 
+@keyframes gm3-block-spatial {
+  from { transform: translateY(10px); }
+  to { transform: translateY(0); }
+}
+
+@keyframes gm3-vt-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes gm3-vt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gm3-vt-forward-in {
+  from { transform: translateY(12px) scale(0.992); }
+  to { transform: translateY(0) scale(1); }
+}
+
+@keyframes gm3-vt-back-in {
+  from { transform: translateY(-8px) scale(0.995); }
+  to { transform: translateY(0) scale(1); }
+}
+
+@keyframes gm3-vt-next-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(-28px); }
+}
+
+@keyframes gm3-vt-next-in {
+  from { transform: translateX(32px); }
+  to { transform: translateX(0); }
+}
+
+@keyframes gm3-vt-prev-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(28px); }
+}
+
+@keyframes gm3-vt-prev-in {
+  from { transform: translateX(-32px); }
+  to { transform: translateX(0); }
+}
+
+/* Native GM3 Shared-Element & Shared-Axis View Transitions */
+::view-transition-group(song-title-hero),
+::view-transition-group(song-key-hero) {
+  animation-duration: var(--motion-spring-standard-default-duration);
+  animation-timing-function: var(--motion-spring-standard-default);
+  z-index: 20;
+}
+
+::view-transition-old(song-title-hero),
+::view-transition-new(song-title-hero),
+::view-transition-old(song-key-hero),
+::view-transition-new(song-key-hero) {
+  height: 100%;
+  object-fit: contain;
+  animation-duration: var(--motion-effects-fast-duration);
+  animation-timing-function: var(--motion-effects-fast);
+}
+
+::view-transition-old(root) {
+  animation: gm3-vt-fade-out 160ms var(--motion-effects-fast) both;
+}
+
+::view-transition-new(root) {
+  animation:
+    gm3-vt-fade-in 200ms var(--motion-effects-default) both,
+    gm3-vt-forward-in var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both;
+}
+
+:root[data-vt-dir="back"]::view-transition-new(root) {
+  animation:
+    gm3-vt-fade-in 190ms var(--motion-effects-default) both,
+    gm3-vt-back-in var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both;
+}
+
+:root[data-vt-dir="next"]::view-transition-old(root) {
+  animation:
+    gm3-vt-fade-out 150ms var(--motion-effects-fast) both,
+    gm3-vt-next-out 200ms var(--motion-spring-standard-fast) both;
+}
+
+:root[data-vt-dir="next"]::view-transition-new(root) {
+  animation:
+    gm3-vt-fade-in 200ms var(--motion-effects-default) both,
+    gm3-vt-next-in var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both;
+}
+
+:root[data-vt-dir="prev"]::view-transition-old(root) {
+  animation:
+    gm3-vt-fade-out 150ms var(--motion-effects-fast) both,
+    gm3-vt-prev-out 200ms var(--motion-spring-standard-fast) both;
+}
+
+:root[data-vt-dir="prev"]::view-transition-new(root) {
+  animation:
+    gm3-vt-fade-in 200ms var(--motion-effects-default) both,
+    gm3-vt-prev-in var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both;
+}
+
+:root[data-vt-dir="fade"]::view-transition-new(root) {
+  animation: gm3-vt-fade-in 180ms var(--motion-effects-default) both;
+}
+
 @keyframes gm3-reduced-fade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1384,8 +1594,16 @@
   .gm3-panel-enter,
   .gm3-view-enter,
   .gm3-page-enter,
+  .gm3-sheet-block,
   .gm3-rail-label {
     animation: gm3-reduced-fade 120ms ease-out both !important;
+    animation-delay: 0ms !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 
   .gm3-beat-pop,

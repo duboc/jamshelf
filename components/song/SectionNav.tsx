@@ -8,12 +8,14 @@ interface SectionNavProps {
   sections: Section[];
   activeIdx: number;
   onJump: (sectionIdx: number) => void;
+  collapsed?: boolean;
 }
 
-export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
+export function SectionNav({ sections, activeIdx, onJump, collapsed = false }: SectionNavProps) {
   const railRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (collapsed) return;
     const rail = railRef.current;
     if (!rail) return;
     const activeBtn = rail.querySelector<HTMLElement>('[aria-current="true"]');
@@ -26,7 +28,7 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
       block: 'nearest',
       behavior: reduced ? 'auto' : 'smooth',
     });
-  }, [activeIdx]);
+  }, [activeIdx, collapsed]);
 
   if (sections.length <= 1) return null;
 

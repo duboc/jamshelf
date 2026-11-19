@@ -38,7 +38,7 @@ interface ChordSheetProps {
   calibrationTargetIdx?: number;
   onCalibrationTap?: (sectionIdx: number) => void;
   // Live-session & navigation props
-  onScrollStateChange?: (state: { scrollTop: number; scrollRatio: number }) => void;
+  onScrollStateChange?: (state: { scrollTop: number; scrollRatio: number; maxScroll: number }) => void;
   syncCorrection?: { scrollTop: number; scrollRatio: number | null; nonce: number };
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onActiveSectionChange?: (sectionIdx: number) => void;
@@ -348,7 +348,7 @@ export function ChordSheet({
     const handler = () => {
       const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
       const scrollRatio = maxScroll > 0 ? Math.max(0, Math.min(1, el.scrollTop / maxScroll)) : 0;
-      onScrollStateChange?.({ scrollTop: el.scrollTop, scrollRatio });
+      onScrollStateChange?.({ scrollTop: el.scrollTop, scrollRatio, maxScroll });
 
       if (onActiveSectionChange) {
         const nodes = el.querySelectorAll<HTMLElement>('[data-section-idx]');
@@ -431,7 +431,7 @@ export function ChordSheet({
   return (
     <div
       ref={scrollRef}
-      className={`flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 pt-3 relative ${bottomPaddingClass}`}
+      className={`flex-1 overflow-y-auto overscroll-y-contain px-4 sm:px-6 lg:px-8 pt-3 relative ${bottomPaddingClass}`}
       style={{ fontSize: `${fontSize}%` }}
     >
       {/* Thin GM3 progress bar while auto-scrolling */}

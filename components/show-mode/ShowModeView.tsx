@@ -5,6 +5,7 @@ import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useScrollCollapse } from '@/lib/hooks/use-scroll-collapse';
 import { Metronome } from '@/components/metronome/Metronome';
 import { VisualPulse } from '@/components/metronome/VisualPulse';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
@@ -12,6 +13,7 @@ import { SetlistDrawer } from '@/components/show-mode/SetlistDrawer';
 import { StageNotesBar } from '@/components/song/StageNotesBar';
 import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ColumnsIcon,
@@ -38,6 +40,14 @@ const subscribeSystemDark = (cb: () => void) => {
 const getSystemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
 const getServerDark = () => false;
 
+const subscribeDesktopStage = (cb: () => void) => {
+  const mql = window.matchMedia('(min-width: 1024px)');
+  mql.addEventListener('change', cb);
+  return () => mql.removeEventListener('change', cb);
+};
+const getDesktopStage = () => window.matchMedia('(min-width: 1024px)').matches;
+const getServerDesktopStage = () => true;
+
 interface ShowModeViewProps {
   song: Song;
   displayedKey: string;
@@ -54,7 +64,7 @@ interface ShowModeViewProps {
   onNavigate: (songId: string) => void;
   onExit: () => void;
   onChordTap: (chord: string) => void;
-  onScrollStateChange: (state: { scrollTop: number; scrollRatio: number }) => void;
+  onScrollStateChange: (state: { scrollTop: number; scrollRatio: number; maxScroll?: number }) => void;
   onTriggerCountIn: () => void;
   onSaveBpm?: (bpm: number) => void;
   handleGoLive: () => void;
@@ -109,6 +119,11 @@ export function ShowModeView({
   } = useDisplayStore();
 
   const systemDark = useSyncExternalStore(subscribeSystemDark, getSystemDark, getServerDark);
+  const isDesktopStage = useSyncExternalStore(
+    subscribeDesktopStage,
+    getDesktopStage,
+    getServerDesktopStage
+  );
   const isDark = theme === 'dark' || (theme === 'system' && systemDark);
 
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -116,6 +131,15 @@ export function ShowModeView({
   const [showSetlist, setShowSetlist] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [pitchRinging, setPitchRinging] = useState(false);
+
+  const {
+    compact: stageCompact,
+    setCompact: setStageCompact,
+    handleScroll: handleStageScroll,
+  } = useScrollCollapse({
+    lockedExpanded: isDesktopStage || mobileToolsOpen || showSetlist || showNamePrompt,
+    resetKey: song.id,
+  });
 
   const canNavigate = !live.isFollowing;
   const chordsHidden = displayMode === 'lyrics-only';
@@ -450,10 +474,23 @@ export function ShowModeView({
     >
       <VisualPulse />
 
-      {/* Stage header */}
-      <header className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-3 pb-2.5">
-        <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 sm:px-5 py-2.5 space-y-2.5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+      {/* Stage header (collapses Row 2 on mobile/tablet scroll down to maximize lyric visibility) */}
+      <header
+        data-compact={stageCompact ? 'true' : undefined}
+        className={`flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 ${
+          stageCompact ? 'pt-2 pb-1.5' : 'pt-3 pb-2.5'
+        }`}
+      >
+        <div
+          className={`w-full rounded-[20px] bg-[var(--surface)] px-4 sm:px-5 ${
+            stageCompact ? 'py-1.5' : 'py-2.5 space-y-2.5'
+          }`}
+        >
+          <div
+            className={`flex flex-col lg:flex-row lg:items-center justify-between ${
+              stageCompact ? 'gap-0 lg:gap-2.5' : 'gap-2.5'
+            }`}
+          >
             <div className="flex items-center justify-between gap-2 min-w-0 lg:contents">
               <button
                 type="button"
@@ -463,19 +500,31 @@ export function ShowModeView({
                 title="Abrir setlist (atalho: S) - toque para pular ou arraste para reordenar"
                 className="gm3-card-interactive min-w-0 text-left -mx-2 px-3 py-1 hover:bg-[var(--surface-high)] cursor-pointer lg:order-1 lg:mr-auto"
               >
-                <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] truncate">
-                  <MenuListIcon size={14} className="flex-shrink-0" />
-                  <span className="truncate">
-                    {activeSetlist.name} · {setlistSongIdx + 1} de {totalSongs}
-                    {wakeLockActive ? ' · Tela ativa' : ''}
-                  </span>
-                </div>
+                {!stageCompact && (
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] truncate">
+                    <MenuListIcon size={14} className="flex-shrink-0" />
+                    <span className="truncate">
+                      {activeSetlist.name} · {setlistSongIdx + 1} de {totalSongs}
+                      {wakeLockActive ? ' · Tela ativa' : ''}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-baseline gap-2.5 min-w-0">
-                  <h1 className="font-display font-bold text-xl sm:text-2xl text-[var(--ink)] truncate leading-tight">
+                  <h1
+                    data-vt-song-title={song.id}
+                    className={`font-display font-bold text-[var(--ink)] truncate leading-tight ${
+                      stageCompact ? 'text-[17px] sm:text-xl' : 'text-xl sm:text-2xl'
+                    }`}
+                  >
                     {song.title}
                   </h1>
                   {displayedKey && !chordsHidden && (
-                    <span className="font-expressive text-lg text-[var(--accent)] flex-shrink-0">
+                    <span
+                      data-vt-song-key={song.id}
+                      className={`font-expressive text-[var(--accent)] flex-shrink-0 ${
+                        stageCompact ? 'text-base' : 'text-lg'
+                      }`}
+                    >
                       {displayedKey}
                     </span>
                   )}
@@ -483,10 +532,26 @@ export function ShowModeView({
               </button>
 
               <div className="flex items-center gap-1.5 flex-shrink-0 lg:order-3">
+                {stageCompact && canNavigate && (
+                  <button
+                    type="button"
+                    aria-pressed={store.isAutoScrolling}
+                    onClick={store.toggleAutoScroll}
+                    className={`lg:hidden pill-btn w-11 h-11 text-xs flex-shrink-0 ${
+                      store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
+                    }`}
+                    title={store.isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
+                    aria-label={store.isAutoScrolling ? 'Pausar auto-scroll' : 'Iniciar auto-scroll'}
+                  >
+                    {store.isAutoScrolling ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                  className="pill-btn bg-[var(--bg)] w-11 h-11"
+                  className={`pill-btn bg-[var(--bg)] w-11 h-11 ${
+                    stageCompact ? 'hidden sm:inline-flex' : ''
+                  }`}
                   title={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro (palco)'}
                   aria-label={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
                 >
@@ -497,16 +562,34 @@ export function ShowModeView({
                 <button
                   type="button"
                   onClick={onExit}
-                  className="pill-btn bg-[var(--bg)] px-4 h-11 text-xs sm:text-sm"
+                  className="pill-btn bg-[var(--bg)] px-3.5 sm:px-4 h-11 text-xs sm:text-sm"
                   title="Sair do Modo Show (Esc)"
                 >
                   Sair
                 </button>
+                {stageCompact && (
+                  <button
+                    type="button"
+                    onClick={() => setStageCompact(false)}
+                    className="lg:hidden gm3-icon-btn w-11 h-11 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                    title="Expandir controles de palco"
+                    aria-label="Expandir controles de palco"
+                  >
+                    <ChevronDownIcon size={17} />
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Primary controls (always visible with 44px touch targets and zero clipping) */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap lg:order-2">
+            {/* Primary controls (44px touch targets; collapses smoothly on < lg scroll down) */}
+            <div
+              className="gm3-collapsible-mobile lg:order-2"
+              data-collapsed={stageCompact ? 'true' : undefined}
+              aria-hidden={stageCompact || undefined}
+              inert={stageCompact || undefined}
+            >
+              <div className="gm3-collapsible-inner lg:contents">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap lg:order-2">
               {canNavigate && (
                 <button
                   type="button"
@@ -571,6 +654,8 @@ export function ShowModeView({
 
               {/* Full inline wrapped controls on desktop (>= lg) */}
               <div className="hidden lg:contents">{secondaryStageControls}</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -652,7 +737,10 @@ export function ShowModeView({
             song={song}
             displayMode={displayMode}
             onChordTap={onChordTap}
-            onScrollStateChange={onScrollStateChange}
+            onScrollStateChange={(st) => {
+              onScrollStateChange(st);
+              handleStageScroll(st.scrollTop, st.maxScroll, store.isAutoScrolling);
+            }}
             syncCorrection={live.syncCorrection}
             bottomPaddingClass="pb-20"
           />

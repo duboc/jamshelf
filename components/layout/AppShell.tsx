@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import Link from 'next/link';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
@@ -12,6 +11,8 @@ import {
   type ScrollLeadIn,
   type ThemeMode,
 } from '@/lib/stores/display-store';
+import { commitPendingViewTransition } from '@/lib/utils/view-transition';
+import { TransitionLink } from '@/components/ui/TransitionLink';
 import { QuickSearchModal } from './QuickSearchModal';
 import { ShortcutsModal } from '@/components/ui/ShortcutsModal';
 import { HelpCircleIcon, JamshelfMark, PlusIcon } from '@/components/ui/Icons';
@@ -493,6 +494,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const syncError = songSyncError || setlistSyncError;
   const hasPendingWrites = songPendingCount > 0 || setlistPendingCount > 0;
 
+  // Release any awaiting View Transition right when the new Next.js route commits to DOM
+  const routeKey = `${pathname}?${searchParams.toString()}`;
+  useLayoutEffect(() => {
+    commitPendingViewTransition();
+  }, [routeKey]);
+
   const handleRetrySync = async () => {
     setRetryingSync(true);
     try {
@@ -643,18 +650,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
 
               {isExpandedRail && (
-                <Link
+                <TransitionLink
                   href="/"
+                  vtDirection="fade"
                   className="gm3-rail-label inline-flex items-center gap-2 font-expressive text-[19px] text-[var(--ink)] tracking-[-0.02em] pr-1 hover:text-[var(--accent)] transition-colors whitespace-nowrap"
                 >
                   <JamshelfMark size={24} />
                   <span>Jamshelf</span>
-                </Link>
+                </TransitionLink>
               )}
             </div>
 
-            <Link
+            <TransitionLink
               href="/add-song"
+              vtDirection="forward"
               aria-label="Nova música"
               aria-current={activeNav === 'add' ? 'page' : undefined}
               title="Adicionar nova música"
@@ -664,7 +673,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <PlusIcon size={20} className="flex-shrink-0" />
               {isExpandedRail && <span className="gm3-rail-label whitespace-nowrap">Nova música</span>}
-            </Link>
+            </TransitionLink>
           </div>
 
           {/* Center section: Primary navigation items + Pinned setlists */}
@@ -672,9 +681,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <nav aria-label="Menu principal" className={`flex flex-col ${isExpandedRail ? 'gap-1.5' : 'gap-4 items-center'}`}>
               {navItems.map((item) =>
                 isExpandedRail ? (
-                  <Link
+                  <TransitionLink
                     key={item.key}
                     href={item.href}
+                    vtDirection="fade"
                     aria-current={item.active ? 'page' : undefined}
                     data-active={item.active || undefined}
                     className={`gm3-nav-pill gm3-nav-pill-expanded h-11 px-4 flex items-center justify-between gap-2 text-[14px] font-medium ${
@@ -690,11 +700,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <span className="gm3-rail-label truncate whitespace-nowrap">{item.label}</span>
                     </span>
                     <span className="gm3-rail-label font-mono text-xs tabular-nums">{item.count}</span>
-                  </Link>
+                  </TransitionLink>
                 ) : (
-                  <Link
+                  <TransitionLink
                     key={item.key}
                     href={item.href}
+                    vtDirection="fade"
                     aria-current={item.active ? 'page' : undefined}
                     className="group flex flex-col items-center gap-1 w-full rounded-2xl"
                   >
@@ -715,7 +726,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     >
                       {item.shortLabel}
                     </span>
-                  </Link>
+                  </TransitionLink>
                 )
               )}
             </nav>
@@ -729,9 +740,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     const isActive = activeSetlistId === sl.id;
                     const validCount = sl.songIds.filter((sid) => validSongIds.has(sid)).length;
                     return (
-                      <Link
+                      <TransitionLink
                         key={sl.id}
                         href={`/setlists/${sl.id}`}
+                        vtDirection="forward"
                         aria-current={isActive ? 'page' : undefined}
                         data-active={isActive || undefined}
                         className={`gm3-nav-pill gm3-nav-pill-expanded h-9 px-4 flex items-center justify-between gap-2 text-[13px] ${
@@ -753,7 +765,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           <span className="truncate">{sl.name}</span>
                         </span>
                         <span className="font-mono text-xs tabular-nums">{validCount}</span>
-                      </Link>
+                      </TransitionLink>
                     );
                   })}
                 </nav>
@@ -800,10 +812,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Compact mobile-only utility row */}
         {!hideChrome && !isSongPage && (
           <header className="md:hidden flex items-center justify-between gap-2 px-4 pt-3 pb-1">
-            <Link href="/" className="inline-flex items-center gap-2 font-expressive text-xl text-[var(--ink)]">
+            <TransitionLink href="/" vtDirection="fade" className="inline-flex items-center gap-2 font-expressive text-xl text-[var(--ink)]">
               <JamshelfMark size={24} />
               <span>Jamshelf</span>
-            </Link>
+            </TransitionLink>
             <div className="flex items-center gap-1">
               {!isHomeAll && (
                 <button
@@ -882,14 +894,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!hideChrome && !isSongPage && (
         <>
           {!pathname.startsWith('/add-song') && !pathname.startsWith('/setlists/') && tabParam !== 'setlists' && (
-            <Link
+            <TransitionLink
               href="/add-song"
+              vtDirection="forward"
               aria-label="Nova música"
               className="md:hidden gm3-fab gm3-dialog-enter fixed right-4 bottom-20 z-30 h-14 px-5 text-sm shadow-md"
             >
               <PlusIcon size={20} />
               <span>Nova música</span>
-            </Link>
+            </TransitionLink>
           )}
 
           <nav
@@ -899,9 +912,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <div className="grid grid-cols-3 h-16 px-2">
               {navItems.map((item) => (
-                <Link
+                <TransitionLink
                   key={item.key}
                   href={item.href}
+                  vtDirection="fade"
                   aria-current={item.active ? 'page' : undefined}
                   className="group flex flex-col items-center justify-center gap-1 rounded-2xl"
                 >
@@ -922,7 +936,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     {item.shortLabel}
                   </span>
-                </Link>
+                </TransitionLink>
               ))}
             </div>
           </nav>

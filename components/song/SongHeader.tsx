@@ -15,6 +15,7 @@ import {
   EditIcon,
   HeadphonesIcon,
   HeartIcon,
+  PauseIcon,
   PitchWaveIcon,
   PlayIcon,
   StarIcon,
@@ -66,6 +67,14 @@ interface SongHeaderProps {
   statusMsg: string;
   /** Unified toolbar controls: flows inline in the single horizontal scroll strip on < lg, and spans Row 2 on >= lg. */
   toolbarSlot?: React.ReactNode;
+  /** Scroll-collapsed compact GM3 Top App Bar state (maximizes lyric space while reading/scrolling). */
+  compact?: boolean;
+  onExpandHeader?: () => void;
+  onBack?: () => void;
+  isAutoScrolling?: boolean;
+  onToggleAutoScroll?: () => void;
+  isFollowing?: boolean;
+  onOverlayStateChange?: (state: { popoverOpen: boolean; editingIdentity: boolean }) => void;
 }
 
 export function SongHeader({
@@ -110,6 +119,13 @@ export function SongHeader({
   onEditNotes,
   statusMsg,
   toolbarSlot,
+  compact = false,
+  onExpandHeader,
+  onBack,
+  isAutoScrolling = false,
+  onToggleAutoScroll,
+  isFollowing = false,
+  onOverlayStateChange,
 }: SongHeaderProps) {
   const { capoDisplay, setCapoDisplay } = useDisplayStore();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -202,8 +218,19 @@ export function SongHeader({
     };
   }, [moreOpen, metaOpen]);
 
+  useEffect(() => {
+    onOverlayStateChange?.({ popoverOpen: moreOpen || metaOpen, editingIdentity });
+  }, [moreOpen, metaOpen, editingIdentity, onOverlayStateChange]);
+
   return (
-    <section className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-1 pb-2">
+    <section
+      data-compact={compact ? 'true' : undefined}
+      className={`flex-shrink-0 px-4 sm:px-6 lg:px-8 border-b transition-colors duration-200 ${
+        compact
+          ? 'bg-[var(--surface)]/95 backdrop-blur-md border-[var(--line-subtle)]/35 py-1.5'
+          : 'bg-[var(--bg)] border-transparent pt-1 pb-2'
+      }`}
+    >
       {/*
         Responsive single-DOM grid:
         - Mobile/Tablet (< lg):
@@ -213,17 +240,50 @@ export function SongHeader({
         - Desktop (>= lg):
           Row 1: Setlist stepper + Title/Subtitle (col 1) | Action pills (col 2) | Favorite & Mais (col 3)
           Row 2: Dedicated full-width GM3 toolbar capsule spanning cols 1-3
+        - Compact (scrolled down):
+          Row 2 & Row 3 smoothly collapse to 0fr, leaving a single ~52px GM3 bar with Back, Title, Key, Auto-scroll, Mais, and Expand.
       */}
-      <div className="w-full grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 lg:gap-x-3 gap-y-1.5 lg:gap-y-2.5 items-center">
-        {/* Col 1, Row 1 (+ Row 2 on desktop): Setlist stepper (sm+) + Title + Artist + calm metadata */}
-        <div className="col-start-1 row-start-1 min-w-0 flex items-center gap-3">
+      <div
+        className={`w-full grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 lg:gap-x-3 items-center ${
+          compact ? 'gap-y-0' : 'gap-y-1.5 lg:gap-y-2.5'
+        }`}
+      >
+        {/* Col 1, Row 1: Inline Back (compact) + Setlist stepper (sm+) + Title + Key (compact) */}
+        <div className={`col-start-1 row-start-1 min-w-0 flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+          {compact && onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+              title="Voltar"
+              aria-label="Voltar"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+                className="transition-transform group-hover:-translate-x-0.5"
+              >
+                <path
+                  d="M13 8H3.5M7.5 3.8 3.3 8l4.2 4.2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+
           {activeSetlist && (
             <div className="hidden sm:inline-flex gm3-btn-group flex-shrink-0">
               <button
                 type="button"
                 onClick={() => prevSongId && onNavigateSong(prevSongId)}
                 disabled={!prevSongId || live.isFollowing}
-                className="pill-btn w-9 h-9"
+                className={`pill-btn w-9 h-9 ${compact ? 'bg-[var(--bg)]' : ''}`}
                 title="Música anterior no setlist"
                 aria-label="Música anterior no setlist"
               >
@@ -232,7 +292,7 @@ export function SongHeader({
               <button
                 type="button"
                 onClick={onOpenSetlistDrawer}
-                className="pill-btn px-2.5 h-9 font-mono text-xs tabular-nums"
+                className={`pill-btn px-2.5 h-9 font-mono text-xs tabular-nums ${compact ? 'bg-[var(--bg)]' : ''}`}
                 title="Abrir lista do setlist (atalho: S)"
               >
                 {setlistSongIdx + 1}/{totalSetlistSongs}
@@ -241,7 +301,7 @@ export function SongHeader({
                 type="button"
                 onClick={() => nextSongId && onNavigateSong(nextSongId)}
                 disabled={!nextSongId || live.isFollowing}
-                className="pill-btn w-9 h-9"
+                className={`pill-btn w-9 h-9 ${compact ? 'bg-[var(--bg)]' : ''}`}
                 title="Próxima música no setlist"
                 aria-label="Próxima música no setlist"
               >
@@ -289,21 +349,39 @@ export function SongHeader({
                 </div>
               ) : (
                 <>
-                  <h1 className="font-display font-bold text-xl sm:text-[26px] leading-tight text-[var(--ink)] line-clamp-2 lg:truncate">
+                  <h1
+                    data-vt-song-title={song.id}
+                    className={`font-display font-bold leading-tight text-[var(--ink)] ${
+                      compact
+                        ? 'text-[17px] sm:text-[19px] truncate'
+                        : 'text-xl sm:text-[26px] line-clamp-2 lg:truncate'
+                    }`}
+                  >
                     {titleInput || song.title}
                   </h1>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingIdentity(true);
-                      requestAnimationFrame(() => titleInputRef.current?.focus());
-                    }}
-                    className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
-                    title="Editar título e artista"
-                    aria-label="Editar título e artista"
-                  >
-                    <EditIcon size={14} />
-                  </button>
+                  {compact && displayedKey && (
+                    <span
+                      data-vt-song-key={song.id}
+                      className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold flex-shrink-0 px-2 py-0.5 text-[11px]"
+                    >
+                      <span className="hidden sm:inline">Tom </span>
+                      {displayedKey}
+                    </span>
+                  )}
+                  {!compact && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingIdentity(true);
+                        requestAnimationFrame(() => titleInputRef.current?.focus());
+                      }}
+                      className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                      title="Editar título e artista"
+                      aria-label="Editar título e artista"
+                    >
+                      <EditIcon size={14} />
+                    </button>
+                  )}
                 </>
               )}
 
@@ -320,8 +398,24 @@ export function SongHeader({
           </div>
         </div>
 
-        {/* Favorite + Mais: pinned top-right on mobile/tablet and col 3 on desktop (never inside scroll) */}
+        {/* Auto-scroll (compact) + Favorite + Mais + Expand (compact): pinned top-right (never inside overflow-hidden) */}
         <div className="col-start-2 row-start-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 flex items-center gap-1.5 flex-shrink-0 justify-end">
+          {compact && !isFollowing && !editMode && onToggleAutoScroll && (
+            <button
+              type="button"
+              aria-pressed={isAutoScrolling}
+              onClick={onToggleAutoScroll}
+              className={`pill-btn h-9 w-9 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
+                isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
+              }`}
+              title={isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
+              aria-label={isAutoScrolling ? 'Pausar auto-scroll' : 'Iniciar auto-scroll'}
+            >
+              {isAutoScrolling ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
+              <span className="hidden sm:inline">{isAutoScrolling ? 'Pausar' : 'Rolar'}</span>
+            </button>
+          )}
+
           <button
             type="button"
             aria-pressed={song.favorite}
@@ -333,6 +427,8 @@ export function SongHeader({
               onPatchMeta('favorite', song.favorite ? 'false' : 'true');
             }}
             className={`pill-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-9 h-9 ${
+              compact ? 'hidden sm:inline-flex bg-[var(--bg)]' : ''
+            } ${
               song.favorite ? 'text-[var(--rec)] border-[var(--rec)]/40' : 'text-[var(--muted)]'
             }`}
             title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
@@ -348,7 +444,7 @@ export function SongHeader({
               onClick={() => setMoreOpen((v) => !v)}
               aria-expanded={moreOpen}
               aria-haspopup="dialog"
-              className="pill-btn px-2.5 sm:px-3 h-9 text-xs"
+              className={`pill-btn px-2.5 sm:px-3 h-9 text-xs ${compact ? 'bg-[var(--bg)]' : ''}`}
               title="Mais ações da música"
             >
               Mais
@@ -498,54 +594,76 @@ export function SongHeader({
               </div>
             )}
           </div>
+
+          {compact && onExpandHeader && (
+            <button
+              type="button"
+              onClick={onExpandHeader}
+              className="gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+              title="Mostrar todos os controles da música"
+              aria-label="Expandir cabeçalho e controles"
+            >
+              <ChevronDownIcon size={16} />
+            </button>
+          )}
         </div>
 
         {/* Row 2 (full width on < lg, col 1 on >= lg): Calm Artist + Musical Metadata line */}
-        <div className="col-span-2 row-start-2 lg:col-span-1 lg:col-start-1 lg:row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 sm:pl-0">
-          {isEditingTitle ? (
-            <input
-              type="text"
-              value={artistInput}
-              onChange={(e) => onArtistChange(e.target.value)}
-              onBlur={onSaveArtist}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  onSaveArtist();
-                  if (!editMode) setEditingIdentity(false);
-                }
-              }}
-              className="studio-input text-xs sm:text-[13px] text-[var(--ink)] px-2.5 py-1 max-w-[220px]"
-              placeholder="Artista não informado"
-              aria-label="Artista"
-            />
-          ) : (
-            <p className="text-xs sm:text-[13px] text-[var(--muted)] truncate max-w-[180px] sm:max-w-[240px]">
-              {artistInput || 'Artista não informado'}
-            </p>
-          )}
-
-          {/* Compact metadata trigger -> opens popover cleanly outside scroll */}
-          <div ref={metaRef} className="relative flex items-center gap-1.5 flex-wrap">
-            <button
-              ref={metaTriggerRef}
-              type="button"
-              onClick={() => {
-                setBpmDraft(String(song.tempo));
-                setBpmHint('');
-                setDurationDraft(song.duration ? formatDuration(song.duration) : '');
-                setDurationHint('');
-                setMetaOpen((v) => !v);
-              }}
-              aria-expanded={metaOpen}
-              aria-haspopup="dialog"
-              className="pill-btn bg-transparent hover:bg-[var(--surface-high)] px-1.5 h-8 group"
-              title="Ajustar capo, andamento (BPM), compasso e duração"
-            >
-              {displayedKey && (
-                <span className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold">
-                  Tom {displayedKey}
-                </span>
+        <div
+          className="gm3-collapsible col-span-2 row-start-2 lg:col-span-1 lg:col-start-1 lg:row-start-2 min-w-0"
+          data-collapsed={compact ? 'true' : undefined}
+          aria-hidden={compact || undefined}
+          inert={compact || undefined}
+        >
+          <div className={metaOpen ? 'gm3-collapsible-inner-open' : 'gm3-collapsible-inner'}>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 sm:pl-0">
+              {isEditingTitle ? (
+                <input
+                  type="text"
+                  value={artistInput}
+                  onChange={(e) => onArtistChange(e.target.value)}
+                  onBlur={onSaveArtist}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onSaveArtist();
+                      if (!editMode) setEditingIdentity(false);
+                    }
+                  }}
+                  className="studio-input text-xs sm:text-[13px] text-[var(--ink)] px-2.5 py-1 max-w-[220px]"
+                  placeholder="Artista não informado"
+                  aria-label="Artista"
+                />
+              ) : (
+                <p className="text-xs sm:text-[13px] text-[var(--muted)] truncate max-w-[180px] sm:max-w-[240px]">
+                  {artistInput || 'Artista não informado'}
+                </p>
               )}
+
+              {/* Compact metadata trigger -> opens popover cleanly outside scroll */}
+              <div ref={metaRef} className="relative flex items-center gap-1.5 flex-wrap">
+                <button
+                  ref={metaTriggerRef}
+                  type="button"
+                  onClick={() => {
+                    setBpmDraft(String(song.tempo));
+                    setBpmHint('');
+                    setDurationDraft(song.duration ? formatDuration(song.duration) : '');
+                    setDurationHint('');
+                    setMetaOpen((v) => !v);
+                  }}
+                  aria-expanded={metaOpen}
+                  aria-haspopup="dialog"
+                  className="pill-btn bg-transparent hover:bg-[var(--surface-high)] px-1.5 h-8 group"
+                  title="Ajustar capo, andamento (BPM), compasso e duração"
+                >
+                  {displayedKey && (
+                    <span
+                      data-vt-song-key={compact ? undefined : song.id}
+                      className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold"
+                    >
+                      Tom {displayedKey}
+                    </span>
+                  )}
               {song.capo > 0 && (
                 <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]">
                   Capo {song.capo}
@@ -760,22 +878,37 @@ export function SongHeader({
                 </div>
               </div>
             )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/*
-          Row 3 on < lg: ONE single horizontal scrollable pill strip merging actions + toolbar!
-          On >= lg: `lg:contents` dissolves the wrapper so actions sit cleanly in Row 1 Col 2
-          and `toolbarSlot` spans Row 3 across all 3 columns.
+          Row 3 on < lg: ONE single horizontal scrollable pill strip merging actions + toolbar,
+          wrapped in gm3-collapsible-mobile so scrolling collapses it smoothly to 0fr.
+          On >= lg: gm3-collapsible-mobile dissolves via display: contents; Action Pills collapse
+          horizontally via gm3-collapsible-desktop-x and toolbarSlot collapses vertically via gm3-collapsible-desktop.
         */}
-        <div className="relative col-span-2 row-start-3 lg:contents">
-          <div className="rounded-2xl bg-[var(--surface-high)] px-2 py-1.5 pr-9 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar lg:contents">
-            {/* Header Action Pills (hidden on mobile during editMode so edit bar stays spotless) */}
-            <div
-              className={`${
-                editMode ? 'hidden lg:flex' : 'flex'
-              } items-center gap-1.5 flex-nowrap flex-shrink-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center lg:justify-end`}
-            >
+        <div
+          className="gm3-collapsible-mobile relative col-span-2 row-start-3"
+          data-collapsed={compact ? 'true' : undefined}
+          aria-hidden={compact || undefined}
+          inert={compact || undefined}
+        >
+          <div className="gm3-collapsible-inner lg:contents">
+            <div className="relative lg:contents">
+              <div className="rounded-2xl bg-[var(--surface-high)] px-2 py-1.5 pr-9 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar lg:contents">
+                {/* Header Action Pills (hidden on mobile during editMode so edit bar stays spotless) */}
+                <div
+                  className="gm3-collapsible-desktop-x lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
+                  data-collapsed={compact ? 'true' : undefined}
+                >
+                  <div className="contents lg:block lg:min-w-0 lg:overflow-hidden">
+                    <div
+                      className={`${
+                        editMode ? 'hidden lg:flex' : 'flex'
+                      } items-center gap-1.5 flex-nowrap flex-shrink-0 lg:justify-end lg:py-0.5`}
+                    >
               {/* Show Mode CTA first on mobile/tablet when in setlist */}
               {activeSetlist && !editMode && (
                 <button
@@ -936,23 +1069,34 @@ export function SongHeader({
                   Ouvir
                 </button>
               )}
-            </div>
+                    </div>
+                  </div>
+                </div>
 
-            {!editMode && (
-              <span
+                {!editMode && (
+                  <span
+                    aria-hidden="true"
+                    className="lg:hidden w-px h-5 bg-[var(--line-subtle)] flex-shrink-0 mx-0.5"
+                  />
+                )}
+
+                {/* Unified Toolbar Slot: inline inside the horizontal scroll on < lg, full-width collapsible Row 3 on >= lg */}
+                <div
+                  className="gm3-collapsible-desktop lg:col-span-3 lg:row-start-3"
+                  data-collapsed={compact ? 'true' : undefined}
+                >
+                  <div className="contents lg:block gm3-collapsible-inner">
+                    {toolbarSlot}
+                  </div>
+                </div>
+              </div>
+
+              <div
                 aria-hidden="true"
-                className="lg:hidden w-px h-5 bg-[var(--line-subtle)] flex-shrink-0 mx-0.5"
+                className="lg:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-9 rounded-r-2xl bg-gradient-to-l from-[var(--surface-high)] to-transparent"
               />
-            )}
-
-            {/* Unified Toolbar Slot: inline inside the horizontal scroll on < lg, full-width capsule Row 3 on >= lg */}
-            {toolbarSlot}
+            </div>
           </div>
-
-          <div
-            aria-hidden="true"
-            className="lg:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-9 rounded-r-2xl bg-gradient-to-l from-[var(--surface-high)] to-transparent"
-          />
         </div>
       </div>
 

@@ -158,7 +158,9 @@ A top bar fixa estilo Cloud Console sai de cena. O shell se adapta em dois break
   - Botões pílula (`.pill-btn`) e ícones (`.gm3-icon-btn`): `22px` -> `10px–12px` squircle ao clicar, selecionar ou abrir popover (`aria-expanded="true"` ganha tint tonal).
   - Connected Button Groups (`.gm3-connected-group`): `gap: 2px`, extremos `20px`, cantos internos `6px`, opção selecionada transforma os 4 cantos em pílula `20px`.
   - Cards (`.gm3-card-interactive`) e listas segmentadas (`.gm3-list-row`): arredondamento responsivo ao toque sem esmagar o card ao clicar nos botões ou links internos.
-  - Respeitar `@media (prefers-reduced-motion: reduce)` zerando todas as durações espaciais para `0ms`, convertendo entradas em fade puro de `120ms` e mantendo posições funcionais (switch e chevrons abertos) intactas.
+  - **Transições de rota e elemento compartilhado (`document.startViewTransition`)**: ao abrir uma música a partir da biblioteca ou do setlist, o título (`song-title-hero`) e o badge de tom (`song-key-hero`) deslizam continuamente até o cabeçalho da cifra (e retornam ao voltar); a troca entre músicas do setlist usa Shared-Axis horizontal (`next` / `prev`) e os primeiros 4 blocos da folha sobem em cascata (`.gm3-sheet-block`).
+  - **Cabeçalho recolhível no scroll (`useScrollCollapse` + `.gm3-collapsible`)**: ao rolar a cifra para baixo (ou durante auto-scroll), breadcrumb, linha de metadados, barra de controles e barra de seções recolhem suavemente via CSS Grid (`1fr -> 0fr` com `inert` e `aria-hidden`), deixando uma faixa compacta de ~52px com voltar, título, tom, auto-scroll, `Mais` e botão de expandir; ao rolar para cima ou tocar em expandir, tudo volta ao normal.
+  - Respeitar `@media (prefers-reduced-motion: reduce)` zerando todas as durações espaciais para `0ms`, desativando animações de `::view-transition-*`, convertendo entradas em fade puro de `120ms` e mantendo posições funcionais (switch e chevrons abertos) intactas.
 - **Alvos de toque**: mínimo `40px × 40px` em telas normais e `44px × 44px` no Modo Show (para uso rápido com instrumento na mão).
 
 ## 8. O que não fazer

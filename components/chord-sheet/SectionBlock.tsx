@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { SECTION_COLORS, isInstrumentalSection } from '@/lib/utils/music';
 import type { Section } from '@/lib/types/song';
 import { ArrowDownIcon, ArrowUpIcon } from '@/components/ui/Icons';
@@ -62,16 +63,21 @@ export function SectionBlock({
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
+  const blockStyle = {
+    background: colors.bg,
+    '--block-idx': Math.min(sectionIdx, 3),
+  } as CSSProperties;
+
   if (instrumentalOnly) {
     return (
       <div
         id={`section-${sectionIdx}`}
         data-section-idx={sectionIdx}
         onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-        className={`gm3-card break-inside-avoid scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-[20px] px-5 py-3 ${
+        className={`gm3-card ${!editMode ? 'gm3-sheet-block' : ''} break-inside-avoid scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-[20px] px-5 py-3 ${
           onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''
         } ${isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''}`}
-        style={{ background: colors.bg }}
+        style={blockStyle}
       >
         <div className="flex items-center gap-2">
           <span
@@ -101,12 +107,12 @@ export function SectionBlock({
       id={`section-${sectionIdx}`}
       data-section-idx={sectionIdx}
       onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-      className={`gm3-card break-inside-avoid scroll-mt-4 relative rounded-[24px] ${
+      className={`gm3-card ${!editMode ? 'gm3-sheet-block' : ''} break-inside-avoid scroll-mt-4 relative rounded-[24px] ${
         isSingerMode ? 'px-6 sm:px-8 py-6 mb-4' : 'p-5 sm:p-6 mb-4'
       } ${onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''} ${
         isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''
       }`}
-      style={{ background: colors.bg }}
+      style={blockStyle}
     >
       {editMode ? (
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-[var(--line-subtle)]">

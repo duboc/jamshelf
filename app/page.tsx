@@ -6,6 +6,7 @@ import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import { SongCard } from '@/components/song-list/SongCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { TransitionLink } from '@/components/ui/TransitionLink';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { normalizeSearch } from '@/lib/utils/music';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
@@ -599,7 +600,7 @@ function HomeContent() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <Link href={`/setlists/${sl.id}`} className="min-w-0 flex-1">
+                      <TransitionLink href={`/setlists/${sl.id}`} vtDirection="forward" className="min-w-0 flex-1">
                         <h2 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
                           {sl.name}
                         </h2>
@@ -607,7 +608,7 @@ function HomeContent() {
                           {validSongs.length} {validSongs.length === 1 ? 'música' : 'músicas'}
                           {durLabel ? ` · ${durLabel}` : ''}
                         </p>
-                      </Link>
+                      </TransitionLink>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className="font-expressive text-2xl text-[var(--muted)] pr-1">
@@ -621,24 +622,26 @@ function HomeContent() {
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
-                      <Link
+                      <TransitionLink
                         href={`/setlists/${sl.id}`}
+                        vtDirection="forward"
                         className={`pill-btn h-10 px-4 text-xs ${
                           isEmpty ? 'bg-[var(--surface)]' : 'bg-[var(--surface-high)]'
                         }`}
                       >
                         Abrir sequência
-                      </Link>
+                      </TransitionLink>
 
                       {firstSongId && (
-                        <Link
+                        <TransitionLink
                           href={`/song/${firstSongId}?setlist=${sl.id}&show=1`}
+                          vtDirection="forward"
                           className="pill-btn bg-[var(--rec-dim)] text-[var(--on-rec-container)] hover:bg-[var(--rec-fill)] hover:text-[var(--on-rec-fill)] h-10 px-4 text-xs"
                           title="Abrir este setlist direto no Modo Show"
                         >
                           <PlayIcon size={13} />
                           Modo Show
-                        </Link>
+                        </TransitionLink>
                       )}
                     </div>
                   </article>

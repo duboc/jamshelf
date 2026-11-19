@@ -7,6 +7,7 @@ import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { TransitionLink } from '@/components/ui/TransitionLink';
 import { CheckIcon, HeartIcon, MoreVertIcon, StarIcon } from '@/components/ui/Icons';
 
 interface SongCardProps {
@@ -192,10 +193,18 @@ export function SongCard({
     return (
       <article className="gm3-card gm3-card-interactive group relative bg-[var(--surface)] hover:bg-[var(--surface-high)] px-5 py-4 flex flex-col justify-between gap-3">
         <div className="flex items-start justify-between gap-2">
-          <Link href={`/song/${song.id}`} className="min-w-0 flex-1 flex items-start justify-between gap-3">
+          <TransitionLink
+            href={`/song/${song.id}`}
+            vtSongId={song.id}
+            vtDirection="forward"
+            className="min-w-0 flex-1 flex items-start justify-between gap-3"
+          >
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-2 min-w-0">
-                <h2 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors line-clamp-2 break-words">
+                <h2
+                  data-vt-song-title={song.id}
+                  className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors line-clamp-2 break-words"
+                >
                   {song.title}
                 </h2>
                 {addedNotice && (
@@ -216,6 +225,7 @@ export function SongCard({
             {/* Signature GM3 Expressive Musical Key badge */}
             {song.displayKey ? (
               <span
+                data-vt-song-key={song.id}
                 className="gm3-key-badge min-w-[44px] h-10 px-2.5 bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-[19px] leading-none inline-flex items-center justify-center flex-shrink-0"
                 title={`Tom ${song.displayKey}`}
               >
@@ -226,7 +236,7 @@ export function SongCard({
                 -
               </span>
             )}
-          </Link>
+          </TransitionLink>
 
           {overflowMenu}
         </div>
@@ -293,9 +303,17 @@ export function SongCard({
     <div
       className={`gm3-card gm3-list-row group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_76px_92px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] ${segmentedRadius}`}
     >
-      <Link href={`/song/${song.id}`} className="min-w-0 block">
+      <TransitionLink
+        href={`/song/${song.id}`}
+        vtSongId={song.id}
+        vtDirection="forward"
+        className="min-w-0 block"
+      >
         <div className="flex items-center gap-2 min-w-0">
-          <h2 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] md:truncate break-words transition-colors">
+          <h2
+            data-vt-song-title={song.id}
+            className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] md:truncate break-words transition-colors"
+          >
             {song.title}
           </h2>
           {addedNotice && (
@@ -311,11 +329,14 @@ export function SongCard({
         <div className="text-[13px] text-[var(--muted)] truncate mt-0.5">
           {song.artist || 'Artista não informado'}
         </div>
-      </Link>
+      </TransitionLink>
 
       <div className="flex items-center gap-1.5">
         {song.displayKey ? (
-          <span className="gm3-key-badge min-w-[40px] h-8 px-2.5 bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-base leading-none inline-flex items-center justify-center">
+          <span
+            data-vt-song-key={song.id}
+            className="gm3-key-badge min-w-[40px] h-8 px-2.5 bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-base leading-none inline-flex items-center justify-center"
+          >
             {song.displayKey}
           </span>
         ) : (

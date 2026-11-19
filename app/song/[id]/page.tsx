@@ -49,6 +49,8 @@ import { StageNotesBar } from '@/components/song/StageNotesBar';
 import { CountInOverlay } from '@/components/song/CountInOverlay';
 import { useWakeLock } from '@/lib/hooks/use-wake-lock';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useScrollCollapse } from '@/lib/hooks/use-scroll-collapse';
+import { navigateWithTransition } from '@/lib/utils/view-transition';
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/ui/Icons';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
@@ -98,6 +100,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [showClearCalConfirm, setShowClearCalConfirm] = useState(false);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
   const [editingNotes, setEditingNotes] = useState(false);
+  const [headerOverlayState, setHeaderOverlayState] = useState({
+    popoverOpen: false,
+    editingIdentity: false,
+  });
   const choModalRef = useRef<HTMLDivElement>(null);
   const [localCountIn, setLocalCountIn] = useState<{
     nonce: number;
@@ -138,6 +144,25 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const wakeLock = useWakeLock(
     showMode || focusMode || store.isAutoScrolling || store.metronomeOn
   );
+
+  // Scroll-collapsible GM3 Top App Bar (reclaims ~180px of lyric space on scroll down, restores on scroll back)
+  const {
+    compact: headerCompact,
+    setCompact: setHeaderCompact,
+    handleScroll: handleHeaderScroll,
+  } = useScrollCollapse({
+    lockedExpanded:
+      store.editMode ||
+      calibrating ||
+      focusMode ||
+      chordsRefOpen ||
+      showSpotifyPreview ||
+      showSpotifyPicker ||
+      editingNotes ||
+      headerOverlayState.editingIdentity,
+    paused: headerOverlayState.popoverOpen,
+    resetKey: id,
+  });
 
   const storedSong = useMemo(() => {
     void entries;
@@ -209,7 +234,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     if (!activeSetlist) return;
     if (live.isFollowing && live.session.currentSongId && live.session.currentSongId !== id) {
       const showSuffix = showMode ? '&show=1' : '';
-      router.push(`/song/${live.session.currentSongId}?setlist=${activeSetlist.id}${showSuffix}`);
+      navigateWithTransition(
+        router,
+        `/song/${live.session.currentSongId}?setlist=${activeSetlist.id}${showSuffix}`,
+        { direction: 'next' }
+      );
     }
   }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, showMode, router]);
 
@@ -416,12 +445,16 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       ) {
         if (e.key === 'ArrowRight' && nextSongId) {
           e.preventDefault();
-          router.push(`/song/${nextSongId}?setlist=${activeSetlist.id}`);
+          navigateWithTransition(router, `/song/${nextSongId}?setlist=${activeSetlist.id}`, {
+            direction: 'next',
+          });
           return;
         }
         if (e.key === 'ArrowLeft' && prevSongId) {
           e.preventDefault();
-          router.push(`/song/${prevSongId}?setlist=${activeSetlist.id}`);
+          navigateWithTransition(router, `/song/${prevSongId}?setlist=${activeSetlist.id}`, {
+            direction: 'prev',
+          });
           return;
         }
       }
@@ -524,7 +557,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           <p className="text-sm text-[var(--muted)]">Essa música não foi encontrada no repertório.</p>
           <button
             type="button"
-            onClick={() => router.push('/')}
+            onClick={() => navigateWithTransition(router, '/', { direction: 'back' })}
             className="pill-btn pill-btn-tonal px-5 h-10 text-xs"
           >
             Voltar para o repertório
@@ -591,11 +624,23 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           pitchTarget={pitchTarget}
           wakeLockActive={wakeLock.active}
           live={live}
-          onNavigate={(songId) => router.push(`/song/${songId}?setlist=${activeSetlist.id}&show=1`)}
-          onExit={() => router.replace(`/song/${id}?setlist=${activeSetlist.id}`)}
+          onNavigate={(songId) => {
+            const targetIdx = existingSetlistSongIds.indexOf(songId);
+            const direction = targetIdx >= 0 && targetIdx < setlistSongIdx ? 'prev' : 'next';
+            navigateWithTransition(router, `/song/${songId}?setlist=${activeSetlist.id}&show=1`, {
+              direction,
+            });
+          }}
+          onExit={() =>
+            navigateWithTransition(router, `/song/${id}?setlist=${activeSetlist.id}`, {
+              songId: id,
+              direction: 'back',
+              replace: true,
+            })
+          }
           onChordTap={(chord) => store.setActiveChord(chord)}
           onScrollStateChange={(st) => {
-            scrollStateRef.current = st;
+            scrollStateRef.current = { scrollTop: st.scrollTop, scrollRatio: st.scrollRatio };
           }}
           onTriggerCountIn={handleTriggerCountIn}
           onSaveBpm={(nextBpm) => {
@@ -979,7 +1024,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const navigateInSetlist = (songId: string) => {
     if (!activeSetlist) return;
-    router.push(`/song/${songId}?setlist=${activeSetlist.id}`);
+    const targetIdx = existingSetlistSongIds.indexOf(songId);
+    const direction = targetIdx >= 0 && targetIdx < setlistSongIdx ? 'prev' : 'next';
+    navigateWithTransition(router, `/song/${songId}?setlist=${activeSetlist.id}`, {
+      direction,
+    });
   };
 
   const songHasCalibration = hasUsableMarks(song.sectionMarks, song.sections.length);
@@ -1006,52 +1055,62 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         />
       ) : (
         <>
-          <Breadcrumb
-            items={
-              activeSetlist
-                ? [
-                    { label: 'Início', href: '/' },
-                    { label: 'Setlists', href: '/?tab=setlists' },
-                    { label: activeSetlist.name, href: `/setlists/${activeSetlist.id}` },
-                    { label: song.title },
-                  ]
-                : [{ label: 'Início', href: '/' }, { label: song.title }]
-            }
-            rightSlot={
-              activeSetlist ? (
-                <div className="inline-flex sm:hidden gm3-btn-group flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => prevSongId && navigateInSetlist(prevSongId)}
-                    disabled={!prevSongId || live.isFollowing}
-                    className="pill-btn w-8 h-8"
-                    title="Música anterior no setlist"
-                    aria-label="Música anterior no setlist"
-                  >
-                    <ChevronLeftIcon size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowSetlistDrawer(true)}
-                    className="pill-btn px-2 h-8 font-mono text-xs tabular-nums"
-                    title="Abrir lista do setlist"
-                  >
-                    {setlistSongIdx + 1}/{existingSetlistSongIds.length}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => nextSongId && navigateInSetlist(nextSongId)}
-                    disabled={!nextSongId || live.isFollowing}
-                    className="pill-btn w-8 h-8"
-                    title="Próxima música no setlist"
-                    aria-label="Próxima música no setlist"
-                  >
-                    <ChevronRightIcon size={15} />
-                  </button>
-                </div>
-              ) : undefined
-            }
-          />
+          <div
+            className="gm3-collapsible flex-shrink-0"
+            data-collapsed={headerCompact ? 'true' : undefined}
+            aria-hidden={headerCompact || undefined}
+            inert={headerCompact || undefined}
+          >
+            <div className="gm3-collapsible-inner">
+              <Breadcrumb
+                vtSongId={id}
+                items={
+                  activeSetlist
+                    ? [
+                        { label: 'Início', href: '/' },
+                        { label: 'Setlists', href: '/?tab=setlists' },
+                        { label: activeSetlist.name, href: `/setlists/${activeSetlist.id}` },
+                        { label: song.title },
+                      ]
+                    : [{ label: 'Início', href: '/' }, { label: song.title }]
+                }
+                rightSlot={
+                  activeSetlist ? (
+                    <div className="inline-flex sm:hidden gm3-btn-group flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => prevSongId && navigateInSetlist(prevSongId)}
+                        disabled={!prevSongId || live.isFollowing}
+                        className="pill-btn w-8 h-8"
+                        title="Música anterior no setlist"
+                        aria-label="Música anterior no setlist"
+                      >
+                        <ChevronLeftIcon size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSetlistDrawer(true)}
+                        className="pill-btn px-2 h-8 font-mono text-xs tabular-nums"
+                        title="Abrir lista do setlist"
+                      >
+                        {setlistSongIdx + 1}/{existingSetlistSongIds.length}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => nextSongId && navigateInSetlist(nextSongId)}
+                        disabled={!nextSongId || live.isFollowing}
+                        className="pill-btn w-8 h-8"
+                        title="Próxima música no setlist"
+                        aria-label="Próxima música no setlist"
+                      >
+                        <ChevronRightIcon size={15} />
+                      </button>
+                    </div>
+                  ) : undefined
+                }
+              />
+            </div>
+          </div>
 
           <SongHeader
             song={song}
@@ -1076,7 +1135,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onNavigateSong={navigateInSetlist}
             onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
             onEnterShowMode={() =>
-              activeSetlist && router.push(`/song/${id}?setlist=${activeSetlist.id}&show=1`)
+              activeSetlist &&
+              navigateWithTransition(router, `/song/${id}?setlist=${activeSetlist.id}&show=1`, {
+                songId: id,
+                direction: 'forward',
+              })
             }
             live={live}
             handleGoLive={handleGoLive}
@@ -1087,7 +1150,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             setShowNamePrompt={setShowNamePrompt}
             setlists={setlists}
             onAddToSetlist={handleAddToSetlist}
-            onGoToCreateSetlist={() => router.push('/?tab=setlists')}
+            onGoToCreateSetlist={() =>
+              navigateWithTransition(router, '/?tab=setlists', { direction: 'fade' })
+            }
             showSpotifyPreview={showSpotifyPreview}
             onToggleSpotifyPreview={() => setShowSpotifyPreview((v) => !v)}
             onOpenSpotifyPicker={openSpotifyPicker}
@@ -1100,6 +1165,19 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             }}
             onEditNotes={() => setEditingNotes(true)}
             statusMsg={statusMsg}
+            compact={headerCompact}
+            onExpandHeader={() => setHeaderCompact(false)}
+            onBack={() =>
+              navigateWithTransition(
+                router,
+                activeSetlist ? `/setlists/${activeSetlist.id}` : '/',
+                { songId: id, direction: 'back' }
+              )
+            }
+            isAutoScrolling={store.isAutoScrolling}
+            onToggleAutoScroll={store.toggleAutoScroll}
+            isFollowing={live.isFollowing}
+            onOverlayStateChange={setHeaderOverlayState}
             toolbarSlot={
               <SongToolbar
                 beatsPerBar={beatsPerBar}
@@ -1197,16 +1275,26 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         </>
       )}
 
-      {/* Section jump navigation bar */}
+      {/* Section jump navigation bar (collapses smoothly with the top bar on scroll down) */}
       {!store.editMode && (
-        <SectionNav
-          sections={song.sections}
-          activeIdx={activeSectionIdx}
-          onJump={(idx) => {
-            if (calibrating) markCalibrationSection(idx);
-            else handleJumpToSection(idx);
-          }}
-        />
+        <div
+          className="gm3-collapsible flex-shrink-0"
+          data-collapsed={headerCompact ? 'true' : undefined}
+          aria-hidden={headerCompact || undefined}
+          inert={headerCompact || undefined}
+        >
+          <div className="gm3-collapsible-inner">
+            <SectionNav
+              sections={song.sections}
+              activeIdx={activeSectionIdx}
+              collapsed={headerCompact}
+              onJump={(idx) => {
+                if (calibrating) markCalibrationSection(idx);
+                else handleJumpToSection(idx);
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Main chord / lyric sheet */}
@@ -1230,7 +1318,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           calibrationTargetIdx={calNextIdx}
           onCalibrationTap={markCalibrationSection}
           onScrollStateChange={(st) => {
-            scrollStateRef.current = st;
+            scrollStateRef.current = { scrollTop: st.scrollTop, scrollRatio: st.scrollRatio };
+            handleHeaderScroll(st.scrollTop, st.maxScroll, store.isAutoScrolling);
           }}
           syncCorrection={live.syncCorrection}
           scrollContainerRef={sheetScrollRef}

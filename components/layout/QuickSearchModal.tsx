@@ -6,6 +6,7 @@ import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { normalizeSearch } from '@/lib/utils/music';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { navigateWithTransition } from '@/lib/utils/view-transition';
 
 interface QuickSearchModalProps {
   open: boolean;
@@ -86,7 +87,10 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
 
   const selectItem = (item: SearchResult) => {
     onClose();
-    router.push(item.href);
+    navigateWithTransition(router, item.href, {
+      songId: item.kind === 'song' ? item.id : undefined,
+      direction: 'forward',
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

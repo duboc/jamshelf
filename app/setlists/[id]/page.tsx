@@ -2,7 +2,6 @@
 
 import { use, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
@@ -10,7 +9,9 @@ import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { normalizeSearch } from '@/lib/utils/music';
+import { navigateWithTransition } from '@/lib/utils/view-transition';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { TransitionLink } from '@/components/ui/TransitionLink';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -238,7 +239,13 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => startSongId && router.push(`/song/${startSongId}?setlist=${id}&show=1`)}
+              onClick={() =>
+                startSongId &&
+                navigateWithTransition(router, `/song/${startSongId}?setlist=${id}&show=1`, {
+                  songId: startSongId,
+                  direction: 'forward',
+                })
+              }
               disabled={!startSongId}
               title={
                 !startSongId
@@ -413,14 +420,25 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                         </span>
                       </div>
 
-                      <Link href={`/song/${song.id}?setlist=${id}`} className="flex-1 min-w-0">
-                        <div className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors break-words sm:truncate">
+                      <TransitionLink
+                        href={`/song/${song.id}?setlist=${id}`}
+                        vtSongId={song.id}
+                        vtDirection="forward"
+                        className="flex-1 min-w-0"
+                      >
+                        <div
+                          data-vt-song-title={song.id}
+                          className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors break-words sm:truncate"
+                        >
                           {song.title}
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-[var(--muted)]">
                           <span className="truncate">{song.artist || 'Artista não informado'}</span>
                           {song.displayKey && (
-                            <span className="gm3-key-badge inline-flex items-center px-2.5 py-0.5 text-xs bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold leading-snug">
+                            <span
+                              data-vt-song-key={song.id}
+                              className="gm3-key-badge inline-flex items-center px-2.5 py-0.5 text-xs bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold leading-snug"
+                            >
                               {song.displayKey}
                             </span>
                           )}
@@ -433,7 +451,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                             </span>
                           )}
                         </div>
-                      </Link>
+                      </TransitionLink>
 
                       {/* Keyboard & single-tap reorder + remove controls (WCAG 2.1.1 / 2.5.7) */}
                       <div className="flex items-center gap-0.5 flex-shrink-0">
