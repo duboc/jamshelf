@@ -1,3 +1,9 @@
+export interface LiveCountIn {
+  nonce: number;
+  bpm: number;
+  beats: number;
+}
+
 // A live session is keyed by setlist id — everyone opening that setlist's
 // songs shares one doc. The leader pushes ground-truth state; followers poll
 // and extrapolate/ease locally.
@@ -11,6 +17,7 @@ export interface LiveSession {
   scrollRatio: number | null; // normalized 0..1 progress across different screens/font sizes
   metronomeOn: boolean;
   bpm: number;
+  countIn: LiveCountIn | null; // synchronized 1-2-3-4 count-in trigger
   updatedAt: number; // leader's own clock only, never compared cross-device
 }
 
@@ -24,5 +31,6 @@ export const DEFAULT_LIVE_SESSION: LiveSession = {
   scrollRatio: null,
   metronomeOn: false,
   bpm: 120,
+  countIn: null,
   updatedAt: 0,
 };

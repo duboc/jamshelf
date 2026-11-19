@@ -45,6 +45,9 @@ import { SectionNav } from '@/components/song/SectionNav';
 import { FocusDock } from '@/components/song/FocusDock';
 import { SpotifySection } from '@/components/song/SpotifySection';
 import { CalibrationBar } from '@/components/song/CalibrationBar';
+import { StageNotesBar } from '@/components/song/StageNotesBar';
+import { CountInOverlay } from '@/components/song/CountInOverlay';
+import { useWakeLock } from '@/lib/hooks/use-wake-lock';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -87,6 +90,13 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [statusMsg, setStatusMsg] = useState('');
   const [showTransposeConfirm, setShowTransposeConfirm] = useState(false);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [localCountIn, setLocalCountIn] = useState<{
+    nonce: number;
+    bpm: number;
+    beats: number;
+    leaderName?: string | null;
+  } | null>(null);
 
   // Visual edit mode draft + Undo/Redo stacks (single PUT on save!)
   const [editOriginText, setEditOriginText] = useState<string | null>(null);
@@ -115,6 +125,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const live = useLiveSession(activeSetlist ? activeSetlist.id : null, id, scrollStateRef);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [nameInput, setNameInput] = useState('');
+
+  // Keep screen awake during Show Mode, Focus Mode, Auto-scroll, or Metronome
+  const wakeLock = useWakeLock(
+    showMode || focusMode || store.isAutoScrolling || store.metronomeOn
+  );
 
   const storedSong = useMemo(() => {
     void entries;
@@ -328,6 +343,27 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       ) {
         e.preventDefault();
         store.toggleAutoScroll();
+      } else if (
+        e.key.toLowerCase() === 'c' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !store.editMode &&
+        !live.isFollowing &&
+        !showExport &&
+        !showEnhance &&
+        !showHistory &&
+        song
+      ) {
+        e.preventDefault();
+        const bpb = parseInt(song.timeSignature, 10) || 4;
+        setLocalCountIn({
+          nonce: Date.now(),
+          bpm: store.bpm,
+          beats: bpb,
+          leaderName: live.isLeading ? live.deviceName : null,
+        });
+        if (live.isLeading) live.triggerCountIn(store.bpm, bpb);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -343,7 +379,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     markCalibrationSection,
     focusMode,
     setFocusMode,
-    live.isFollowing,
+    live,
     showExport,
     showEnhance,
     showHistory,
@@ -388,6 +424,32 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const displayedKey = totalShift
     ? transposeChord(song.displayKey, totalShift, store.useFlats)
     : song.displayKey;
+  const pitchTarget =
+    displayedKey ||
+    (allChords[0] ? transposeChord(allChords[0], totalShift, store.useFlats) : '');
+
+  const activeCountIn =
+    localCountIn ??
+    (live.incomingCountIn
+      ? { ...live.incomingCountIn, leaderName: live.session.leaderName }
+      : null);
+
+  const handleTriggerCountIn = () => {
+    setLocalCountIn({
+      nonce: Date.now(),
+      bpm: store.bpm,
+      beats: beatsPerBar,
+      leaderName: live.isLeading ? live.deviceName : null,
+    });
+    if (live.isLeading) {
+      live.triggerCountIn(store.bpm, beatsPerBar);
+    }
+  };
+
+  const closeCountIn = () => {
+    setLocalCountIn(null);
+    live.clearIncomingCountIn();
+  };
 
   const existingSetlistSongIds = activeSetlist
     ? activeSetlist.songIds.filter((sid) => getSong(sid) !== null)
@@ -402,31 +464,46 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   if (activeSetlist && showMode) {
     return (
-      <ShowModeView
-        song={song}
-        activeSetlist={activeSetlist}
-        setlistSongIdx={setlistSongIdx}
-        totalSongs={existingSetlistSongIds.length}
-        prevSongId={prevSongId}
-        nextSongId={nextSongId}
-        nextSongMeta={
-          nextSongObj ? { title: nextSongObj.title, displayKey: nextSongObj.displayKey } : null
-        }
-        beatsPerBar={beatsPerBar}
-        live={live}
-        onNavigate={(songId) => router.push(`/song/${songId}?setlist=${activeSetlist.id}&show=1`)}
-        onExit={() => router.replace(`/song/${id}?setlist=${activeSetlist.id}`)}
-        onChordTap={(chord) => store.setActiveChord(chord)}
-        onScrollStateChange={(st) => {
-          scrollStateRef.current = st;
-        }}
-        handleGoLive={handleGoLive}
-        confirmGoLive={confirmGoLive}
-        showNamePrompt={showNamePrompt}
-        nameInput={nameInput}
-        setNameInput={setNameInput}
-        setShowNamePrompt={setShowNamePrompt}
-      />
+      <>
+        <ShowModeView
+          song={song}
+          activeSetlist={activeSetlist}
+          setlistSongIdx={setlistSongIdx}
+          totalSongs={existingSetlistSongIds.length}
+          prevSongId={prevSongId}
+          nextSongId={nextSongId}
+          nextSongMeta={
+            nextSongObj ? { title: nextSongObj.title, displayKey: nextSongObj.displayKey } : null
+          }
+          beatsPerBar={beatsPerBar}
+          pitchTarget={pitchTarget}
+          wakeLockActive={wakeLock.active}
+          live={live}
+          onNavigate={(songId) => router.push(`/song/${songId}?setlist=${activeSetlist.id}&show=1`)}
+          onExit={() => router.replace(`/song/${id}?setlist=${activeSetlist.id}`)}
+          onChordTap={(chord) => store.setActiveChord(chord)}
+          onScrollStateChange={(st) => {
+            scrollStateRef.current = st;
+          }}
+          onTriggerCountIn={handleTriggerCountIn}
+          handleGoLive={handleGoLive}
+          confirmGoLive={confirmGoLive}
+          showNamePrompt={showNamePrompt}
+          nameInput={nameInput}
+          setNameInput={setNameInput}
+          setShowNamePrompt={setShowNamePrompt}
+        />
+        {activeCountIn && (
+          <CountInOverlay
+            key={activeCountIn.nonce}
+            bpm={activeCountIn.bpm}
+            beats={activeCountIn.beats}
+            leaderName={activeCountIn.leaderName}
+            onComplete={closeCountIn}
+            onCancel={closeCountIn}
+          />
+        )}
+      </>
     );
   }
 
@@ -681,6 +758,21 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     if (trimmed !== song.artist) patchMeta(id, 'artist', trimmed);
   };
 
+  const handleSaveNotes = (nextNotes: string) => {
+    const cleaned = nextNotes.replace(/[\r\n]+/g, ' · ').trim();
+    const raw = exportEntry(id);
+    if (raw) {
+      const updated = cleaned
+        ? patchChordProMeta(raw, 'notes', cleaned)
+        : removeChordProMeta(raw, 'notes');
+      updateEntry(id, updated);
+    } else if (cleaned) {
+      patchMeta(id, 'notes', cleaned);
+    }
+    setEditingNotes(false);
+    flashStatus(cleaned ? '✓ Nota de palco salva' : 'Nota de palco removida');
+  };
+
   const handleAddToSetlist = (setlistId: string, setlistName: string) => {
     addSongToSetlist(setlistId, id);
     flashStatus(`Adicionada em "${setlistName}"`);
@@ -775,12 +867,16 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         <FocusDock
           songTitle={song.title}
           displayedKey={displayedKey}
+          pitchTarget={pitchTarget}
+          stageNotes={song.notes}
+          wakeLockActive={wakeLock.active}
           isFollowing={live.isFollowing}
           hasSetlist={!!activeSetlist}
           prevSongId={prevSongId}
           nextSongId={nextSongId}
           onNavigateSong={navigateInSetlist}
           onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
+          onTriggerCountIn={handleTriggerCountIn}
           onExit={() => setFocusMode(false)}
         />
       ) : (
@@ -801,6 +897,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           <SongHeader
             song={song}
             displayedKey={displayedKey}
+            pitchTarget={pitchTarget}
             titleInput={titleInput}
             artistInput={artistInput}
             onTitleChange={setTitleInput}
@@ -842,6 +939,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               setDiscardArmed(false);
               setShowExport(true);
             }}
+            onEditNotes={() => setEditingNotes(true)}
             statusMsg={statusMsg}
           />
 
@@ -877,11 +975,24 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onSaveEdit={handleSaveVisualEdit}
             onCancelEdit={handleCancelVisualEdit}
             onEnterEdit={enterVisualEdit}
+            hasNotes={Boolean(song.notes)}
             onSaveScrollSpeed={handleSaveScrollSpeed}
             onStartCalibration={handleStartCalibration}
             onClearCalibration={handleClearCalibration}
             onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
+            onTriggerCountIn={handleTriggerCountIn}
+            onToggleEditNotes={() => setEditingNotes((v) => !v)}
           />
+
+          {!store.editMode && (
+            <StageNotesBar
+              notes={song.notes}
+              editing={editingNotes}
+              onStartEdit={() => setEditingNotes(true)}
+              onSave={handleSaveNotes}
+              onCancel={() => setEditingNotes(false)}
+            />
+          )}
 
           {calibrating && (
             <CalibrationBar
@@ -1146,6 +1257,17 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           currentText={exportEntry(id) ?? ''}
           onClose={() => setShowHistory(false)}
           onRestored={() => flashStatus('✓ Versão restaurada')}
+        />
+      )}
+
+      {activeCountIn && (
+        <CountInOverlay
+          key={activeCountIn.nonce}
+          bpm={activeCountIn.bpm}
+          beats={activeCountIn.beats}
+          leaderName={activeCountIn.leaderName}
+          onComplete={closeCountIn}
+          onCancel={closeCountIn}
         />
       )}
     </div>

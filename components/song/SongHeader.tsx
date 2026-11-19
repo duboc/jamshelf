@@ -5,10 +5,12 @@ import type { ParsedSong, Setlist } from '@/lib/types/song';
 import type { DisplayMode } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { formatDuration, parseDurationValue } from '@/lib/utils/chordpro-parser';
+import { playReferencePitch } from '@/lib/utils/pitch-audio';
 
 interface SongHeaderProps {
   song: ParsedSong;
   displayedKey: string;
+  pitchTarget: string;
   titleInput: string;
   artistInput: string;
   onTitleChange: (v: string) => void;
@@ -47,12 +49,14 @@ interface SongHeaderProps {
   onOpenEnhance: () => void;
   onOpenHistory: () => void;
   onOpenChordPro: () => void;
+  onEditNotes: () => void;
   statusMsg: string;
 }
 
 export function SongHeader({
   song,
   displayedKey,
+  pitchTarget,
   titleInput,
   artistInput,
   onTitleChange,
@@ -88,15 +92,25 @@ export function SongHeader({
   onOpenEnhance,
   onOpenHistory,
   onOpenChordPro,
+  onEditNotes,
   statusMsg,
 }: SongHeaderProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [metaOpen, setMetaOpen] = useState(false);
+  const [pitchRinging, setPitchRinging] = useState(false);
   const [durationDraft, setDurationDraft] = useState(
     song.duration ? formatDuration(song.duration) : ''
   );
   const moreRef = useRef<HTMLDivElement>(null);
   const metaRef = useRef<HTMLDivElement>(null);
+
+  const handlePlayPitch = () => {
+    if (!pitchTarget) return;
+    if (playReferencePitch(pitchTarget, { mode: 'chord' })) {
+      setPitchRinging(true);
+      setTimeout(() => setPitchRinging(false), 1600);
+    }
+  };
 
   useEffect(() => {
     if (!moreOpen && !metaOpen) return;
@@ -216,6 +230,21 @@ export function SongHeader({
                     {song.duration ? ` · ${formatDuration(song.duration)}` : ''} ✎
                   </span>
                 </button>
+
+                {pitchTarget && (
+                  <button
+                    type="button"
+                    onClick={handlePlayPitch}
+                    className={`pill-btn px-2 py-0.5 text-[11px] ${
+                      pitchRinging
+                        ? 'pill-btn-primary'
+                        : 'text-[var(--accent-ink)]'
+                    }`}
+                    title={`Tocar acorde-guia (${pitchTarget}) para pegar o tom antes de começar`}
+                  >
+                    ♪ {pitchRinging ? 'Tocando…' : `Tom ${pitchTarget}`}
+                  </button>
+                )}
 
                 {metaOpen && (
                   <div
@@ -590,6 +619,16 @@ export function SongHeader({
 
                 <div className="my-1 border-t border-[var(--line)]" />
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    onEditNotes();
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
+                >
+                  {song.notes ? 'Editar notas de palco' : 'Adicionar notas de palco'}
+                </button>
                 <button
                   type="button"
                   onClick={() => {

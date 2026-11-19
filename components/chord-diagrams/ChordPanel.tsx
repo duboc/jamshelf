@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getGuitarPositions, getPianoNotes } from '@/lib/utils/chord-lookup';
+import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import { GuitarChordDiagram } from './GuitarChordDiagram';
 import { PianoChordDiagram } from './PianoChordDiagram';
 
@@ -25,9 +26,19 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
       style={{ boxShadow: 'var(--shadow-md)' }}
     >
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)]">
-        <div>
-          <div className="eyebrow">Acorde</div>
-          <h3 className="text-2xl font-display text-[var(--accent-ink)] leading-tight">{chord}</h3>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div>
+            <div className="eyebrow">Acorde</div>
+            <h3 className="text-2xl font-display text-[var(--accent-ink)] leading-tight">{chord}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => playReferencePitch(chord, { mode: 'chord' })}
+            className="pill-btn px-2.5 py-1 text-xs text-[var(--accent-ink)]"
+            title="Ouvir referência sonora deste acorde"
+          >
+            ♪ Ouvir
+          </button>
         </div>
         <button
           type="button"

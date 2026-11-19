@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
-import { DEFAULT_LIVE_SESSION, type LiveSession } from '@/lib/types/live-session';
+import {
+  DEFAULT_LIVE_SESSION,
+  type LiveCountIn,
+  type LiveSession,
+} from '@/lib/types/live-session';
 
 const POLL_MS = 1500;
 const LEADER_STALE_MS = 20000;
@@ -78,6 +82,9 @@ export function useLiveSession(
   const [session, setSession] = useState<LiveSession>(DEFAULT_LIVE_SESSION);
   const [isLeading, setIsLeading] = useState(false);
   const [syncNonce, setSyncNonce] = useState(0);
+  const [incomingCountIn, setIncomingCountIn] = useState<LiveCountIn | null>(null);
+  const seenCountInNonceRef = useRef<number | null>(null);
+  const initialPollDoneRef = useRef(false);
 
   useEffect(() => {
     deviceIdRef.current = loadDeviceId();
@@ -155,7 +162,19 @@ export function useLiveSession(
         if (player.bpm !== fetched.bpm) {
           player.setBpm(fetched.bpm);
         }
+        // Trigger visual count-in only on a brand-new nonce arriving after initial join
+        const remoteCountIn = fetched.countIn ?? null;
+        if (!initialPollDoneRef.current) {
+          initialPollDoneRef.current = true;
+          seenCountInNonceRef.current = remoteCountIn?.nonce ?? null;
+        } else if (remoteCountIn && remoteCountIn.nonce !== seenCountInNonceRef.current) {
+          seenCountInNonceRef.current = remoteCountIn.nonce;
+          setIncomingCountIn(remoteCountIn);
+        }
         setSyncNonce((n) => n + 1);
+      } else if (!initialPollDoneRef.current) {
+        initialPollDoneRef.current = true;
+        seenCountInNonceRef.current = fetched.countIn?.nonce ?? null;
       }
     };
 
@@ -210,6 +229,25 @@ export function useLiveSession(
     );
   }, [setlistId]);
 
+  const triggerCountIn = useCallback(
+    (bpm: number, beats: number) => {
+      if (!setlistId || !isLeadingRef.current) return;
+      const next: LiveCountIn = {
+        nonce: Date.now(),
+        bpm: Math.max(40, Math.min(240, Math.round(bpm))),
+        beats: Math.max(2, Math.min(8, Math.round(beats))),
+      };
+      seenCountInNonceRef.current = next.nonce;
+      setSession((s) => ({ ...s, countIn: next }));
+      putSession(setlistId, { countIn: next, updatedAt: Date.now() });
+    },
+    [setlistId]
+  );
+
+  const clearIncomingCountIn = useCallback(() => {
+    setIncomingCountIn(null);
+  }, []);
+
   const deviceId = deviceIdRef.current;
   const isFollowing = !isLeading && !!session.leaderId && session.leaderId !== deviceId;
   const isLeaderStale = isFollowing && Date.now() - session.updatedAt > LEADER_STALE_MS;
@@ -237,6 +275,9 @@ export function useLiveSession(
     startLeading,
     stopLeading,
     endSession,
+    triggerCountIn,
+    incomingCountIn,
+    clearIncomingCountIn,
     syncCorrection,
   };
 }

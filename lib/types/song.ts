@@ -42,6 +42,7 @@ export interface ParsedSong {
   duration: number | null; // song length in seconds (from {duration:} or Spotify)
   scrollSpeed: number | null; // saved per-song auto-scroll multiplier (from {scroll:})
   sectionMarks: number[] | null; // calibrated section start timestamps in seconds (from {marks:})
+  notes: string; // rehearsal / stage cues (from {notes:})
 }
 
 // Alias for backwards compatibility with existing components

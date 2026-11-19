@@ -82,6 +82,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     duration: null as number | null,
     scrollSpeed: null as number | null,
     sectionMarks: null as number[] | null,
+    notes: '',
   };
 
   const sections: Section[] = [];
@@ -146,6 +147,9 @@ export function parseChordPro(id: string, text: string): ParsedSong {
 
     const marksM = line.match(/^\{marks:\s*(.+)\}$/i);
     if (marksM) { meta.sectionMarks = parseMarksValue(marksM[1]); continue; }
+
+    const notesM = line.match(/^\{notes:\s*(.*)\}$/i);
+    if (notesM) { meta.notes = notesM[1].trim(); continue; }
 
     // ── Ignored directives ─────────────────────────────────────────────────
     if (/^\{define:/i.test(line)) continue;
@@ -221,6 +225,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     duration: meta.duration,
     scrollSpeed: meta.scrollSpeed,
     sectionMarks: meta.sectionMarks,
+    notes: meta.notes,
     sections,
   };
 }
@@ -242,6 +247,9 @@ export function songToChordPro(song: ParsedSong): string {
   if (song.scrollSpeed && song.scrollSpeed > 0) lines.push(`{scroll: ${Number(song.scrollSpeed.toFixed(2))}}`);
   if (song.sectionMarks && song.sectionMarks.length >= 2) {
     lines.push(`{marks: ${serializeMarks(song.sectionMarks)}}`);
+  }
+  if (song.notes && song.notes.trim()) {
+    lines.push(`{notes: ${song.notes.replace(/[\r\n]+/g, ' · ').trim()}}`);
   }
   lines.push('');
 

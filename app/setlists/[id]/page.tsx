@@ -7,6 +7,8 @@ import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
 import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
+import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
+import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 
 export default function SetlistPage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,6 +68,10 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
 
   const displayEntries = drag ? moveItem(baseEntries, drag.from, drag.to) : baseEntries;
   const setlistSongs = displayEntries.map((e) => e.song);
+  const durationSummary = setlistSongs.length > 0 ? computeSetlistDuration(setlistSongs) : null;
+  const durationLabel = durationSummary
+    ? formatSetlistDuration(durationSummary.totalSec, durationSummary.estimatedCount > 0)
+    : null;
 
   // Join an in-progress show on the leader's actual song, not always song 1.
   const startSongId =
@@ -139,6 +145,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
               )}
               <span className="font-mono text-xs text-[var(--muted)]">
                 {setlistSongs.length} {setlistSongs.length === 1 ? 'música' : 'músicas'}
+                {durationLabel ? ` · ${durationLabel}` : ''}
               </span>
             </div>
           </div>
@@ -282,6 +289,16 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                           </span>
                         )}
                         <span className="studio-chip text-[var(--muted)]">{song.tempo} BPM</span>
+                        {song.duration && (
+                          <span className="studio-chip text-[var(--muted)]">
+                            {formatDuration(song.duration)}
+                          </span>
+                        )}
+                        {song.notes && (
+                          <span className="studio-chip bg-[color-mix(in_srgb,var(--warn)_14%,var(--surface))] text-[var(--warn)] max-w-[260px] truncate">
+                            {song.notes}
+                          </span>
+                        )}
                       </div>
                     </Link>
 

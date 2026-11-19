@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
+import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import type { Setlist, ParsedSong } from '@/lib/types/song';
 
 interface SetlistDrawerProps {
@@ -42,6 +43,13 @@ export function SetlistDrawer({
   });
 
   const displayEntries = drag ? moveItem(baseEntries, drag.from, drag.to) : baseEntries;
+  const durSummary =
+    displayEntries.length > 0
+      ? computeSetlistDuration(displayEntries.map((e) => e.song))
+      : null;
+  const durLabel = durSummary
+    ? formatSetlistDuration(durSummary.totalSec, durSummary.estimatedCount > 0)
+    : null;
 
   useEffect(() => {
     listRef.current
@@ -66,7 +74,11 @@ export function SetlistDrawer({
       >
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)] flex-shrink-0">
           <div className="min-w-0">
-            <div className="eyebrow">Setlist</div>
+            <div className="eyebrow">
+              Setlist · {displayEntries.length}{' '}
+              {displayEntries.length === 1 ? 'música' : 'músicas'}
+              {durLabel ? ` · ${durLabel}` : ''}
+            </div>
             <div className="text-lg font-display text-[var(--ink)] truncate">{setlist.name}</div>
             <div className="font-mono text-[10.5px] text-[var(--muted)] mt-0.5">
               {canReorder
@@ -130,6 +142,9 @@ export function SetlistDrawer({
                     {song.artist || 'Artista não informado'}
                     {song.displayKey && (
                       <span className="font-mono text-[var(--accent-ink)]"> · {song.displayKey}</span>
+                    )}
+                    {song.notes && (
+                      <span className="text-[var(--warn)]"> · {song.notes}</span>
                     )}
                   </div>
                 </button>

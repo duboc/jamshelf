@@ -125,3 +125,38 @@ export function scrollTopToMarkedElapsed(
   const frac = remY > 0.5 ? (y - lastTop) / remY : 1;
   return lastMark + tailDur * Math.max(0, Math.min(1, frac));
 }
+
+export interface SetlistDurationSummary {
+  totalSec: number;
+  knownCount: number;
+  estimatedCount: number;
+}
+
+/** Sums exact `{duration:}` values plus estimated fallbacks for a setlist. */
+export function computeSetlistDuration(
+  songs: Pick<ParsedSong, 'duration' | 'tempo' | 'sections'>[]
+): SetlistDurationSummary {
+  let totalSec = 0;
+  let knownCount = 0;
+  let estimatedCount = 0;
+  for (const s of songs) {
+    if (s.duration && s.duration >= 15) {
+      totalSec += s.duration;
+      knownCount++;
+    } else {
+      totalSec += estimateSongDurationSec(s);
+      estimatedCount++;
+    }
+  }
+  return { totalSec: Math.round(totalSec), knownCount, estimatedCount };
+}
+
+/** Human-friendly total show duration in Portuguese (e.g. "41 min", "1h 12min"). */
+export function formatSetlistDuration(totalSec: number, isEstimated = false): string {
+  const mins = Math.max(1, Math.round(totalSec / 60));
+  const prefix = isEstimated ? '~' : '';
+  if (mins < 60) return `${prefix}${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${prefix}${h}h ${String(m).padStart(2, '0')}min` : `${prefix}${h}h`;
+}

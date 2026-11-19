@@ -5,6 +5,7 @@ import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { SongCard } from '@/components/song-list/SongCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -408,34 +409,42 @@ function HomeContent() {
                 </div>
               ) : (
                 <div>
-                  <div className="hidden sm:grid sm:grid-cols-[minmax(0,1fr)_120px_210px] gap-3 px-4 py-2 bg-[var(--surface2)]/75 border-b border-[var(--line)] text-[12px] font-display font-medium text-[var(--muted)]">
+                  <div className="hidden sm:grid sm:grid-cols-[minmax(0,1fr)_180px_210px] gap-3 px-4 py-2 bg-[var(--surface2)]/75 border-b border-[var(--line)] text-[12px] font-display font-medium text-[var(--muted)]">
                     <span>Nome</span>
-                    <span>Faixas</span>
+                    <span>Faixas e duração</span>
                     <span className="text-right">Ações</span>
                   </div>
 
                   {setlists.map((sl) => {
-                    const validSongIds = sl.songIds.filter((sid) => songs.some((s) => s.id === sid));
-                    const firstSongId = validSongIds[0] ?? null;
+                    const validSongs = sl.songIds
+                      .map((sid) => songs.find((s) => s.id === sid))
+                      .filter((s): s is (typeof songs)[number] => s !== undefined);
+                    const firstSongId = validSongs[0]?.id ?? null;
+                    const durSummary = validSongs.length > 0 ? computeSetlistDuration(validSongs) : null;
+                    const durLabel = durSummary
+                      ? formatSetlistDuration(durSummary.totalSec, durSummary.estimatedCount > 0)
+                      : null;
 
                     return (
                       <div
                         key={sl.id}
-                        className="group flex flex-wrap sm:grid sm:grid-cols-[minmax(0,1fr)_120px_210px] sm:items-center justify-between gap-3 py-3 px-4 border-b border-[var(--line-subtle)] last:border-b-0 hover:bg-[var(--nav-active-bg)]/40 transition-colors"
+                        className="group flex flex-wrap sm:grid sm:grid-cols-[minmax(0,1fr)_180px_210px] sm:items-center justify-between gap-3 py-3 px-4 border-b border-[var(--line-subtle)] last:border-b-0 hover:bg-[var(--nav-active-bg)]/40 transition-colors"
                       >
                         <Link href={`/setlists/${sl.id}`} className="min-w-0">
                           <h3 className="font-display text-[14.5px] font-medium text-[var(--accent-ink)] group-hover:underline underline-offset-2 truncate">
                             {sl.name}
                           </h3>
                           <div className="sm:hidden font-mono text-[11px] text-[var(--muted)] mt-0.5">
-                            {validSongIds.length}{' '}
-                            {validSongIds.length === 1 ? 'música' : 'músicas'}
+                            {validSongs.length}{' '}
+                            {validSongs.length === 1 ? 'música' : 'músicas'}
+                            {durLabel ? ` · ${durLabel}` : ''}
                           </div>
                         </Link>
 
                         <div className="hidden sm:block font-mono text-xs text-[var(--muted)] tabular-nums">
-                          {validSongIds.length}{' '}
-                          {validSongIds.length === 1 ? 'música' : 'músicas'}
+                          {validSongs.length}{' '}
+                          {validSongs.length === 1 ? 'música' : 'músicas'}
+                          {durLabel ? ` · ${durLabel}` : ''}
                         </div>
 
                         <div className="flex items-center sm:justify-end gap-1.5 flex-shrink-0">

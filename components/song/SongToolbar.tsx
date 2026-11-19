@@ -22,11 +22,14 @@ interface SongToolbarProps {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onEnterEdit: () => void;
-  // Scroll & transpose actions
+  // Scroll, transpose, count-in & notes actions
+  hasNotes: boolean;
   onSaveScrollSpeed: () => void;
   onStartCalibration: () => void;
   onClearCalibration: () => void;
   onRequestSaveTranspose: () => void;
+  onTriggerCountIn: () => void;
+  onToggleEditNotes: () => void;
 }
 
 export function SongToolbar({
@@ -46,10 +49,13 @@ export function SongToolbar({
   onSaveEdit,
   onCancelEdit,
   onEnterEdit,
+  hasNotes,
   onSaveScrollSpeed,
   onStartCalibration,
   onClearCalibration,
   onRequestSaveTranspose,
+  onTriggerCountIn,
+  onToggleEditNotes,
 }: SongToolbarProps) {
   const store = usePlayerStore();
   const {
@@ -305,6 +311,18 @@ export function SongToolbar({
           {/* Metronome */}
           <Metronome readOnly={isFollowing} beatsPerBar={beatsPerBar} />
 
+          {/* Visual 1-2-3-4 count-in (synced when leading Live Session) */}
+          {!isFollowing && !calibrating && (
+            <button
+              type="button"
+              onClick={onTriggerCountIn}
+              className="pill-btn px-2.5 py-1.5 font-mono text-xs"
+              title="Contagem visual 1-2-3-4 (atalho: C). Sincroniza com a banda se estiver liderando o Ao Vivo."
+            >
+              1·2·3·4
+            </button>
+          )}
+
           {/* Visual pulse toggle */}
           {store.metronomeOn && (
             <button
@@ -348,13 +366,25 @@ export function SongToolbar({
           )}
 
           {!calibrating && (
-            <button
-              type="button"
-              onClick={onEnterEdit}
-              className="pill-btn px-3 py-1.5 text-xs"
-            >
-              ✎ Editar
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={onToggleEditNotes}
+                className={`pill-btn px-3 py-1.5 text-xs ${
+                  hasNotes ? 'border-[var(--warn)]/60 text-[var(--warn)]' : ''
+                }`}
+                title="Adicionar ou editar deixas de palco e notas de ensaio"
+              >
+                {hasNotes ? '✎ Deixa' : '+ Deixa'}
+              </button>
+              <button
+                type="button"
+                onClick={onEnterEdit}
+                className="pill-btn px-3 py-1.5 text-xs"
+              >
+                ✎ Editar
+              </button>
+            </>
           )}
         </div>
       </div>

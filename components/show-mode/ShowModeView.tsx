@@ -8,6 +8,8 @@ import { Metronome } from '@/components/metronome/Metronome';
 import { VisualPulse } from '@/components/metronome/VisualPulse';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import { SetlistDrawer } from '@/components/show-mode/SetlistDrawer';
+import { StageNotesBar } from '@/components/song/StageNotesBar';
+import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import type { Song, Setlist } from '@/lib/types/song';
 
 const SWIPE_MIN_DX = 60;
@@ -24,11 +26,14 @@ interface ShowModeViewProps {
   nextSongId: string | null;
   nextSongMeta?: { title: string; displayKey: string } | null;
   beatsPerBar: number;
+  pitchTarget: string;
+  wakeLockActive: boolean;
   live: ReturnType<typeof useLiveSession>;
   onNavigate: (songId: string) => void;
   onExit: () => void;
   onChordTap: (chord: string) => void;
   onScrollStateChange: (state: { scrollTop: number; scrollRatio: number }) => void;
+  onTriggerCountIn: () => void;
   handleGoLive: () => void;
   confirmGoLive: () => void;
   showNamePrompt: boolean;
@@ -46,11 +51,14 @@ export function ShowModeView({
   nextSongId,
   nextSongMeta,
   beatsPerBar,
+  pitchTarget,
+  wakeLockActive,
   live,
   onNavigate,
   onExit,
   onChordTap,
   onScrollStateChange,
+  onTriggerCountIn,
   handleGoLive,
   confirmGoLive,
   showNamePrompt,
@@ -70,9 +78,18 @@ export function ShowModeView({
 
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const [showSetlist, setShowSetlist] = useState(false);
+  const [pitchRinging, setPitchRinging] = useState(false);
 
   const canNavigate = !live.isFollowing;
   const chordsHidden = displayMode === 'lyrics-only';
+
+  const handlePlayPitch = () => {
+    if (!pitchTarget) return;
+    if (playReferencePitch(pitchTarget, { mode: 'chord' })) {
+      setPitchRinging(true);
+      setTimeout(() => setPitchRinging(false), 1600);
+    }
+  };
 
   // Keyboard shortcuts for stage pedals / laptops
   useEffect(() => {
@@ -97,11 +114,14 @@ export function ShowModeView({
         toggleHideChords();
       } else if (e.key.toLowerCase() === 's') {
         setShowSetlist((v) => !v);
+      } else if (e.key.toLowerCase() === 'c' && canNavigate) {
+        e.preventDefault();
+        onTriggerCountIn();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [canNavigate, nextSongId, prevSongId, onNavigate, onExit, showSetlist, store, toggleHideChords]);
+  }, [canNavigate, nextSongId, prevSongId, onNavigate, onExit, showSetlist, store, toggleHideChords, onTriggerCountIn]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!canNavigate) return;
@@ -235,6 +255,32 @@ export function ShowModeView({
               )}
             </div>
 
+            {/* Pitch guide for singers/musicians */}
+            {pitchTarget && (
+              <button
+                type="button"
+                onClick={handlePlayPitch}
+                className={`pill-btn px-2.5 py-1.5 text-xs ${
+                  pitchRinging ? 'pill-btn-primary' : 'text-[var(--accent-ink)]'
+                }`}
+                title={`Tocar acorde-guia (${pitchTarget})`}
+              >
+                ♪ {pitchTarget}
+              </button>
+            )}
+
+            {/* Synchronized 1-2-3-4 count-in */}
+            {canNavigate && (
+              <button
+                type="button"
+                onClick={onTriggerCountIn}
+                className="pill-btn px-2.5 py-1.5 font-mono text-xs"
+                title="Contagem visual 1-2-3-4 (atalho: C)"
+              >
+                1·2·3·4
+              </button>
+            )}
+
             {/* Per-device singer toggle (hides/shows chords without affecting anyone else) */}
             <button
               type="button"
@@ -291,6 +337,15 @@ export function ShowModeView({
               Pulso
             </button>
 
+            {wakeLockActive && (
+              <span
+                className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] hidden md:inline-flex"
+                title="Tela mantida acesa automaticamente no Modo Show"
+              >
+                Tela ativa
+              </span>
+            )}
+
             <button
               type="button"
               onClick={onExit}
@@ -302,6 +357,9 @@ export function ShowModeView({
           </div>
         </div>
       </header>
+
+      {/* Rehearsal / stage cues strip when defined */}
+      <StageNotesBar notes={song.notes} editing={false} readOnly />
 
       {/* Main sheet */}
       <div

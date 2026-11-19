@@ -1,34 +1,53 @@
 'use client';
 
+import { useState } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
+import { playReferencePitch } from '@/lib/utils/pitch-audio';
 
 interface FocusDockProps {
   songTitle: string;
   displayedKey: string;
+  pitchTarget: string;
+  stageNotes: string;
+  wakeLockActive: boolean;
   isFollowing: boolean;
   hasSetlist: boolean;
   prevSongId: string | null;
   nextSongId: string | null;
   onNavigateSong: (songId: string) => void;
   onOpenSetlistDrawer: () => void;
+  onTriggerCountIn: () => void;
   onExit: () => void;
 }
 
 export function FocusDock({
   songTitle,
   displayedKey,
+  pitchTarget,
+  stageNotes,
+  wakeLockActive,
   isFollowing,
   hasSetlist,
   prevSongId,
   nextSongId,
   onNavigateSong,
   onOpenSetlistDrawer,
+  onTriggerCountIn,
   onExit,
 }: FocusDockProps) {
   const store = usePlayerStore();
   const { displayMode, toggleHideChords, fontSize, setFontSize } = useDisplayStore();
+  const [pitchRinging, setPitchRinging] = useState(false);
   const chordsHidden = displayMode === 'lyrics-only';
+
+  const handlePlayPitch = () => {
+    if (!pitchTarget) return;
+    if (playReferencePitch(pitchTarget, { mode: 'chord' })) {
+      setPitchRinging(true);
+      setTimeout(() => setPitchRinging(false), 1600);
+    }
+  };
 
   return (
     <>
@@ -52,6 +71,14 @@ export function FocusDock({
                 {displayedKey}
               </span>
             )}
+            {wakeLockActive && (
+              <span
+                className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] hidden sm:inline-flex flex-shrink-0"
+                title="Bloqueio automático de tela desativado enquanto você lê"
+              >
+                Tela ativa
+              </span>
+            )}
           </div>
 
           <button
@@ -63,6 +90,14 @@ export function FocusDock({
             Sair da tela limpa
           </button>
         </div>
+        {stageNotes && (
+          <div className="max-w-3xl mx-auto mt-1.5 flex items-center gap-2 text-xs text-[var(--ink)]">
+            <span className="studio-chip bg-[color-mix(in_srgb,var(--warn)_18%,var(--surface))] text-[var(--warn)] flex-shrink-0">
+              Deixa
+            </span>
+            <span className="truncate">{stageNotes}</span>
+          </div>
+        )}
       </div>
 
       {/* Floating bottom dock */}
@@ -153,6 +188,30 @@ export function FocusDock({
               A+
             </button>
           </div>
+
+          {pitchTarget && (
+            <button
+              type="button"
+              onClick={handlePlayPitch}
+              className={`pill-btn px-2.5 h-8 text-xs ${
+                pitchRinging ? 'pill-btn-primary' : 'text-[var(--accent-ink)]'
+              }`}
+              title={`Tocar acorde-guia (${pitchTarget})`}
+            >
+              ♪ {pitchTarget}
+            </button>
+          )}
+
+          {!isFollowing && (
+            <button
+              type="button"
+              onClick={onTriggerCountIn}
+              className="pill-btn px-2.5 h-8 font-mono text-xs"
+              title="Contagem visual 1-2-3-4 (atalho: C)"
+            >
+              1·2·3·4
+            </button>
+          )}
 
           <button
             type="button"
