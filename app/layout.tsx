@@ -1,26 +1,7 @@
 import type { Metadata, Viewport } from 'next';
-import { Gloock, Hanken_Grotesk, Martian_Mono } from 'next/font/google';
 import { Suspense } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import './globals.css';
-
-const gloock = Gloock({
-  weight: '400',
-  variable: '--font-gloock',
-  subsets: ['latin'],
-});
-
-const hankenGrotesk = Hanken_Grotesk({
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-hanken',
-  subsets: ['latin'],
-});
-
-const martianMono = Martian_Mono({
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-martian',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Jamshelf',
@@ -44,11 +25,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Gloock&family=Hanken+Grotesk:wght@400;500;600;700&family=Martian+Mono:wght@400;500;600;700&display=swap"
+        />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body
-        className={`${gloock.variable} ${hankenGrotesk.variable} ${martianMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <Suspense fallback={null}>
           <AppShell>{children}</AppShell>
         </Suspense>
