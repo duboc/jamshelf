@@ -6,6 +6,9 @@ import { persist } from 'zustand/middleware';
 export type DisplayMode = 'both' | 'lyrics-only' | 'chords-only';
 export type ThemeMode = 'system' | 'dark' | 'light';
 export type ScrollLeadIn = 0 | 3 | 5;
+export type LibraryViewMode = 'cards' | 'list';
+export type CapoDisplay = 'sounding' | 'shapes';
+export type SheetColumns = 1 | 2;
 
 interface DisplayStore {
   displayMode: DisplayMode;
@@ -23,6 +26,14 @@ interface DisplayStore {
   setFocusMode: (v: boolean) => void;
   scrollLeadInSec: ScrollLeadIn;
   setScrollLeadInSec: (s: ScrollLeadIn) => void;
+  viewMode: LibraryViewMode;
+  setViewMode: (v: LibraryViewMode) => void;
+  capoDisplay: CapoDisplay;
+  setCapoDisplay: (c: CapoDisplay) => void;
+  sheetColumns: SheetColumns;
+  setSheetColumns: (c: SheetColumns) => void;
+  singleKeyShortcuts: boolean;
+  setSingleKeyShortcuts: (v: boolean) => void;
 }
 
 // Per-device preferences persisted across reloads. Kept separate from
@@ -37,7 +48,8 @@ export const useDisplayStore = create<DisplayStore>()(
         set((s) => ({
           displayMode: s.displayMode === 'lyrics-only' ? 'both' : 'lyrics-only',
         })),
-      visualPulseEnabled: true,
+      // Default off for WCAG 2.3.1 safety; musicians can opt in per device
+      visualPulseEnabled: false,
       setVisualPulseEnabled: (v) => set({ visualPulseEnabled: v }),
       theme: 'system',
       setTheme: (t) => set({ theme: t }),
@@ -49,6 +61,14 @@ export const useDisplayStore = create<DisplayStore>()(
       setFocusMode: (v) => set({ focusMode: v }),
       scrollLeadInSec: 3,
       setScrollLeadInSec: (s) => set({ scrollLeadInSec: s }),
+      viewMode: 'cards',
+      setViewMode: (v) => set({ viewMode: v }),
+      capoDisplay: 'sounding',
+      setCapoDisplay: (c) => set({ capoDisplay: c }),
+      sheetColumns: 1,
+      setSheetColumns: (c) => set({ sheetColumns: c }),
+      singleKeyShortcuts: true,
+      setSingleKeyShortcuts: (v) => set({ singleKeyShortcuts: v }),
     }),
     {
       name: 'jamshelf-display-mode',
@@ -60,6 +80,10 @@ export const useDisplayStore = create<DisplayStore>()(
         fontSize: s.fontSize,
         chordsRefOpen: s.chordsRefOpen,
         scrollLeadInSec: s.scrollLeadInSec,
+        viewMode: s.viewMode,
+        capoDisplay: s.capoDisplay,
+        sheetColumns: s.sheetColumns,
+        singleKeyShortcuts: s.singleKeyShortcuts,
       }),
     }
   )

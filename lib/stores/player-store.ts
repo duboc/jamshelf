@@ -31,6 +31,11 @@ interface PlayerStore {
   resetForSong: (tempo: number, capo: number, savedScrollSpeed?: number | null) => void;
 }
 
+function normalizeSignedTranspose(v: number): number {
+  const mod = ((Math.round(v) % 12) + 12) % 12;
+  return mod > 6 ? mod - 12 : mod;
+}
+
 export const usePlayerStore = create<PlayerStore>((set) => ({
   transpose: 0,
   useFlats: false,
@@ -43,9 +48,9 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
   capo: 0,
   editMode: false,
 
-  setTranspose: (v) => set({ transpose: ((v % 12) + 12) % 12 }),
-  transposeUp: () => set((s) => ({ transpose: ((s.transpose + 1) % 12 + 12) % 12 })),
-  transposeDown: () => set((s) => ({ transpose: ((s.transpose - 1) % 12 + 12) % 12 })),
+  setTranspose: (v) => set({ transpose: normalizeSignedTranspose(v) }),
+  transposeUp: () => set((s) => ({ transpose: normalizeSignedTranspose(s.transpose + 1) })),
+  transposeDown: () => set((s) => ({ transpose: normalizeSignedTranspose(s.transpose - 1) })),
   toggleFlats: () => set((s) => ({ useFlats: !s.useFlats })),
   setAutoScrollSpeed: (sp) =>
     set({ autoScrollSpeed: Math.max(0.25, Math.min(2.5, Number(sp.toFixed(2)))) }),
@@ -53,7 +58,7 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
   setAutoScrolling: (on) => set({ isAutoScrolling: on }),
   setActiveChord: (c) => set((s) => ({ activeChord: s.activeChord === c ? null : c })),
   setMetronomeOn: (on) => set({ metronomeOn: on }),
-  setBpm: (bpm) => set({ bpm: Math.max(40, Math.min(240, bpm)) }),
+  setBpm: (bpm) => set({ bpm: Math.max(40, Math.min(240, Math.round(bpm))) }),
   setBeat: (b) => set({ beat: b }),
   setCapo: (c) => set({ capo: Math.max(0, Math.min(12, c)) }),
   toggleEditMode: () =>
@@ -70,9 +75,10 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
     set({
       transpose: 0,
       isAutoScrolling: false,
+      metronomeOn: false,
       activeChord: null,
       editMode: false,
-      bpm: Math.max(40, Math.min(240, tempo)),
+      bpm: Math.max(40, Math.min(240, Math.round(tempo))),
       capo: Math.max(0, Math.min(12, capo)),
       autoScrollSpeed:
         savedScrollSpeed && savedScrollSpeed >= 0.25 && savedScrollSpeed <= 2.5

@@ -21,7 +21,12 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
   const minFret = baseFret || 1;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[140px]">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label={`Diagrama de violão para o acorde ${label}`}
+      className="w-full max-w-[140px]"
+    >
       <text
         x={W / 2}
         y={12}

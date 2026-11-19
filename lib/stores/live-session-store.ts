@@ -9,7 +9,7 @@ import {
 } from '@/lib/types/live-session';
 
 const POLL_MS = 1500;
-const LEADER_STALE_MS = 20000;
+const STALE_POLL_THRESHOLD = 14; // ~21s of unchanging updatedAt without relying on cross-device clock sync
 
 export interface LiveScrollState {
   scrollTop: number;
@@ -25,15 +25,22 @@ function loadDeviceId(): string {
   return id;
 }
 
-async function putSession(setlistId: string, updates: Partial<LiveSession>) {
+async function putSession(
+  setlistId: string,
+  updates: Partial<LiveSession>,
+  keepalive = false
+): Promise<boolean> {
   try {
-    await fetch(`/api/sessions/${setlistId}`, {
+    const res = await fetch(`/api/sessions/${setlistId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
+      keepalive,
     });
+    return res.ok;
   } catch (err) {
     console.error('Failed to sync live session:', err);
+    return false;
   }
 }
 
@@ -67,9 +74,9 @@ export function useLiveSessionStatus(setlistId: string | null) {
 
 /**
  * Keeps auto-scroll, current song, and metronome in sync across every device
- * viewing the same setlist. Broadcasts both raw scrollTop and normalized
- * scrollRatio (0..1) so phones in lyrics-only mode stay aligned with tablets
- * in full chord mode.
+ * viewing the same setlist. Includes local unfollow override so musicians are
+ * never trapped in follower mode, monotonic staleness tracking, live error
+ * status, and automatic leadership release on pagehide.
  */
 export function useLiveSession(
   setlistId: string | null,
@@ -81,10 +88,20 @@ export function useLiveSession(
   const [deviceName, setDeviceNameState] = useState('');
   const [session, setSession] = useState<LiveSession>(DEFAULT_LIVE_SESSION);
   const [isLeading, setIsLeading] = useState(false);
+  const [localUnfollow, setLocalUnfollow] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [isLeaderStale, setIsLeaderStale] = useState(false);
   const [syncNonce, setSyncNonce] = useState(0);
   const [incomingCountIn, setIncomingCountIn] = useState<LiveCountIn | null>(null);
   const seenCountInNonceRef = useRef<number | null>(null);
   const initialPollDoneRef = useRef(false);
+  const lastUpdatedAtRef = useRef<number>(0);
+  const stalePollsRef = useRef<number>(0);
+  const localUnfollowRef = useRef(false);
+
+  useEffect(() => {
+    localUnfollowRef.current = localUnfollow;
+  }, [localUnfollow]);
 
   useEffect(() => {
     deviceIdRef.current = loadDeviceId();
@@ -104,14 +121,32 @@ export function useLiveSession(
   useEffect(() => {
     isLeadingRef.current = isLeading;
   }, [isLeading]);
+
+  // Release leadership cleanly when closing the tab or navigating away
+  useEffect(() => {
+    if (!setlistId) return;
+    const onPageHide = () => {
+      if (isLeadingRef.current) {
+        void putSession(setlistId, { leaderId: null, leaderName: null }, true);
+      }
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [setlistId]);
+
   useEffect(() => {
     currentSongIdRef.current = currentSongId;
     if (setlistId && isLeadingRef.current) {
-      putSession(setlistId, {
+      void putSession(setlistId, {
         currentSongId,
         scrollTop: 0,
         scrollRatio: 0,
         updatedAt: Date.now(),
+      }).then((ok) => {
+        if (!ok) setLiveError('Conexão instável no Ao Vivo.');
+        else setLiveError(null);
       });
     }
   }, [currentSongId, setlistId]);
@@ -119,17 +154,24 @@ export function useLiveSession(
   useEffect(() => {
     if (!setlistId) return;
     let cancelled = false;
+    stalePollsRef.current = 0;
+    lastUpdatedAtRef.current = 0;
 
     const tick = async () => {
       let fetched: LiveSession;
       try {
         const res = await fetch(`/api/sessions/${setlistId}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setLiveError('Falha ao sincronizar sessão Ao Vivo.');
+          return;
+        }
         fetched = await res.json();
       } catch {
+        if (!cancelled) setLiveError('Sem conexão com a sessão Ao Vivo.');
         return;
       }
       if (cancelled) return;
+      setLiveError(null);
 
       const myId = deviceIdRef.current;
       const leading = !!myId && fetched.leaderId === myId;
@@ -139,7 +181,8 @@ export function useLiveSession(
       const player = usePlayerStore.getState();
 
       if (leading) {
-        putSession(setlistId, {
+        setIsLeaderStale(false);
+        const ok = await putSession(setlistId, {
           currentSongId: currentSongIdRef.current,
           isAutoScrolling: player.isAutoScrolling,
           autoScrollSpeed: player.autoScrollSpeed,
@@ -149,32 +192,52 @@ export function useLiveSession(
           bpm: player.bpm,
           updatedAt: Date.now(),
         });
+        if (!cancelled && !ok) {
+          setLiveError('Conexão instável ao transmitir Ao Vivo.');
+        }
       } else if (fetched.leaderId) {
-        if (player.isAutoScrolling !== fetched.isAutoScrolling) {
-          player.setAutoScrolling(fetched.isAutoScrolling);
+        // Track staleness monotonically rather than trusting wall-clock agreement across phones
+        if (fetched.updatedAt !== lastUpdatedAtRef.current) {
+          lastUpdatedAtRef.current = fetched.updatedAt;
+          stalePollsRef.current = 0;
+          setIsLeaderStale(false);
+        } else {
+          stalePollsRef.current += 1;
+          if (stalePollsRef.current >= STALE_POLL_THRESHOLD) {
+            setIsLeaderStale(true);
+          }
         }
-        if (player.autoScrollSpeed !== fetched.autoScrollSpeed) {
-          player.setAutoScrollSpeed(fetched.autoScrollSpeed);
+
+        if (!localUnfollowRef.current) {
+          if (player.isAutoScrolling !== fetched.isAutoScrolling) {
+            player.setAutoScrolling(fetched.isAutoScrolling);
+          }
+          if (player.autoScrollSpeed !== fetched.autoScrollSpeed) {
+            player.setAutoScrollSpeed(fetched.autoScrollSpeed);
+          }
+          if (player.metronomeOn !== fetched.metronomeOn) {
+            player.setMetronomeOn(fetched.metronomeOn);
+          }
+          if (player.bpm !== fetched.bpm) {
+            player.setBpm(fetched.bpm);
+          }
+          const remoteCountIn = fetched.countIn ?? null;
+          if (!initialPollDoneRef.current) {
+            initialPollDoneRef.current = true;
+            seenCountInNonceRef.current = remoteCountIn?.nonce ?? null;
+          } else if (remoteCountIn && remoteCountIn.nonce !== seenCountInNonceRef.current) {
+            seenCountInNonceRef.current = remoteCountIn.nonce;
+            setIncomingCountIn(remoteCountIn);
+          }
+          setSyncNonce((n) => n + 1);
         }
-        if (player.metronomeOn !== fetched.metronomeOn) {
-          player.setMetronomeOn(fetched.metronomeOn);
-        }
-        if (player.bpm !== fetched.bpm) {
-          player.setBpm(fetched.bpm);
-        }
-        // Trigger visual count-in only on a brand-new nonce arriving after initial join
-        const remoteCountIn = fetched.countIn ?? null;
+      } else {
+        setIsLeaderStale(false);
+        stalePollsRef.current = 0;
         if (!initialPollDoneRef.current) {
           initialPollDoneRef.current = true;
-          seenCountInNonceRef.current = remoteCountIn?.nonce ?? null;
-        } else if (remoteCountIn && remoteCountIn.nonce !== seenCountInNonceRef.current) {
-          seenCountInNonceRef.current = remoteCountIn.nonce;
-          setIncomingCountIn(remoteCountIn);
+          seenCountInNonceRef.current = fetched.countIn?.nonce ?? null;
         }
-        setSyncNonce((n) => n + 1);
-      } else if (!initialPollDoneRef.current) {
-        initialPollDoneRef.current = true;
-        seenCountInNonceRef.current = fetched.countIn?.nonce ?? null;
       }
     };
 
@@ -206,9 +269,14 @@ export function useLiveSession(
         bpm: player.bpm,
         updatedAt: Date.now(),
       };
+      setLocalUnfollow(false);
       setIsLeading(true);
+      setIsLeaderStale(false);
       setSession((s) => ({ ...s, ...payload } as LiveSession));
-      putSession(setlistId, payload);
+      void putSession(setlistId, payload).then((ok) => {
+        if (!ok) setLiveError('Não foi possível iniciar o Ao Vivo no servidor.');
+        else setLiveError(null);
+      });
     },
     [setlistId, scrollStateRef, setDeviceName]
   );
@@ -217,8 +285,17 @@ export function useLiveSession(
     if (!setlistId) return;
     setIsLeading(false);
     setSession((s) => ({ ...s, leaderId: null, leaderName: null }));
-    putSession(setlistId, { leaderId: null, leaderName: null });
+    void putSession(setlistId, { leaderId: null, leaderName: null });
   }, [setlistId]);
+
+  const unfollow = useCallback(() => {
+    setLocalUnfollow(true);
+  }, []);
+
+  const refollow = useCallback(() => {
+    setLocalUnfollow(false);
+    setSyncNonce((n) => n + 1);
+  }, []);
 
   const endSession = useCallback(() => {
     if (!setlistId) return;
@@ -239,7 +316,7 @@ export function useLiveSession(
       };
       seenCountInNonceRef.current = next.nonce;
       setSession((s) => ({ ...s, countIn: next }));
-      putSession(setlistId, { countIn: next, updatedAt: Date.now() });
+      void putSession(setlistId, { countIn: next, updatedAt: Date.now() });
     },
     [setlistId]
   );
@@ -249,8 +326,8 @@ export function useLiveSession(
   }, []);
 
   const deviceId = deviceIdRef.current;
-  const isFollowing = !isLeading && !!session.leaderId && session.leaderId !== deviceId;
-  const isLeaderStale = isFollowing && Date.now() - session.updatedAt > LEADER_STALE_MS;
+  const hasRemoteLeader = !isLeading && !!session.leaderId && session.leaderId !== deviceId;
+  const isFollowing = hasRemoteLeader && !localUnfollow;
 
   const syncCorrection = useMemo(
     () =>
@@ -270,10 +347,15 @@ export function useLiveSession(
     deviceName,
     setDeviceName,
     isLeading,
+    hasRemoteLeader,
     isFollowing,
+    localUnfollow,
     isLeaderStale,
+    liveError,
     startLeading,
     stopLeading,
+    unfollow,
+    refollow,
     endSession,
     triggerCountIn,
     incomingCountIn,

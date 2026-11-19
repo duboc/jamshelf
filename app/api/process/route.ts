@@ -11,7 +11,10 @@ RULES:
   {key: Am}
   {capo: 0}
   {tempo: 120}
+  {duration: 215}
 - Omit {capo:} if capo is 0
+- Omit {duration:} if you don't know the song's real studio duration in seconds
+- For {tempo:}, use the real song BPM (only omit if unknown; do not default everything to 120)
 - Section headers use bracket syntax on their own line: [Intro], [Verse 1], [Chorus], [Pre-Chorus], [Bridge], [Outro]
 - Number duplicate sections: [Verse 1], [Verse 2], [Chorus 1], [Chorus 2]
 - Inline chords use [ChordName] notation placed immediately before the syllable they land on
@@ -56,11 +59,11 @@ function looksLikePastedSheet(text: string): boolean {
 
 export async function POST(request: Request) {
   try {
-    const { rawText } = await request.json();
+    const { rawText, forcePaste } = await request.json();
 
     if (!rawText || typeof rawText !== 'string') {
       return NextResponse.json(
-        { error: 'Missing or invalid rawText' },
+        { error: 'Informe o nome da música ou cole uma cifra primeiro.' },
         { status: 400 }
       );
     }
@@ -69,7 +72,7 @@ export async function POST(request: Request) {
     const trimmed = rawText.trim();
     let sourceForFormatting = trimmed;
 
-    if (!looksLikePastedSheet(trimmed)) {
+    if (!forcePaste && !looksLikePastedSheet(trimmed)) {
       const isUrl = /^https?:\/\/[^\s]+$/i.test(trimmed);
       const searchPrompt = isUrl
         ? `Extract and transcribe the song from this URL: "${trimmed}".

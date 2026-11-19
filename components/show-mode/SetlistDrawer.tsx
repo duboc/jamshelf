@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
+import { ArrowDownIcon, ArrowUpIcon, CloseIcon, GripIcon } from '@/components/ui/Icons';
 import type { Setlist, ParsedSong } from '@/lib/types/song';
 
 interface SetlistDrawerProps {
   setlist: Setlist;
   currentSongId: string;
-  /** Followers get a read-only view — same rule as prev/next navigation. */
+  /** Followers get a read-only view, matching prev/next navigation rules. */
   canReorder: boolean;
   onNavigate: (songId: string) => void;
   onClose: () => void;
@@ -31,6 +33,10 @@ export function SetlistDrawer({
   const { reorderSong } = useSetlistStore();
   const { getSong } = useSongStore();
   const listRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const [liveStatus, setLiveStatus] = useState('');
+
+  useDialogA11y(true, onClose, drawerRef);
 
   const baseEntries: Entry[] = setlist.songIds
     .map((sid, storeIdx) => ({ song: getSong(sid), storeIdx }))
@@ -57,6 +63,15 @@ export function SetlistDrawer({
       ?.scrollIntoView({ block: 'center' });
   }, []);
 
+  const handleKeyboardReorder = (displayIdx: number, delta: -1 | 1) => {
+    const targetIdx = displayIdx + delta;
+    if (targetIdx < 0 || targetIdx >= baseEntries.length) return;
+    const item = baseEntries[displayIdx];
+    const target = baseEntries[targetIdx];
+    reorderSong(setlist.id, item.storeIdx, target.storeIdx);
+    setLiveStatus(`${item.song.title} movida para a posição ${targetIdx + 1}`);
+  };
+
   return (
     <>
       <div
@@ -66,15 +81,24 @@ export function SetlistDrawer({
         onTouchEnd={(e) => e.stopPropagation()}
       />
       <aside
-        aria-label={`Setlist ${setlist.name}`}
-        className="fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col rounded-r-[28px] bg-[var(--surface)] overflow-hidden"
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="setlist-drawer-title"
+        className="gm3-drawer-left fixed inset-y-0 left-0 w-80 max-w-[88vw] z-50 flex flex-col rounded-r-[28px] bg-[var(--surface)] overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
       >
+        <div className="sr-only" role="status" aria-live="polite">
+          {liveStatus}
+        </div>
+
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line-subtle)]/40 flex-shrink-0">
           <div className="min-w-0">
-            <div className="text-lg font-display font-bold text-[var(--ink)] truncate">{setlist.name}</div>
+            <h2 id="setlist-drawer-title" className="text-lg font-display font-bold text-[var(--ink)] truncate">
+              {setlist.name}
+            </h2>
             <div className="font-mono text-xs text-[var(--muted)] mt-0.5">
               {displayEntries.length}{' '}
               {displayEntries.length === 1 ? 'música' : 'músicas'}
@@ -82,18 +106,18 @@ export function SetlistDrawer({
             </div>
             <div className="text-xs text-[var(--muted)] mt-0.5">
               {canReorder
-                ? 'Toque para pular · arraste ⣿ para ordenar'
+                ? 'Toque para pular · arraste ou use as setas para ordenar'
                 : 'Seguindo o líder da sessão'}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-[var(--muted)] hover:text-[var(--ink)] text-xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-high)] transition-colors flex-shrink-0 cursor-pointer"
+            className="text-[var(--muted)] hover:text-[var(--ink)] w-9 h-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-high)] transition-colors flex-shrink-0 cursor-pointer"
             title="Fechar setlist"
             aria-label="Fechar setlist"
           >
-            &times;
+            <CloseIcon size={17} />
           </button>
         </div>
 
@@ -129,6 +153,7 @@ export function SetlistDrawer({
                     onClose();
                   }}
                   disabled={!canReorder}
+                  aria-current={isCurrent ? 'true' : undefined}
                   className="flex-1 min-w-0 py-2.5 text-left disabled:cursor-default cursor-pointer"
                 >
                   <div
@@ -149,12 +174,35 @@ export function SetlistDrawer({
                   </div>
                 </button>
                 {canReorder && (
-                  <div
-                    {...getHandleProps(displayIdx)}
-                    title="Arrastar para reordenar"
-                    className="touch-none select-none cursor-grab active:cursor-grabbing text-[var(--muted)] hover:text-[var(--ink)] px-3 py-3 flex-shrink-0 text-base leading-none"
-                  >
-                    &#10495;
+                  <div className="flex items-center flex-shrink-0 pr-1">
+                    <button
+                      type="button"
+                      disabled={displayIdx === 0}
+                      onClick={() => handleKeyboardReorder(displayIdx, -1)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
+                      aria-label={`Mover ${song.title} para cima`}
+                      title="Mover para cima"
+                    >
+                      <ArrowUpIcon size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={displayIdx >= displayEntries.length - 1}
+                      onClick={() => handleKeyboardReorder(displayIdx, 1)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
+                      aria-label={`Mover ${song.title} para baixo`}
+                      title="Mover para baixo"
+                    >
+                      <ArrowDownIcon size={13} />
+                    </button>
+                    <div
+                      {...getHandleProps(displayIdx)}
+                      title="Arrastar para reordenar"
+                      aria-hidden="true"
+                      className="touch-none select-none cursor-grab active:cursor-grabbing text-[var(--muted)] hover:text-[var(--ink)] p-2 flex-shrink-0"
+                    >
+                      <GripIcon size={15} />
+                    </div>
                   </div>
                 )}
               </div>

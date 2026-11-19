@@ -1,27 +1,110 @@
-import type { ParsedSong } from '@/lib/types/song';
-import { lineHasLyrics } from './music';
+import type { ParsedSong, Section } from '@/lib/types/song';
+import { lineHasLyrics, parseLine } from './music';
+
+/**
+ * Estimates musical weight (in rough seconds at 110 BPM, 4/4) for a single section
+ * based on lyrics word density, instrumental chord/bar count, and section role.
+ */
+function computeSectionWeight(section: Section, bpm: number, beatsPerBar: number): number {
+  const safeBpm = Math.max(40, Math.min(220, bpm || 120));
+  const secPerBar = (beatsPerBar * 60) / safeBpm;
+  const tempoFactor = 110 / safeBpm;
+
+  let weight = 0;
+  for (const raw of section.lines) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+
+    if (lineHasLyrics(trimmed)) {
+      const segs = parseLine(trimmed);
+      const plain = segs.map((s) => s.text).join(' ').trim();
+      const words = plain ? plain.split(/\s+/).length : 0;
+      const chordChanges = segs.filter((s) => s.chord).length;
+      // Shorter vocal phrases take less time than dense lines; chord density adds weight
+      const lineSec = Math.max(2.2, Math.min(7.5, 1.8 + words * 0.28 + chordChanges * 0.35));
+      weight += lineSec * tempoFactor;
+    } else {
+      // Instrumental / chord-grid line: count explicit bars (|) or chord tokens
+      const barPipes = (trimmed.match(/\|/g) || []).length;
+      const chords = parseLine(trimmed).filter((s) => s.chord).length;
+      const estimatedBars = barPipes >= 2 ? Math.max(1, barPipes - 1) : Math.max(2, chords);
+      const roleBoost =
+        section.type === 'solo' || section.type === 'interlude'
+          ? 1.35
+          : section.type === 'intro' || section.type === 'outro'
+          ? 1.15
+          : 1.0;
+      weight += Math.max(3.0, estimatedBars * secPerBar * 0.85 * roleBoost);
+    }
+  }
+
+  // Breathing room / transition between sections
+  const minSectionSec = section.type === 'intro' || section.type === 'outro' ? 5 : 4;
+  return Math.max(minSectionSec, weight + 1.8 * tempoFactor);
+}
 
 /**
  * Estimates a reasonable playback duration in seconds when a song has neither
  * a saved `{duration:}` directive nor a Spotify track duration.
  */
-export function estimateSongDurationSec(song: Pick<ParsedSong, 'duration' | 'tempo' | 'sections'>): number {
+export function estimateSongDurationSec(
+  song: Pick<ParsedSong, 'duration' | 'tempo' | 'sections'> & { timeSignature?: string }
+): number {
   if (song.duration && song.duration >= 15) return song.duration;
 
-  let lyricLines = 0;
-  let instrumentalLines = 0;
-  for (const sec of song.sections) {
-    for (const l of sec.lines) {
-      if (!l.trim()) continue;
-      if (lineHasLyrics(l)) lyricLines++;
-      else instrumentalLines++;
-    }
-  }
+  const bpm = Math.max(40, Math.min(220, song.tempo || 120));
+  const beatsPerBar = parseInt(song.timeSignature || '4/4', 10) || 4;
 
-  const bpm = Math.max(60, Math.min(180, song.tempo || 120));
-  const tempoFactor = 110 / bpm; // slower songs take more seconds per line
-  const estimated = (lyricLines * 3.4 + instrumentalLines * 2.2 + song.sections.length * 2.5) * tempoFactor;
-  return Math.round(Math.max(60, Math.min(480, estimated)));
+  let total = 0;
+  for (const sec of song.sections) {
+    total += computeSectionWeight(sec, bpm, beatsPerBar);
+  }
+  return Math.round(Math.max(45, Math.min(540, total)));
+}
+
+/**
+ * Returns the active duration adjusted by live BPM changes relative to the song's
+ * saved tempo (e.g. rehearsing 10% slower lengthens duration by 10%).
+ */
+export function computeEffectiveDurationSec(
+  song: Pick<ParsedSong, 'duration' | 'tempo' | 'sections'> & { timeSignature?: string },
+  liveBpm?: number
+): number {
+  const baseDur = estimateSongDurationSec(song);
+  const savedBpm = Math.max(30, Math.min(260, song.tempo || 120));
+  if (!liveBpm || liveBpm <= 0 || Math.abs(liveBpm - savedBpm) < 1) {
+    return baseDur;
+  }
+  const safeLive = Math.max(30, Math.min(260, liveBpm));
+  const ratio = savedBpm / safeLive;
+  return Math.max(20, Math.min(900, baseDur * ratio));
+}
+
+/**
+ * Generates automatic per-section start timestamps (seconds) weighted by each
+ * section's musical content (lyrics density + instrumental bars) and scaled to
+ * totalDurationSec. Used whenever manual `{marks:}` calibration is not present.
+ */
+export function estimateSectionMarks(
+  song: Pick<ParsedSong, 'tempo' | 'sections'> & { timeSignature?: string },
+  totalDurationSec: number
+): number[] {
+  const n = song.sections.length;
+  if (n < 2) return [0];
+
+  const bpm = Math.max(40, Math.min(220, song.tempo || 120));
+  const beatsPerBar = parseInt(song.timeSignature || '4/4', 10) || 4;
+  const weights = song.sections.map((sec) => computeSectionWeight(sec, bpm, beatsPerBar));
+  const sum = weights.reduce((a, b) => a + b, 0) || 1;
+  const safeTotal = Math.max(20, totalDurationSec);
+
+  const marks: number[] = [];
+  let acc = 0;
+  for (let i = 0; i < n; i++) {
+    marks.push(Number(((acc / sum) * safeTotal).toFixed(2)));
+    acc += weights[i];
+  }
+  return marks;
 }
 
 /**
@@ -52,21 +135,46 @@ export function hasUsableMarks(marks: number[] | null | undefined, sectionCount:
 }
 
 /**
+ * Computes target scrollTop anchors for each section, keeping the active section
+ * comfortably inside the upper reading zone (instead of rushing off the top edge).
+ */
+function buildTargetTops(
+  sectionTops: number[],
+  count: number,
+  maxScroll: number,
+  viewportHeight: number
+): number[] {
+  // Keep current section ~20% down the viewport (capped at 130px) so the musician
+  // reads ahead naturally and doesn't lose context at the top of the song.
+  const readingAnchor = viewportHeight > 0 ? Math.min(130, Math.round(viewportHeight * 0.2)) : 0;
+  const targets: number[] = [];
+  let prev = 0;
+  for (let i = 0; i < count; i++) {
+    const raw = i === 0 ? 0 : Math.max(0, sectionTops[i] - readingAnchor);
+    const clamped = Math.max(prev, Math.min(maxScroll, raw));
+    targets.push(clamped);
+    prev = clamped;
+  }
+  return targets;
+}
+
+/**
  * Maps elapsed song time (seconds) to a target scrollTop using calibrated
- * per-section start times and live DOM section offsets on the current device.
+ * (or auto-estimated) per-section start times and live DOM section offsets.
  */
 export function interpolateMarkedScroll(
   elapsedSec: number,
   marks: number[],
   sectionTops: number[],
   maxScroll: number,
-  totalDurationSec: number
+  totalDurationSec: number,
+  viewportHeight = 0
 ): number {
   if (maxScroll <= 0 || marks.length < 2 || sectionTops.length < 2) return 0;
   const count = Math.min(marks.length, sectionTops.length);
-  const clampedTops = sectionTops.slice(0, count).map((t) => Math.max(0, Math.min(maxScroll, t)));
+  const targets = buildTargetTops(sectionTops, count, maxScroll, viewportHeight);
 
-  if (elapsedSec <= marks[0]) return clampedTops[0];
+  if (elapsedSec <= marks[0]) return targets[0];
 
   for (let i = 0; i < count - 1; i++) {
     const t0 = marks[i];
@@ -74,53 +182,56 @@ export function interpolateMarkedScroll(
     if (elapsedSec <= t1) {
       const span = Math.max(0.1, t1 - t0);
       const frac = Math.max(0, Math.min(1, (elapsedSec - t0) / span));
-      return clampedTops[i] + (clampedTops[i + 1] - clampedTops[i]) * frac;
+      return targets[i] + (targets[i + 1] - targets[i]) * frac;
     }
   }
 
-  // Final section tail: glide from last marked section top to maxScroll
+  // Final section tail: reach maxScroll smoothly slightly before the final second
+  // so the last lines are comfortably visible while finishing the song.
   const lastIdx = count - 1;
   const lastMark = marks[lastIdx];
   const avgSecPerSection = lastIdx > 0 ? Math.max(8, lastMark / lastIdx) : 20;
-  const tailDur = Math.max(10, totalDurationSec - lastMark > 6 ? totalDurationSec - lastMark : avgSecPerSection);
+  const rawTail = totalDurationSec - lastMark > 6 ? totalDurationSec - lastMark : avgSecPerSection;
+  const tailDur = Math.max(6, rawTail * 0.85);
   const tailFrac = Math.max(0, Math.min(1, (elapsedSec - lastMark) / tailDur));
-  return clampedTops[lastIdx] + (maxScroll - clampedTops[lastIdx]) * tailFrac;
+  return targets[lastIdx] + (maxScroll - targets[lastIdx]) * tailFrac;
 }
 
 /**
  * Inverse of `interpolateMarkedScroll`: when the user manually scrolls to a
- * new scrollTop, finds the matching elapsedSec so calibrated scrolling resumes
- * smoothly from that exact spot instead of jumping back.
+ * new scrollTop, finds the matching elapsedSec so scrolling resumes smoothly
+ * from that exact spot instead of jumping back.
  */
 export function scrollTopToMarkedElapsed(
   scrollTop: number,
   marks: number[],
   sectionTops: number[],
   maxScroll: number,
-  totalDurationSec: number
+  totalDurationSec: number,
+  viewportHeight = 0
 ): number {
   if (maxScroll <= 0 || marks.length < 2 || sectionTops.length < 2) return 0;
   const count = Math.min(marks.length, sectionTops.length);
-  const clampedTops = sectionTops.slice(0, count).map((t) => Math.max(0, Math.min(maxScroll, t)));
+  const targets = buildTargetTops(sectionTops, count, maxScroll, viewportHeight);
   const y = Math.max(0, Math.min(maxScroll, scrollTop));
 
-  if (y <= clampedTops[0]) return marks[0];
+  if (y <= targets[0]) return marks[0];
 
   for (let i = 0; i < count - 1; i++) {
-    const y0 = clampedTops[i];
-    const y1 = clampedTops[i + 1];
-    if (y <= y1) {
-      const dy = y1 - y0;
-      const frac = dy > 0.5 ? (y - y0) / dy : 0;
+    const y0 = targets[i];
+    const y1 = targets[i + 1];
+    if (y <= y1 && y1 > y0 + 0.5) {
+      const frac = (y - y0) / (y1 - y0);
       return marks[i] + (marks[i + 1] - marks[i]) * Math.max(0, Math.min(1, frac));
     }
   }
 
   const lastIdx = count - 1;
   const lastMark = marks[lastIdx];
-  const lastTop = clampedTops[lastIdx];
+  const lastTop = targets[lastIdx];
   const avgSecPerSection = lastIdx > 0 ? Math.max(8, lastMark / lastIdx) : 20;
-  const tailDur = Math.max(10, totalDurationSec - lastMark > 6 ? totalDurationSec - lastMark : avgSecPerSection);
+  const rawTail = totalDurationSec - lastMark > 6 ? totalDurationSec - lastMark : avgSecPerSection;
+  const tailDur = Math.max(6, rawTail * 0.85);
   const remY = maxScroll - lastTop;
   const frac = remY > 0.5 ? (y - lastTop) / remY : 1;
   return lastMark + tailDur * Math.max(0, Math.min(1, frac));
@@ -134,7 +245,7 @@ export interface SetlistDurationSummary {
 
 /** Sums exact `{duration:}` values plus estimated fallbacks for a setlist. */
 export function computeSetlistDuration(
-  songs: Pick<ParsedSong, 'duration' | 'tempo' | 'sections'>[]
+  songs: (Pick<ParsedSong, 'duration' | 'tempo' | 'sections'> & { timeSignature?: string })[]
 ): SetlistDurationSummary {
   let totalSec = 0;
   let knownCount = 0;

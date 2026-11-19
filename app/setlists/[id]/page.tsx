@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
+import { use, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
@@ -9,13 +9,33 @@ import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
 import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
+import { normalizeSearch } from '@/lib/utils/music';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CloseIcon,
+  EditIcon,
+  GripIcon,
+  MusicNoteIcon,
+  PlayIcon,
+  PlusIcon,
+} from '@/components/ui/Icons';
 
 export default function SetlistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { setlists, renameSetlist, removeSongFromSetlist, reorderSong, addSongToSetlist } = useSetlistStore();
+  const {
+    setlists,
+    isLoaded: setlistsLoaded,
+    renameSetlist,
+    removeSongFromSetlist,
+    insertSongAt,
+    reorderSong,
+    addSongToSetlist,
+  } = useSetlistStore();
   const entries = useSongStore((s) => s.entries);
+  const songsLoaded = useSongStore((s) => s.isLoaded);
   const { getSongs } = useSongStore();
   const liveStatus = useLiveSessionStatus(id);
 
@@ -23,6 +43,13 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
   const [nameInput, setNameInput] = useState('');
   const [showAddSong, setShowAddSong] = useState(false);
   const [search, setSearch] = useState('');
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
+  const [undoRemoval, setUndoRemoval] = useState<{
+    songId: string;
+    title: string;
+    storeIdx: number;
+  } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setlist = setlists.find((sl) => sl.id === id);
 
@@ -44,24 +71,45 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
   );
 
   const { drag, getHandleProps } = usePointerReorder({
-    onReorder: (from, to) =>
-      reorderSong(id, baseEntries[from].storeIdx, baseEntries[to].storeIdx),
+    onReorder: (from, to) => {
+      const movedSong = baseEntries[from]?.song;
+      reorderSong(id, baseEntries[from].storeIdx, baseEntries[to].storeIdx);
+      if (movedSong) {
+        setLiveAnnouncement(`${movedSong.title} movida para a posição ${to + 1}.`);
+      }
+    },
   });
 
   if (!setlist) {
+    if (!setlistsLoaded || !songsLoaded) {
+      return (
+        <div className="flex-1 flex flex-col">
+          <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Setlists', href: '/?tab=setlists' }, { label: 'Carregando...' }]} />
+          <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4" aria-busy="true">
+            <div className="h-10 w-64 rounded-2xl bg-[var(--surface)] animate-pulse" />
+            <div className="space-y-2">
+              {Array.from({ length: 5 }, (_, idx) => (
+                <div key={idx} className="h-20 rounded-[16px] bg-[var(--surface)] animate-pulse" />
+              ))}
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="flex-1 flex flex-col">
         <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Setlists', href: '/?tab=setlists' }, { label: 'Não encontrado' }]} />
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <main id="main-content" className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
           <p className="text-sm text-[var(--muted)]">Esse setlist não foi encontrado.</p>
           <button
             type="button"
             onClick={() => router.push('/?tab=setlists')}
-            className="pill-btn px-4 py-2 text-xs"
+            className="pill-btn h-10 px-4 text-xs"
           >
             Voltar para Setlists
           </button>
-        </div>
+        </main>
       </div>
     );
   }
@@ -73,18 +121,17 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     ? formatSetlistDuration(durationSummary.totalSec, durationSummary.estimatedCount > 0)
     : null;
 
-  // Join an in-progress show on the leader's actual song, not always song 1.
   const startSongId =
     (liveStatus.leaderId && liveStatus.currentSongId) || setlistSongs[0]?.id || null;
 
   const notInSetlist = allSongs.filter((s) => !setlist.songIds.includes(s.id));
+  const qNorm = normalizeSearch(search);
   const filtered = notInSetlist.filter((s) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
+    if (!qNorm) return true;
     return (
-      s.title.toLowerCase().includes(q) ||
-      s.artist.toLowerCase().includes(q) ||
-      s.displayKey.toLowerCase().includes(q)
+      normalizeSearch(s.title).includes(qNorm) ||
+      normalizeSearch(s.artist).includes(qNorm) ||
+      normalizeSearch(s.displayKey).includes(qNorm)
     );
   });
 
@@ -94,8 +141,35 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
   };
 
   const commitRename = () => {
-    if (nameInput.trim()) renameSetlist(id, nameInput.trim());
+    if (nameInput.trim()) {
+      renameSetlist(id, nameInput.trim());
+      setLiveAnnouncement(`Setlist renomeado para ${nameInput.trim()}.`);
+    }
     setEditingName(false);
+  };
+
+  const handleRemoveWithUndo = (songId: string, title: string, storeIdx: number) => {
+    removeSongFromSetlist(id, songId);
+    setUndoRemoval({ songId, title, storeIdx });
+    setLiveAnnouncement(`${title} removida do setlist.`);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => setUndoRemoval(null), 6000);
+  };
+
+  const handleUndoRemove = () => {
+    if (!undoRemoval) return;
+    insertSongAt(id, undoRemoval.songId, undoRemoval.storeIdx);
+    setLiveAnnouncement(`${undoRemoval.title} restaurada no setlist.`);
+    setUndoRemoval(null);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+  };
+
+  const handleMoveKeyboard = (idx: number, delta: -1 | 1) => {
+    const targetIdx = idx + delta;
+    if (targetIdx < 0 || targetIdx >= baseEntries.length) return;
+    const movedSong = baseEntries[idx].song;
+    reorderSong(id, baseEntries[idx].storeIdx, baseEntries[targetIdx].storeIdx);
+    setLiveAnnouncement(`${movedSong.title} movida para a posição ${targetIdx + 1}.`);
   };
 
   return (
@@ -108,15 +182,19 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
         ]}
         rightSlot={
           liveStatus.leaderId ? (
-            <span className="studio-chip text-[var(--rec)] border border-[var(--rec)]/40 bg-[var(--rec)]/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--rec)] animate-pulse" />
+            <span className="studio-chip text-[var(--on-rec-container)] bg-[var(--rec-dim)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--rec-dot)] animate-pulse" />
               {liveStatus.leaderName} ao vivo
             </span>
           ) : undefined
         }
       />
 
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+      <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+        <div className="sr-only" role="status" aria-live="polite">
+          {liveAnnouncement}
+        </div>
+
         {/* Header */}
         <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
           <div className="space-y-1 min-w-0 flex-1">
@@ -124,6 +202,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
               {editingName ? (
                 <input
                   autoFocus
+                  aria-label="Renomear setlist"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   onBlur={commitRename}
@@ -143,13 +222,13 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                   <h1 className="font-display text-3xl sm:text-4xl text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors leading-tight">
                     {setlist.name}
                     {'\u00A0'}
-                    <span className="inline-block text-sm font-normal text-[var(--muted)] group-hover:text-[var(--accent)] align-baseline" aria-hidden="true">
-                      ✎
+                    <span className="inline-flex align-middle text-[var(--muted)] group-hover:text-[var(--accent)]" aria-hidden="true">
+                      <EditIcon size={17} />
                     </span>
                   </h1>
                 </button>
               )}
-              <span className="font-expressive text-lg text-[var(--accent)]">
+              <span className="font-expressive text-lg text-[var(--muted)]">
                 {setlistSongs.length} {setlistSongs.length === 1 ? 'música' : 'músicas'}
                 {durationLabel ? ` · ${durationLabel}` : ''}
               </span>
@@ -166,23 +245,62 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                   ? 'Adicione uma música primeiro'
                   : 'Abrir visão de palco focada com deslize entre músicas'
               }
-              className="pill-btn pill-btn-rec h-10 px-5 text-sm"
+              className="pill-btn pill-btn-rec h-11 px-5 text-sm"
             >
-              ▶ Modo Show
+              <PlayIcon size={14} />
+              Modo Show
             </button>
             <button
               type="button"
               onClick={() => setShowAddSong((v) => !v)}
-              className="pill-btn pill-btn-primary h-10 px-5 text-sm"
+              className="pill-btn pill-btn-tonal h-11 px-5 text-sm"
             >
-              {showAddSong ? 'Fechar lista' : '+ Adicionar música'}
+              {showAddSong ? (
+                'Fechar lista'
+              ) : (
+                <>
+                  <PlusIcon size={16} />
+                  Adicionar música
+                </>
+              )}
             </button>
           </div>
         </section>
 
+        {/* Undo snackbar for accidental setlist track removal */}
+        {undoRemoval && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="gm3-dialog-enter rounded-2xl bg-[var(--surface)] px-4 py-3 flex items-center justify-between gap-3 text-sm"
+            style={{ boxShadow: 'var(--shadow-sm)' }}
+          >
+            <span className="text-[var(--ink)]">
+              &ldquo;{undoRemoval.title}&rdquo; removida do setlist.
+            </span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleUndoRemove}
+                className="pill-btn pill-btn-tonal h-9 px-4 text-xs font-semibold"
+              >
+                Desfazer
+              </button>
+              <button
+                type="button"
+                onClick={() => setUndoRemoval(null)}
+                aria-label="Dispensar aviso"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
+              >
+                <CloseIcon size={15} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Add song picker */}
         {showAddSong && (
-          <section className="rounded-[24px] bg-[var(--surface)] p-5 space-y-3">
+          <section className="gm3-card gm3-dialog-enter rounded-[24px] bg-[var(--surface)] p-5 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="field-label">Adicionar do repertório</span>
               <button
@@ -199,6 +317,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
             <input
               autoFocus
               type="text"
+              aria-label="Buscar música ou artista para incluir no setlist"
               placeholder="Buscar música ou artista para incluir..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -218,18 +337,21 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                     type="button"
                     onClick={() => {
                       addSongToSetlist(id, song.id);
+                      setLiveAnnouncement(`${song.title} adicionada ao setlist.`);
                       setSearch('');
                     }}
                     className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl hover:bg-[var(--surface-high)] transition-colors text-left cursor-pointer"
                   >
-                      <div className="min-w-0">
-                        <div className="text-[16px] font-display font-bold text-[var(--ink)] truncate">{song.title}</div>
-                        <div className="text-xs text-[var(--muted)] truncate">
+                    <div className="min-w-0">
+                      <div className="text-[16px] font-display font-bold text-[var(--ink)] truncate">{song.title}</div>
+                      <div className="text-xs text-[var(--muted)] truncate">
                         {song.artist || 'Artista não informado'}
                         {song.displayKey ? ` · ${song.displayKey}` : ''}
                       </div>
                     </div>
-                    <span className="pill-btn pill-btn-tonal px-3 py-1 text-xs">+ Incluir</span>
+                    <span className="pill-btn pill-btn-tonal px-3 py-1.5 text-xs flex-shrink-0">
+                      <PlusIcon size={13} /> Incluir
+                    </span>
                   </button>
                 ))
               )}
@@ -240,26 +362,31 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
         {/* Ordered song list (GM3 Expressive segmented stack) */}
         <section className="space-y-2">
           {setlistSongs.length === 0 ? (
-            <div className="rounded-[24px] bg-[var(--surface)] px-6 py-16 text-center space-y-4">
-              <p className="text-sm text-[var(--muted)]">
-                Nenhuma música neste setlist ainda. Toque em &ldquo;+ Adicionar música&rdquo; para montar a sequência.
+            <div className="gm3-card rounded-[24px] bg-[var(--surface)] px-6 py-16 text-center flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] flex items-center justify-center">
+                <MusicNoteIcon size={22} />
+              </div>
+              <h2 className="font-display text-lg font-bold text-[var(--ink)]">Setlist ainda vazio</h2>
+              <p className="text-sm text-[var(--muted)] max-w-md">
+                Toque em &ldquo;Adicionar música&rdquo; para montar a ordem do ensaio ou do show.
               </p>
               <button
                 type="button"
                 onClick={() => setShowAddSong(true)}
-                className="pill-btn pill-btn-primary h-10 px-5 text-sm"
+                className="pill-btn pill-btn-primary h-10 px-5 text-sm mt-1"
               >
-                + Adicionar música
+                <PlusIcon size={16} />
+                Adicionar música
               </button>
             </div>
           ) : (
             <>
               <div className="px-2 flex items-center justify-between gap-2 text-xs font-medium text-[var(--muted)]">
                 <span>Ordem das faixas</span>
-                <span className="hidden sm:inline">Arraste pelo ícone ⠿ para reordenar</span>
+                <span className="hidden sm:inline">Arraste ou use ↑↓ para reordenar</span>
               </div>
               <div className="flex flex-col gap-[2px]">
-                {setlistSongs.map((song, idx) => {
+                {displayEntries.map(({ song, storeIdx }, idx) => {
                   const segRadius =
                     setlistSongs.length === 1
                       ? 'rounded-[20px]'
@@ -273,7 +400,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                     <div
                       key={song.id}
                       data-display-idx={idx}
-                      className={`group flex items-center gap-3.5 py-3.5 px-5 bg-[var(--surface)] transition-colors ${segRadius} ${
+                      className={`gm3-card group flex items-center gap-3 py-3.5 px-4 sm:px-5 bg-[var(--surface)] transition-colors ${segRadius} ${
                         drag !== null && drag.to === idx
                           ? 'bg-[var(--secondary-container)]/60 ring-2 ring-[var(--accent)]'
                           : 'hover:bg-[var(--surface-high)]'
@@ -282,9 +409,9 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                       <div
                         {...getHandleProps(idx)}
                         title="Arrastar para reordenar"
-                        className="flex items-center gap-2.5 text-[var(--muted)] select-none touch-none cursor-grab active:cursor-grabbing py-1 px-1 -ml-1 flex-shrink-0"
+                        className="flex items-center gap-2 text-[var(--muted)] select-none touch-none cursor-grab active:cursor-grabbing py-1 px-1 -ml-1 flex-shrink-0"
                       >
-                        <span className="text-sm leading-none opacity-65">⠿</span>
+                        <GripIcon size={16} />
                         <span className="font-expressive text-xl text-[var(--accent)] w-7 text-right">
                           {String(idx + 1).padStart(2, '0')}
                         </span>
@@ -294,19 +421,16 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                         <div className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors break-words sm:truncate">
                           {song.title}
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--muted)]">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-[var(--muted)]">
                           <span className="truncate">{song.artist || 'Artista não informado'}</span>
                           {song.displayKey && (
-                            <span className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)]">
+                            <span className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold">
                               {song.displayKey}
                             </span>
                           )}
-                          <span className="studio-chip bg-[var(--bg)] text-[var(--muted)] font-mono">{song.tempo} BPM</span>
-                          {song.duration && (
-                            <span className="studio-chip bg-[var(--bg)] text-[var(--muted)] font-mono">
-                              {formatDuration(song.duration)}
-                            </span>
-                          )}
+                          <span className="studio-chip bg-[var(--bg)] text-[var(--muted)] font-mono tabular-nums">
+                            {song.tempo} BPM{song.duration ? ` · ${formatDuration(song.duration)}` : ''}
+                          </span>
                           {song.notes && (
                             <span className="studio-chip bg-[var(--warn-dim)] text-[var(--warn-ink)] max-w-full sm:max-w-[360px] truncate">
                               {song.notes}
@@ -315,15 +439,38 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                         </div>
                       </Link>
 
-                      <button
-                        type="button"
-                        onClick={() => removeSongFromSetlist(id, song.id)}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] transition-colors cursor-pointer flex-shrink-0 text-lg"
-                        title="Remover do setlist"
-                        aria-label={`Remover ${song.title} do setlist`}
-                      >
-                        &times;
-                      </button>
+                      {/* Keyboard & single-tap reorder + remove controls (WCAG 2.1.1 / 2.5.7) */}
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveKeyboard(idx, -1)}
+                          className="w-9 h-9 rounded-full hidden sm:flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          title="Mover para cima"
+                          aria-label={`Mover ${song.title} para cima`}
+                        >
+                          <ArrowUpIcon size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === displayEntries.length - 1}
+                          onClick={() => handleMoveKeyboard(idx, 1)}
+                          className="w-9 h-9 rounded-full hidden sm:flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          title="Mover para baixo"
+                          aria-label={`Mover ${song.title} para baixo`}
+                        >
+                          <ArrowDownIcon size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWithUndo(song.id, song.title, storeIdx)}
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
+                          title="Remover do setlist"
+                          aria-label={`Remover ${song.title} do setlist`}
+                        >
+                          <CloseIcon size={17} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

@@ -24,11 +24,11 @@ export async function POST(
 
     const doc = await getDb().collection('songs').doc(id).get();
     if (!doc.exists) {
-      return NextResponse.json({ error: 'Song not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Música não encontrada no servidor.' }, { status: 404 });
     }
     const originalText: string = doc.data()?.text || '';
     if (!originalText) {
-      return NextResponse.json({ error: 'Song has no content to enhance' }, { status: 400 });
+      return NextResponse.json({ error: 'A música não possui conteúdo para revisar.' }, { status: 400 });
     }
 
     const ai = getAiClient();
@@ -44,7 +44,7 @@ export async function POST(
 
     const text = response?.text;
     if (!text) {
-      return NextResponse.json({ error: 'No response from Gemini model' }, { status: 500 });
+      return NextResponse.json({ error: 'A IA não retornou resposta. Tente novamente.' }, { status: 500 });
     }
 
     // Strip any accidental markdown fences
@@ -53,9 +53,8 @@ export async function POST(
     return NextResponse.json({ originalText, enhancedText });
   } catch (error: unknown) {
     console.error('Enhance API Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'Não foi possível revisar a cifra com IA agora. Tente novamente.' },
       { status: 500 }
     );
   }

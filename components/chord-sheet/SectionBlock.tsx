@@ -2,6 +2,7 @@
 
 import { SECTION_COLORS, isInstrumentalSection } from '@/lib/utils/music';
 import type { Section } from '@/lib/types/song';
+import { ArrowDownIcon, ArrowUpIcon } from '@/components/ui/Icons';
 import { ChordLine } from './ChordLine';
 import { SectionEditor } from './SectionEditor';
 
@@ -67,19 +68,19 @@ export function SectionBlock({
         id={`section-${sectionIdx}`}
         data-section-idx={sectionIdx}
         onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-        className={`scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-[20px] px-5 py-3 ${
+        className={`gm3-card break-inside-avoid scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-[20px] px-5 py-3 ${
           onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''
         } ${isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''}`}
         style={{ background: colors.bg }}
       >
         <div className="flex items-center gap-2">
           <span
-            className="w-2 h-2 rounded-full flex-shrink-0"
+            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: colors.bd }}
             aria-hidden="true"
           />
           <span
-            className="font-display text-xs font-semibold"
+            className="font-display text-sm font-semibold"
             style={{ color: colors.lb }}
           >
             {section.label}
@@ -100,7 +101,7 @@ export function SectionBlock({
       id={`section-${sectionIdx}`}
       data-section-idx={sectionIdx}
       onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-      className={`scroll-mt-4 relative rounded-[24px] ${
+      className={`gm3-card break-inside-avoid scroll-mt-4 relative rounded-[24px] ${
         isSingerMode ? 'px-6 sm:px-8 py-6 mb-4' : 'p-5 sm:p-6 mb-4'
       } ${onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''} ${
         isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''
@@ -111,7 +112,7 @@ export function SectionBlock({
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-[var(--line-subtle)]">
           <div className="flex items-center gap-2">
             <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: colors.bd }}
               aria-hidden="true"
             />
@@ -120,7 +121,7 @@ export function SectionBlock({
               value={section.label}
               onChange={(e) => onRenameSection?.(sectionIdx, e.target.value)}
               aria-label={`Nome da seção ${sectionIdx + 1}`}
-              className="font-display text-xs font-semibold bg-transparent border-b border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] outline-none min-w-[100px]"
+              className="font-display text-sm font-semibold bg-transparent border-b border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] rounded px-1 min-w-[110px]"
               style={{ color: colors.lb }}
             />
           </div>
@@ -129,26 +130,26 @@ export function SectionBlock({
               type="button"
               disabled={sectionIdx === 0}
               onClick={() => onMoveSection?.(sectionIdx, 'up')}
-              className="pill-btn bg-[var(--bg)] w-8 h-8 text-xs"
+              className="pill-btn bg-[var(--bg)] w-9 h-9"
               title="Mover seção para cima"
               aria-label="Mover seção para cima"
             >
-              ↑
+              <ArrowUpIcon size={15} />
             </button>
             <button
               type="button"
               disabled={sectionIdx >= totalSections - 1}
               onClick={() => onMoveSection?.(sectionIdx, 'down')}
-              className="pill-btn bg-[var(--bg)] w-8 h-8 text-xs"
+              className="pill-btn bg-[var(--bg)] w-9 h-9"
               title="Mover seção para baixo"
               aria-label="Mover seção para baixo"
             >
-              ↓
+              <ArrowDownIcon size={15} />
             </button>
             <button
               type="button"
               onClick={() => onDuplicateSection?.(sectionIdx)}
-              className="pill-btn bg-[var(--bg)] px-3 h-8 text-xs"
+              className="pill-btn bg-[var(--bg)] px-3 h-9 text-xs"
               title="Duplicar esta seção"
             >
               Duplicar
@@ -157,7 +158,7 @@ export function SectionBlock({
               type="button"
               disabled={totalSections <= 1}
               onClick={() => onDeleteSection?.(sectionIdx)}
-              className="pill-btn bg-[var(--rec-dim)] px-3 h-8 text-xs text-[var(--on-rec-container)]"
+              className="pill-btn bg-[var(--rec-dim)] px-3 h-9 text-xs text-[var(--on-rec-container)]"
               title="Remover esta seção"
             >
               Excluir
@@ -165,19 +166,19 @@ export function SectionBlock({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[var(--bg)]/55 px-3 py-1">
             <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: colors.bd }}
               aria-hidden="true"
             />
-            <div
-              className="font-display text-xs font-semibold"
+            <h2
+              className="font-display text-[15px] font-semibold leading-tight"
               style={{ color: colors.lb }}
             >
               {section.label}
-            </div>
+            </h2>
           </div>
           {calibrationMarkSec !== null && (
             <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]">

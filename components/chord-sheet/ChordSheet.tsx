@@ -5,8 +5,9 @@ import type { Song } from '@/lib/types/song';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import {
+  computeEffectiveDurationSec,
   computeLinearRatePxPerSec,
-  estimateSongDurationSec,
+  estimateSectionMarks,
   hasUsableMarks,
   interpolateMarkedScroll,
   scrollTopToMarkedElapsed,
@@ -42,6 +43,7 @@ interface ChordSheetProps {
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onActiveSectionChange?: (sectionIdx: number) => void;
   bottomPaddingClass?: string;
+  allowMultiColumn?: boolean;
 }
 
 export function ChordSheet({
@@ -67,20 +69,29 @@ export function ChordSheet({
   scrollContainerRef,
   onActiveSectionChange,
   bottomPaddingClass = 'pb-20',
+  allowMultiColumn = true,
 }: ChordSheetProps) {
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = scrollContainerRef ?? internalRef;
-  const { isAutoScrolling, autoScrollSpeed, setAutoScrolling } = usePlayerStore();
+  const { isAutoScrolling, autoScrollSpeed, bpm, setAutoScrolling } = usePlayerStore();
   const fontSize = useDisplayStore((s) => s.fontSize);
   const scrollLeadInSec = useDisplayStore((s) => s.scrollLeadInSec);
+  const sheetColumns = useDisplayStore((s) => s.sheetColumns);
 
   const [leadInLeft, setLeadInLeft] = useState(0);
   const [userPausedNotice, setUserPausedNotice] = useState(false);
+  const [fitsScreenNotice, setFitsScreenNotice] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   const speedRef = useRef(autoScrollSpeed);
   useEffect(() => {
     speedRef.current = autoScrollSpeed;
   }, [autoScrollSpeed]);
+
+  const bpmRef = useRef(bpm);
+  useEffect(() => {
+    bpmRef.current = bpm;
+  }, [bpm]);
 
   const songRef = useRef(song);
   useEffect(() => {
@@ -186,35 +197,63 @@ export function ChordSheet({
     };
   }, [scrollRef]);
 
-  // Core smart auto-scroll loop (calibrated marks OR duration-proportional linear)
+  // Core smart auto-scroll loop (manual calibrated marks > auto section-weighted marks > linear)
   useEffect(() => {
     if (!isAutoScrolling || leadInLeft > 0) return;
     const el = scrollRef.current;
     if (!el) return;
 
+    const maxScroll0 = Math.max(0, el.scrollHeight - el.clientHeight);
+    if (maxScroll0 <= 2) {
+      setAutoScrolling(false);
+      setFitsScreenNotice(true);
+      const t = setTimeout(() => setFitsScreenNotice(false), 2600);
+      return () => clearTimeout(t);
+    }
+
     let frameId: number;
     let last = performance.now();
     let position = el.scrollTop;
 
+    const getMarksForSong = (s: Song, dur: number): number[] | null => {
+      if (hasUsableMarks(s.sectionMarks, s.sections.length)) {
+        return s.sectionMarks;
+      }
+      if (s.sections.length >= 2) {
+        return estimateSectionMarks(s, dur);
+      }
+      return null;
+    };
+
     const currentSong = songRef.current;
-    const durationSec = estimateSongDurationSec(currentSong);
-    const maxScroll0 = Math.max(0, el.scrollHeight - el.clientHeight);
+    const durationSec0 = computeEffectiveDurationSec(currentSong, bpmRef.current);
     const sectionTops0 = measureSectionTops(el);
-    let elapsedSec = hasUsableMarks(currentSong.sectionMarks, currentSong.sections.length)
-      ? scrollTopToMarkedElapsed(position, currentSong.sectionMarks, sectionTops0, maxScroll0, durationSec)
+    const marks0 = getMarksForSong(currentSong, durationSec0);
+    let elapsedSec = marks0
+      ? scrollTopToMarkedElapsed(
+          position,
+          marks0,
+          sectionTops0,
+          maxScroll0,
+          durationSec0,
+          el.clientHeight
+        )
       : 0;
 
     syncElapsedRef.current = (newTop: number) => {
       position = newTop;
       const s = songRef.current;
       const maxS = Math.max(0, el.scrollHeight - el.clientHeight);
-      if (hasUsableMarks(s.sectionMarks, s.sections.length)) {
+      const dur = computeEffectiveDurationSec(s, bpmRef.current);
+      const m = getMarksForSong(s, dur);
+      if (m) {
         elapsedSec = scrollTopToMarkedElapsed(
           newTop,
-          s.sectionMarks,
+          m,
           measureSectionTops(el),
           maxS,
-          estimateSongDurationSec(s)
+          dur,
+          el.clientHeight
         );
       }
     };
@@ -225,23 +264,28 @@ export function ChordSheet({
 
       const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
       if (maxScroll <= 1) {
-        frameId = requestAnimationFrame(step);
+        setAutoScrolling(false);
         return;
       }
+
+      const s = songRef.current;
+      const dur = computeEffectiveDurationSec(s, bpmRef.current);
+      const marks = getMarksForSong(s, dur);
 
       // If user recently scrolled manually, yield and track their new position
       if (now < userPauseUntilRef.current) {
         position = el.scrollTop;
-        const s = songRef.current;
-        if (hasUsableMarks(s.sectionMarks, s.sections.length)) {
+        if (marks) {
           elapsedSec = scrollTopToMarkedElapsed(
             position,
-            s.sectionMarks,
+            marks,
             measureSectionTops(el),
             maxScroll,
-            estimateSongDurationSec(s)
+            dur,
+            el.clientHeight
           );
         }
+        setScrollProgress(Math.max(0, Math.min(1, position / maxScroll)));
         frameId = requestAnimationFrame(step);
         return;
       }
@@ -250,25 +294,29 @@ export function ChordSheet({
       if (userTouchedRef.current) {
         userTouchedRef.current = false;
         position = el.scrollTop;
-        const s = songRef.current;
-        if (hasUsableMarks(s.sectionMarks, s.sections.length)) {
+        if (marks) {
           elapsedSec = scrollTopToMarkedElapsed(
             position,
-            s.sectionMarks,
+            marks,
             measureSectionTops(el),
             maxScroll,
-            estimateSongDurationSec(s)
+            dur,
+            el.clientHeight
           );
         }
       }
 
-      const s = songRef.current;
-      const dur = estimateSongDurationSec(s);
-
-      if (hasUsableMarks(s.sectionMarks, s.sections.length)) {
+      if (marks) {
         elapsedSec += dt * speedRef.current;
         const tops = measureSectionTops(el);
-        position = interpolateMarkedScroll(elapsedSec, s.sectionMarks, tops, maxScroll, dur);
+        position = interpolateMarkedScroll(
+          elapsedSec,
+          marks,
+          tops,
+          maxScroll,
+          dur,
+          el.clientHeight
+        );
       } else {
         const pxPerSec = computeLinearRatePxPerSec(maxScroll, dur, speedRef.current);
         position += pxPerSec * dt;
@@ -276,11 +324,13 @@ export function ChordSheet({
 
       if (position >= maxScroll - 0.5) {
         el.scrollTop = maxScroll;
+        setScrollProgress(1);
         setAutoScrolling(false);
         return;
       }
 
       el.scrollTop = position;
+      setScrollProgress(Math.max(0, Math.min(1, position / maxScroll)));
       frameId = requestAnimationFrame(step);
     };
 
@@ -338,9 +388,12 @@ export function ChordSheet({
     const start = el.scrollTop;
     const delta = target - start;
 
-    // Small drift -> ignore; large jump -> snap; medium drift -> ease smoothly over 280ms
+    // Small drift -> ignore; large jump or reduced motion -> snap; medium drift -> ease smoothly over 280ms
     if (Math.abs(delta) < 4) return;
-    if (Math.abs(delta) >= 420) {
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (Math.abs(delta) >= 420 || prefersReducedMotion) {
       el.scrollTop = target;
       syncElapsedRef.current?.(target);
       return;
@@ -373,6 +426,7 @@ export function ChordSheet({
 
   const effectiveDisplayMode = editMode ? 'both' : displayMode;
   const isSingerMode = effectiveDisplayMode === 'lyrics-only';
+  const useTwoColumns = allowMultiColumn && sheetColumns === 2 && !editMode && !calibrating;
 
   return (
     <div
@@ -380,9 +434,39 @@ export function ChordSheet({
       className={`flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 pt-3 relative ${bottomPaddingClass}`}
       style={{ fontSize: `${fontSize}%` }}
     >
+      {/* Thin GM3 progress bar while auto-scrolling */}
+      {isAutoScrolling && leadInLeft === 0 && (
+        <div
+          aria-hidden="true"
+          className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 -mt-3 mb-4 h-[3px] bg-[var(--secondary-container)]/60 overflow-hidden"
+        >
+          <div
+            className="h-full bg-[var(--accent)] transition-[width] duration-150 ease-linear"
+            style={{ width: `${Math.round(scrollProgress * 100)}%` }}
+          />
+        </div>
+      )}
+
+      {/* Short-song notice when sheet already fits on screen */}
+      {fitsScreenNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="sticky top-2 z-20 flex justify-center mb-2 pointer-events-none"
+        >
+          <span className="studio-chip bg-[var(--surface)] text-[var(--muted)] shadow-sm">
+            A música já cabe inteira nesta tela
+          </span>
+        </div>
+      )}
+
       {/* Lead-in countdown banner */}
       {leadInLeft > 0 && (
-        <div className="sticky top-2 z-20 flex justify-center mb-3 pointer-events-none">
+        <div
+          role="status"
+          aria-live="polite"
+          className="sticky top-2 z-20 flex justify-center mb-3 pointer-events-none"
+        >
           <div
             className="pointer-events-auto flex items-center gap-3 rounded-full bg-[var(--surface)] px-4 py-2 text-xs"
             style={{ boxShadow: 'var(--shadow-md)' }}
@@ -399,14 +483,14 @@ export function ChordSheet({
                 }
                 setLeadInLeft(0);
               }}
-              className="pill-btn pill-btn-tune px-2.5 h-7 text-xs"
+              className="pill-btn pill-btn-tune px-3 h-8 text-xs"
             >
               Iniciar já
             </button>
             <button
               type="button"
               onClick={() => setAutoScrolling(false)}
-              className="text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer text-xs"
+              className="text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer text-xs px-1.5 py-1"
             >
               Cancelar
             </button>
@@ -416,7 +500,11 @@ export function ChordSheet({
 
       {/* Subtle manual-scroll yield indicator */}
       {userPausedNotice && isAutoScrolling && leadInLeft === 0 && (
-        <div className="sticky top-2 z-20 flex justify-center mb-2 pointer-events-none">
+        <div
+          role="status"
+          aria-live="polite"
+          className="sticky top-2 z-20 flex justify-center mb-2 pointer-events-none"
+        >
           <span
             className="studio-chip bg-[var(--surface)] text-[var(--muted)]"
             style={{ boxShadow: 'var(--shadow-sm)' }}
@@ -428,8 +516,8 @@ export function ChordSheet({
 
       <div
         className={`w-full ${
-          isSingerMode ? 'font-display' : 'font-mono'
-        }`}
+          isSingerMode ? 'font-display' : 'font-sans'
+        } ${useTwoColumns ? 'xl:columns-2 xl:gap-5' : ''}`}
       >
         {song.sections.map((section, i) => (
           <SectionBlock

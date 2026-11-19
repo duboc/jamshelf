@@ -75,6 +75,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     capo: 0,
     displayKey: '',
     tempo: 120,
+    tempoConfirmed: false,
     timeSignature: '4/4',
     rating: 0,
     favorite: false,
@@ -119,7 +120,11 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     if (capoM) { meta.capo = parseInt(capoM[1], 10); continue; }
 
     const tempoM = line.match(/^\{tempo:\s*(\d+)\}$/i);
-    if (tempoM) { meta.tempo = parseInt(tempoM[1], 10); continue; }
+    if (tempoM) {
+      meta.tempo = Math.max(30, Math.min(260, parseInt(tempoM[1], 10)));
+      meta.tempoConfirmed = true;
+      continue;
+    }
 
     const timeM = line.match(/^\{time:\s*(.+)\}$/i);
     if (timeM) { meta.timeSignature = timeM[1].trim(); continue; }
@@ -218,6 +223,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     capo: meta.capo,
     displayKey: meta.displayKey || meta.originalKey || '',
     tempo: meta.tempo,
+    tempoConfirmed: meta.tempoConfirmed,
     timeSignature: meta.timeSignature,
     rating: meta.rating,
     favorite: meta.favorite,
@@ -238,7 +244,7 @@ export function songToChordPro(song: ParsedSong): string {
   lines.push(`{artist: ${song.artist}}`);
   if (song.originalKey) lines.push(`{key: ${song.originalKey}}`);
   if (song.capo > 0) lines.push(`{capo: ${song.capo}}`);
-  if (song.tempo !== 120) lines.push(`{tempo: ${song.tempo}}`);
+  if (song.tempoConfirmed || song.tempo !== 120) lines.push(`{tempo: ${song.tempo}}`);
   if (song.timeSignature !== '4/4') lines.push(`{time: ${song.timeSignature}}`);
   if (song.rating > 0) lines.push(`{rating: ${song.rating}}`);
   if (song.favorite) lines.push(`{favorite: true}`);

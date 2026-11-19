@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { playCountInClick } from '@/lib/utils/pitch-audio';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { VolumeIcon } from '@/components/ui/Icons';
 
 interface CountInOverlayProps {
   bpm: number;
@@ -20,12 +22,16 @@ export function CountInOverlay({
 }: CountInOverlayProps) {
   const safeBpm = Math.max(40, Math.min(240, bpm || 120));
   const safeBeats = Math.max(2, Math.min(8, beats || 4));
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const [currentBeat, setCurrentBeat] = useState(1);
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   const onCancelRef = useRef(onCancel);
+
+  useDialogA11y(true, () => onCancelRef.current(), dialogRef);
 
   useEffect(() => {
     mutedRef.current = muted;
@@ -55,33 +61,24 @@ export function CountInOverlay({
     return () => clearInterval(interval);
   }, [safeBpm, safeBeats]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancelRef.current();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   return (
     <div
-      role="status"
-      aria-live="assertive"
       onClick={onCancel}
       className="fixed inset-0 z-[75] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4"
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-xs rounded-[28px] bg-[var(--surface)] px-7 py-8 text-center space-y-6"
+        className="gm3-card gm3-dialog-enter w-full max-w-xs rounded-[28px] bg-[var(--surface)] px-7 py-8 text-center space-y-6"
         style={{ boxShadow: 'var(--shadow-md)' }}
       >
         <div className="space-y-1">
-          <div className="field-label">
+          <h2 id={titleId} className="field-label">
             {leaderName ? `Contagem ao vivo · ${leaderName}` : 'Contagem de entrada'}
-          </div>
+          </h2>
           <div className="font-mono text-xs text-[var(--muted)] tabular-nums">
             {safeBpm} BPM · {safeBeats} tempos
           </div>
@@ -89,14 +86,16 @@ export function CountInOverlay({
 
         <div
           key={currentBeat}
-          className={`font-expressive text-[104px] leading-none select-none transition-transform ${
+          aria-live="assertive"
+          aria-atomic="true"
+          className={`gm3-beat-pop font-expressive text-[104px] leading-none select-none ${
             currentBeat === 1 ? 'text-[var(--accent)]' : 'text-[var(--ink)]'
           }`}
         >
           {currentBeat}
         </div>
 
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-3" aria-hidden="true">
           {Array.from({ length: safeBeats }, (_, idx) => {
             const beatNum = idx + 1;
             const passed = beatNum < currentBeat;
@@ -109,7 +108,7 @@ export function CountInOverlay({
                     ? 'w-4 h-4 bg-[var(--accent)] scale-115'
                     : passed
                     ? 'w-3.5 h-3.5 bg-[var(--tune-dot)]'
-                    : 'w-3 h-3 bg-[var(--line-subtle)]'
+                    : 'w-3 h-3 bg-[var(--line)]'
                 }`}
               />
             );
@@ -120,14 +119,16 @@ export function CountInOverlay({
           <button
             type="button"
             onClick={() => setMuted((m) => !m)}
-            className="pill-btn bg-[var(--bg)] px-4 py-2 text-xs"
+            aria-pressed={!muted}
+            className="pill-btn bg-[var(--bg)] h-10 px-4 text-xs"
           >
+            <VolumeIcon size={15} muted={muted} />
             {muted ? 'Som desligado' : 'Som ligado'}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="pill-btn bg-[var(--bg)] px-4 py-2 text-xs"
+            className="pill-btn bg-[var(--bg)] h-10 px-4 text-xs"
           >
             Cancelar (Esc)
           </button>

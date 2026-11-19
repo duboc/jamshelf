@@ -7,6 +7,7 @@ import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { CheckIcon, HeartIcon, MoreVertIcon, StarIcon } from '@/components/ui/Icons';
 
 interface SongCardProps {
   song: Song;
@@ -35,8 +36,15 @@ export function SongCard({
         setMenuOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
     document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [menuOpen]);
 
   const handleStar = (e: React.MouseEvent, star: number) => {
@@ -54,31 +62,53 @@ export function SongCard({
     addSongToSetlist(setlistId, song.id);
     setMenuOpen(false);
     setAddedNotice(`Em "${setlistName}"`);
-    setTimeout(() => setAddedNotice(''), 2000);
+    setTimeout(() => setAddedNotice(''), 3500);
   };
 
   const overflowMenu = (
-    <div ref={menuRef} className="relative">
+    <div ref={menuRef} className="relative flex-shrink-0">
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
         title="Mais ações"
-        aria-label="Mais ações"
+        aria-label={`Mais ações para ${song.title}`}
         aria-expanded={menuOpen}
       >
-        <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
-          <circle cx="10" cy="4.2" r="1.5" fill="currentColor" />
-          <circle cx="10" cy="10" r="1.5" fill="currentColor" />
-          <circle cx="10" cy="15.8" r="1.5" fill="currentColor" />
-        </svg>
+        <MoreVertIcon size={18} />
       </button>
 
       {menuOpen && (
         <div
-          className="absolute right-0 top-[calc(100%+6px)] z-40 w-60 rounded-[20px] bg-[var(--surface)] py-2"
+          role="dialog"
+          aria-label={`Ações de ${song.title}`}
+          className="gm3-card gm3-dialog-enter absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
+          {/* Rating inside menu (accessible 36px stars with WCAG AA contrast) */}
+          <div className="px-4 py-2 flex items-center justify-between gap-2">
+            <span className="field-label">Avaliação</span>
+            <div className="flex items-center gap-0.5" role="group" aria-label={`Avaliação de ${song.title}`}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={(e) => handleStar(e, star)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--surface-high)] ${
+                    star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--line)] hover:text-[var(--warn-icon)]'
+                  }`}
+                  title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
+                  aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
+                  aria-pressed={star <= song.rating}
+                >
+                  <StarIcon size={16} filled={star <= song.rating} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="my-1.5 mx-3 border-t border-[var(--line-subtle)]/40" />
+
           <div className="px-4 py-1.5 field-label">Adicionar ao setlist</div>
           {setlists.length === 0 ? (
             <Link
@@ -100,12 +130,12 @@ export function SongCard({
                     onClick={() => !already && handleAddToSetlist(sl.id, sl.name)}
                     className={`w-full text-left px-3 py-2 rounded-xl text-[13px] flex items-center justify-between gap-2 transition-colors ${
                       already
-                        ? 'text-[var(--muted)] opacity-55 cursor-default'
+                        ? 'text-[var(--muted)] opacity-60 cursor-default'
                         : 'text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer'
                     }`}
                   >
                     <span className="truncate">{sl.name}</span>
-                    {already && <span className="font-mono text-xs">✓</span>}
+                    {already && <CheckIcon size={14} className="flex-shrink-0" />}
                   </button>
                 );
               })}
@@ -150,95 +180,89 @@ export function SongCard({
     />
   );
 
-  // GM3 Expressive Tonal Card (default view, inspired by the World Clock city cards)
+  // GM3 Expressive Tonal Card (single link per card, signature key badge, clean rating chip)
   if (variant === 'card') {
     return (
-      <article className="group relative rounded-[20px] bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors px-5 py-4 flex flex-col justify-between gap-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <Link href={`/song/${song.id}`} className="min-w-0 flex-1 block">
-            <div className="flex items-start gap-2 min-w-0">
-              <h3 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors line-clamp-2 break-words">
-                {song.title}
-              </h3>
-              {addedNotice && (
-                <span className="text-xs font-medium text-[var(--tune)] flex-shrink-0 pt-1">
-                  ✓ {addedNotice}
-                </span>
-              )}
+      <article className="gm3-card group relative rounded-[20px] bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors px-5 py-4 flex flex-col justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <Link href={`/song/${song.id}`} className="min-w-0 flex-1 flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-2 min-w-0">
+                <h2 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors line-clamp-2 break-words">
+                  {song.title}
+                </h2>
+                {addedNotice && (
+                  <span
+                    role="status"
+                    aria-live="polite"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[var(--tune)] flex-shrink-0 pt-1"
+                  >
+                    <CheckIcon size={13} /> {addedNotice}
+                  </span>
+                )}
+              </div>
+              <p className="text-[13px] text-[var(--muted)] truncate mt-0.5">
+                {song.artist || 'Artista não informado'}
+              </p>
             </div>
-            <p className="text-[13px] text-[var(--muted)] truncate mt-0.5">
-              {song.artist || 'Artista não informado'}
-            </p>
+
+            {/* Signature GM3 Expressive Musical Key badge */}
+            {song.displayKey ? (
+              <span
+                className="min-w-[44px] h-10 px-2.5 rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-[19px] leading-none inline-flex items-center justify-center flex-shrink-0"
+                title={`Tom ${song.displayKey}`}
+              >
+                {song.displayKey}
+              </span>
+            ) : (
+              <span className="min-w-[44px] h-10 px-2.5 rounded-2xl bg-[var(--bg)] text-[var(--muted)] font-expressive text-base leading-none inline-flex items-center justify-center flex-shrink-0">
+                -
+              </span>
+            )}
           </Link>
 
-          {/* Expressive rounded key display */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Link
-              href={`/song/${song.id}`}
-              className="text-right pr-1"
-              title={song.displayKey ? `Tom ${song.displayKey}` : 'Sem tom definido'}
-            >
-              <div
-                className={`font-expressive text-[26px] leading-none ${
-                  song.displayKey ? 'text-[var(--ink)] group-hover:text-[var(--accent)]' : 'text-[var(--line-subtle)]'
-                } transition-colors`}
-              >
-                {song.displayKey || '-'}
-              </div>
-            </Link>
-            {overflowMenu}
-          </div>
+          {overflowMenu}
         </div>
 
-        {/* Bottom metadata + quick rating & favorite */}
-        <div className="flex items-center justify-between gap-2 pt-0.5 flex-wrap">
+        {/* Clean 2-zone footer: musical metadata left, rated pill + heart right (never wraps onto 4th row) */}
+        <div className="flex items-center justify-between gap-2 pt-0.5">
           <div className="flex items-center gap-1.5 flex-wrap min-w-0">
             <span className="studio-chip bg-[var(--bg)] text-[var(--muted)] font-mono text-xs tabular-nums">
               {song.tempo} BPM · {song.timeSignature}
+              {song.duration ? ` · ${formatDuration(song.duration)}` : ''}
             </span>
             {song.capo > 0 && (
               <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] text-xs">
                 Capo {song.capo}
               </span>
             )}
-            {song.duration ? (
-              <span className="text-xs font-mono text-[var(--muted)] tabular-nums pl-0.5">
-                {formatDuration(song.duration)}
-              </span>
-            ) : null}
           </div>
 
-          <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-            <div className="flex items-center" role="group" aria-label={`Avaliação de ${song.title}`}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={(e) => handleStar(e, star)}
-                  className={`w-7 h-7 flex items-center justify-center text-base transition-colors cursor-pointer ${
-                    star <= song.rating
-                      ? 'text-[var(--warn)]'
-                      : 'text-[var(--line-subtle)] hover:text-[var(--warn)]'
-                  }`}
-                  title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
-                  aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
-                >
-                  ★
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {song.rating > 0 && (
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                className="studio-chip bg-[var(--warn-dim)] text-[var(--warn-ink)] cursor-pointer hover:opacity-90"
+                title={`Avaliação: ${song.rating} de 5 estrelas. Clique para ajustar`}
+                aria-label={`Avaliação ${song.rating} de 5 estrelas para ${song.title}`}
+              >
+                <StarIcon size={13} filled className="text-[var(--warn-icon)]" />
+                <span className="font-mono tabular-nums">{song.rating}</span>
+              </button>
+            )}
 
             <button
               type="button"
               onClick={handleFavorite}
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-base transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
                 song.favorite ? 'text-[var(--rec)]' : 'text-[var(--muted)] hover:text-[var(--rec)]'
               }`}
               title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
-              aria-label={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
+              aria-label={song.favorite ? `Remover ${song.title} das favoritas` : `Adicionar ${song.title} às favoritas`}
               aria-pressed={song.favorite}
             >
-              {song.favorite ? '♥' : '♡'}
+              <HeartIcon size={18} filled={song.favorite} />
             </button>
           </div>
         </div>
@@ -260,16 +284,20 @@ export function SongCard({
 
   return (
     <div
-      className={`group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_88px_164px_144px_84px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors ${segmentedRadius}`}
+      className={`gm3-card group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_76px_92px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors ${segmentedRadius}`}
     >
       <Link href={`/song/${song.id}`} className="min-w-0 block">
         <div className="flex items-center gap-2 min-w-0">
-          <h3 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] md:truncate break-words transition-colors">
+          <h2 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] md:truncate break-words transition-colors">
             {song.title}
-          </h3>
+          </h2>
           {addedNotice && (
-            <span className="text-xs font-medium text-[var(--tune)] flex-shrink-0">
-              ✓ {addedNotice}
+            <span
+              role="status"
+              aria-live="polite"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--tune)] flex-shrink-0"
+            >
+              <CheckIcon size={13} /> {addedNotice}
             </span>
           )}
         </div>
@@ -280,7 +308,7 @@ export function SongCard({
 
       <div className="flex items-center gap-1.5">
         {song.displayKey ? (
-          <span className="font-expressive text-lg text-[var(--accent)]">
+          <span className="min-w-[40px] h-8 px-2.5 rounded-xl bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-base leading-none inline-flex items-center justify-center">
             {song.displayKey}
           </span>
         ) : (
@@ -306,37 +334,34 @@ export function SongCard({
       </div>
 
       <div className="flex items-center justify-between md:contents">
-        <div className="flex items-center" role="group" aria-label={`Avaliação de ${song.title}`}>
-          {[1, 2, 3, 4, 5].map((star) => (
+        <div>
+          {song.rating > 0 ? (
             <button
-              key={star}
               type="button"
-              onClick={(e) => handleStar(e, star)}
-              className={`w-7 h-7 flex items-center justify-center text-base transition-colors cursor-pointer ${
-                star <= song.rating
-                  ? 'text-[var(--warn)]'
-                  : 'text-[var(--line-subtle)] hover:text-[var(--warn)]'
-              }`}
-              title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
-              aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
+              onClick={() => setMenuOpen(true)}
+              className="studio-chip bg-[var(--warn-dim)] text-[var(--warn-ink)] cursor-pointer"
+              aria-label={`Avaliação ${song.rating} de 5 estrelas para ${song.title}`}
             >
-              ★
+              <StarIcon size={13} filled className="text-[var(--warn-icon)]" />
+              <span className="font-mono tabular-nums">{song.rating}</span>
             </button>
-          ))}
+          ) : (
+            <span className="text-xs text-[var(--muted)] hidden md:inline">-</span>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-0.5">
           <button
             type="button"
             onClick={handleFavorite}
-            className={`w-9 h-9 rounded-full flex items-center justify-center text-base transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
               song.favorite ? 'text-[var(--rec)]' : 'text-[var(--muted)] hover:text-[var(--rec)]'
             }`}
             title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
-            aria-label={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
+            aria-label={song.favorite ? `Remover ${song.title} das favoritas` : `Adicionar ${song.title} às favoritas`}
             aria-pressed={song.favorite}
           >
-            {song.favorite ? '♥' : '♡'}
+            <HeartIcon size={18} filled={song.favorite} />
           </button>
           {overflowMenu}
         </div>

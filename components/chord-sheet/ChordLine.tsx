@@ -1,6 +1,7 @@
 'use client';
 
 import { parseLine, extractLyricText, lineHasLyrics } from '@/lib/utils/music';
+import { PlusIcon } from '@/components/ui/Icons';
 import { ChordBadge } from './ChordBadge';
 
 interface ChordLineProps {
@@ -110,10 +111,11 @@ export function ChordLine({
         <button
           type="button"
           onClick={() => onAddChord?.(0)}
-          className="ml-1 w-7 h-7 rounded-full bg-[var(--surface2)] hover:bg-[var(--accent)] text-[var(--muted)] hover:text-[var(--on-accent)] text-base flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
+          className="ml-1 w-7 h-7 rounded-full bg-[var(--surface2)] hover:bg-[var(--accent)] text-[var(--muted)] hover:text-[var(--on-accent)] flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
           title="Adicionar acorde aqui"
+          aria-label="Adicionar acorde aqui"
         >
-          +
+          <PlusIcon size={14} />
         </button>
       </div>
     );
@@ -150,10 +152,11 @@ export function ChordLine({
               <button
                 type="button"
                 onClick={() => onAddChord?.(textCharPos)}
-                className="w-5 h-5 rounded-full bg-[var(--surface2)] hover:bg-[var(--accent)] text-[var(--muted)] hover:text-[var(--on-accent)] text-xs flex items-center justify-center transition-colors flex-shrink-0 leading-none cursor-pointer"
+                className="w-7 h-7 rounded-full bg-[var(--surface2)] hover:bg-[var(--accent)] text-[var(--muted)] hover:text-[var(--on-accent)] flex items-center justify-center transition-colors flex-shrink-0 leading-none cursor-pointer"
                 title="Adicionar acorde aqui"
+                aria-label="Adicionar acorde aqui"
               >
-                +
+                <PlusIcon size={13} />
               </button>
             </span>
           </span>

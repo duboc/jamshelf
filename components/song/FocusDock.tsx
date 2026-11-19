@@ -1,9 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import { playReferencePitch } from '@/lib/utils/pitch-audio';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MenuListIcon,
+  MoonIcon,
+  PauseIcon,
+  PitchWaveIcon,
+  PlayIcon,
+  SunIcon,
+} from '@/components/ui/Icons';
+
+const subscribeSystemDark = (cb: () => void) => {
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  mql.addEventListener('change', cb);
+  return () => mql.removeEventListener('change', cb);
+};
+const getSystemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+const getServerDark = () => false;
 
 interface FocusDockProps {
   songTitle: string;
@@ -37,7 +55,9 @@ export function FocusDock({
   onExit,
 }: FocusDockProps) {
   const store = usePlayerStore();
-  const { displayMode, toggleHideChords, fontSize, setFontSize } = useDisplayStore();
+  const { displayMode, toggleHideChords, fontSize, setFontSize, theme, setTheme } = useDisplayStore();
+  const systemDark = useSyncExternalStore(subscribeSystemDark, getSystemDark, getServerDark);
+  const isDark = theme === 'dark' || (theme === 'system' && systemDark);
   const [pitchRinging, setPitchRinging] = useState(false);
   const chordsHidden = displayMode === 'lyrics-only';
 
@@ -60,13 +80,14 @@ export function FocusDock({
                 <button
                   type="button"
                   onClick={onOpenSetlistDrawer}
-                  className="pill-btn bg-[var(--bg)] px-2.5 h-8 text-xs flex-shrink-0"
+                  className="pill-btn bg-[var(--bg)] w-10 h-10 flex-shrink-0"
                   title="Abrir setlist"
+                  aria-label="Abrir setlist"
                 >
-                  ☰
+                  <MenuListIcon size={17} />
                 </button>
               )}
-              <span className="font-display font-bold text-lg text-[var(--ink)] truncate">{songTitle}</span>
+              <h1 className="font-display font-bold text-lg text-[var(--ink)] truncate">{songTitle}</h1>
               {displayedKey && !chordsHidden && (
                 <span className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] flex-shrink-0">
                   {displayedKey}
@@ -82,21 +103,32 @@ export function FocusDock({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={onExit}
-              className="pill-btn bg-[var(--bg)] px-3.5 h-8 text-xs flex-shrink-0"
-              title="Voltar para a tela completa (Esc)"
-            >
-              Sair da tela limpa
-            </button>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                className="pill-btn bg-[var(--bg)] w-10 h-10"
+                title={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro (palco)'}
+                aria-label={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
+              >
+                {isDark ? <SunIcon size={17} /> : <MoonIcon size={17} />}
+              </button>
+              <button
+                type="button"
+                onClick={onExit}
+                className="pill-btn bg-[var(--bg)] px-3.5 h-10 text-xs flex-shrink-0"
+                title="Voltar para a tela completa (Esc)"
+              >
+                Sair da tela limpa
+              </button>
+            </div>
           </div>
           {stageNotes && (
-            <div className="flex items-center gap-2 text-xs text-[var(--ink)]">
+            <div className="flex items-start gap-2 text-xs text-[var(--ink)]">
               <span className="studio-chip bg-[var(--warn-dim)] text-[var(--warn-ink)] flex-shrink-0">
                 Deixa
               </span>
-              <span className="truncate">{stageNotes}</span>
+              <span className="line-clamp-2 leading-snug">{stageNotes}</span>
             </div>
           )}
         </div>
@@ -117,21 +149,21 @@ export function FocusDock({
                 type="button"
                 disabled={!prevSongId}
                 onClick={() => prevSongId && onNavigateSong(prevSongId)}
-                className="pill-btn bg-[var(--bg)] w-9 h-9 text-base"
+                className="pill-btn bg-[var(--bg)] w-10 h-10"
                 title="Música anterior"
                 aria-label="Música anterior"
               >
-                ‹
+                <ChevronLeftIcon size={17} />
               </button>
               <button
                 type="button"
                 disabled={!nextSongId}
                 onClick={() => nextSongId && onNavigateSong(nextSongId)}
-                className="pill-btn bg-[var(--bg)] w-9 h-9 text-base"
+                className="pill-btn bg-[var(--bg)] w-10 h-10"
                 title="Próxima música"
                 aria-label="Próxima música"
               >
-                ›
+                <ChevronRightIcon size={17} />
               </button>
             </>
           )}
@@ -139,12 +171,14 @@ export function FocusDock({
           {!isFollowing && (
             <button
               type="button"
+              aria-pressed={store.isAutoScrolling}
               onClick={store.toggleAutoScroll}
-              className={`pill-btn px-3.5 h-9 text-xs ${
+              className={`pill-btn px-3.5 h-10 text-xs ${
                 store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
               }`}
             >
-              {store.isAutoScrolling ? '⏸ Pausar' : '▶ Rolar'}
+              {store.isAutoScrolling ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
+              {store.isAutoScrolling ? 'Pausar' : 'Rolar'}
             </button>
           )}
 
@@ -153,7 +187,7 @@ export function FocusDock({
               <button
                 type="button"
                 onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
-                className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+                className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
                 aria-label="Diminuir velocidade"
               >
                 -
@@ -164,7 +198,7 @@ export function FocusDock({
               <button
                 type="button"
                 onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
-                className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+                className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
                 aria-label="Aumentar velocidade"
               >
                 +
@@ -176,7 +210,7 @@ export function FocusDock({
             <button
               type="button"
               onClick={() => setFontSize(fontSize - 10)}
-              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+              className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
               aria-label="Diminuir letra"
             >
               A-
@@ -184,7 +218,7 @@ export function FocusDock({
             <button
               type="button"
               onClick={() => setFontSize(fontSize + 10)}
-              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+              className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
               aria-label="Aumentar letra"
             >
               A+
@@ -195,12 +229,13 @@ export function FocusDock({
             <button
               type="button"
               onClick={handlePlayPitch}
-              className={`pill-btn px-3 h-9 text-xs ${
+              className={`pill-btn px-3 h-10 text-xs ${
                 pitchRinging ? 'pill-btn-primary' : 'bg-[var(--bg)] text-[var(--accent-ink)]'
               }`}
               title={`Tocar acorde-guia (${pitchTarget})`}
             >
-              ♪ {pitchTarget}
+              <PitchWaveIcon size={14} />
+              {pitchTarget}
             </button>
           )}
 
@@ -208,7 +243,7 @@ export function FocusDock({
             <button
               type="button"
               onClick={onTriggerCountIn}
-              className="pill-btn bg-[var(--bg)] px-3 h-9 font-mono text-xs"
+              className="pill-btn bg-[var(--bg)] px-3 h-10 font-mono text-xs"
               title="Contagem visual 1-2-3-4 (atalho: C)"
             >
               1·2·3·4
@@ -217,8 +252,9 @@ export function FocusDock({
 
           <button
             type="button"
+            aria-pressed={chordsHidden}
             onClick={toggleHideChords}
-            className={`pill-btn px-3.5 h-9 text-xs ${
+            className={`pill-btn px-3.5 h-10 text-xs ${
               chordsHidden ? 'pill-btn-primary' : 'bg-[var(--bg)]'
             }`}
             title="Alternar entre só letra (para cantar) e cifra completa"

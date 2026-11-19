@@ -32,11 +32,15 @@ export function linesToDom(
 
     for (const seg of parseLine(line)) {
       if (seg.chord) {
+        const displayed = transposeChord(seg.chord, transpose + capo, useFlats);
         const widget = document.createElement('span');
         widget.contentEditable = 'false';
+        widget.tabIndex = 0;
+        widget.setAttribute('role', 'button');
+        widget.setAttribute('aria-label', `Editar acorde ${displayed}`);
         widget.dataset.chord = seg.chord;
         widget.className = CHORD_WIDGET_CLASS;
-        widget.textContent = transposeChord(seg.chord, transpose + capo, useFlats);
+        widget.textContent = displayed;
         // Group the chord with its lyric so a line-wrap on narrow viewports
         // can never split a chord from the syllable it sits above.
         const group = document.createElement('span');

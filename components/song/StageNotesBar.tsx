@@ -54,6 +54,7 @@ function StageNotesEditor({
               if (e.key === 'Enter') onSave(draft.trim());
               if (e.key === 'Escape') onCancel();
             }}
+            aria-label="Notas de palco e deixas"
             placeholder="Ex.: Drop D · entra só guitarra 2x · final dobra refrão..."
             className="studio-input flex-1 min-w-[200px] px-3.5 py-2 text-xs sm:text-sm"
           />
@@ -62,19 +63,19 @@ function StageNotesEditor({
               <button
                 type="button"
                 onClick={() => onSave('')}
-                className="pill-btn bg-[var(--bg)] px-3 h-8 text-xs text-[var(--rec)]"
+                className="pill-btn bg-[var(--bg)] px-3 h-9 text-xs text-[var(--rec)]"
                 title="Remover nota de palco"
               >
                 Limpar
               </button>
             )}
-            <button type="button" onClick={onCancel} className="pill-btn bg-[var(--bg)] px-3.5 h-8 text-xs">
+            <button type="button" onClick={onCancel} className="pill-btn bg-[var(--bg)] px-3.5 h-9 text-xs">
               Cancelar
             </button>
             <button
               type="button"
               onClick={() => onSave(draft.trim())}
-              className="pill-btn pill-btn-primary px-4 h-8 text-xs"
+              className="pill-btn pill-btn-primary px-4 h-9 text-xs"
             >
               Salvar nota
             </button>
@@ -107,32 +108,52 @@ export function StageNotesBar({
   onSave,
   onCancel,
 }: StageNotesBarProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (editing && !readOnly && onSave && onCancel) {
     return <StageNotesEditor initialNotes={notes} onSave={onSave} onCancel={onCancel} />;
   }
 
   if (!notes.trim()) return null;
 
+  const isLong = notes.trim().length > 88;
+
   return (
     <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
-      <div className="w-full rounded-2xl bg-[var(--warn-dim)] px-4 py-2.5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="w-full rounded-2xl bg-[var(--warn-dim)] px-4 py-2.5 flex items-start sm:items-center justify-between gap-3">
+        <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
           <span className="studio-chip bg-[var(--warn)]/25 text-[var(--warn-ink)] font-semibold flex-shrink-0">
             Deixa
           </span>
-          <p className="text-xs sm:text-[13px] font-medium text-[var(--ink)] truncate">
+          <p
+            className={`text-xs sm:text-[13px] font-medium text-[var(--ink)] leading-snug ${
+              expanded ? 'whitespace-normal' : 'line-clamp-2'
+            }`}
+          >
             {notes}
           </p>
         </div>
-        {!readOnly && onStartEdit && (
-          <button
-            type="button"
-            onClick={onStartEdit}
-            className="text-xs font-medium text-[var(--warn-ink)] hover:underline flex-shrink-0 cursor-pointer"
-          >
-            Editar
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isLong && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              className="text-xs font-medium text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+            >
+              {expanded ? 'Menos' : 'Ver tudo'}
+            </button>
+          )}
+          {!readOnly && onStartEdit && (
+            <button
+              type="button"
+              onClick={onStartEdit}
+              className="text-xs font-medium text-[var(--warn-ink)] hover:underline cursor-pointer"
+            >
+              Editar
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -5,8 +5,6 @@ import { parseEntry, patchChordProMeta } from '@/lib/utils/chordpro-parser';
 import { DEFAULT_CHORDPRO } from '@/lib/data/default-songs';
 import { useSetlistStore } from './setlist-store';
 
-// Per-entry memoization cache keyed by song ID -> { text, parsed }
-// Prevents re-running parseChordPro across the entire library on every render.
 const parsedCache = new Map<string, { text: string; parsed: ParsedSong }>();
 
 function parseCached(entry: ChordProEntry): ParsedSong {
@@ -38,31 +36,61 @@ export function makeUniqueSongId(baseId: string, existingIds: Set<string>): stri
   return `${baseId}-${suffix}`;
 }
 
+type PendingSongOp =
+  | { kind: 'create'; entry: ChordProEntry }
+  | { kind: 'update'; id: string; text: string }
+  | { kind: 'delete'; id: string };
+
 interface SongStore {
   entries: ChordProEntry[];
   isLoaded: boolean;
   syncError: string | null;
+  pendingOps: PendingSongOp[];
 
   clearSyncError: () => void;
-
-  // Database fetch
   fetchEntries: () => Promise<void>;
+  retryPendingSync: () => Promise<boolean>;
 
-  // Derived accessors (memoized per entry text)
   getSong: (id: string) => ParsedSong | null;
   getSongs: () => ParsedSong[];
   getEntry: (id: string) => ChordProEntry | null;
 
-  // Mutations
   addEntry: (entry: ChordProEntry) => ChordProEntry;
   removeEntry: (id: string) => void;
   updateEntry: (id: string, text: string) => void;
   patchMeta: (id: string, key: string, value: string | number) => void;
 
-  // Import / Export
   exportEntry: (id: string) => string | null;
   exportAll: () => string;
   importEntries: (text: string) => number;
+  importEntriesDetailed: (text: string) => { imported: number; skipped: number };
+}
+
+async function runSongOp(op: PendingSongOp): Promise<void> {
+  if (op.kind === 'create') {
+    const res = await fetch('/api/songs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(op.entry),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } else if (op.kind === 'update') {
+    const res = await fetch(`/api/songs/${op.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: op.text }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } else {
+    const res = await fetch(`/api/songs/${op.id}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
+  }
+}
+
+function enqueueOp(ops: PendingSongOp[], next: PendingSongOp): PendingSongOp[] {
+  const id = next.kind === 'create' ? next.entry.id : next.id;
+  const filtered = ops.filter((o) => (o.kind === 'create' ? o.entry.id : o.id) !== id);
+  return [...filtered, next];
 }
 
 export const useSongStore = create<SongStore>()(
@@ -71,6 +99,7 @@ export const useSongStore = create<SongStore>()(
       entries: DEFAULT_CHORDPRO,
       isLoaded: false,
       syncError: null,
+      pendingOps: [],
 
       clearSyncError: () => set({ syncError: null }),
 
@@ -81,7 +110,7 @@ export const useSongStore = create<SongStore>()(
             throw new Error(`HTTP ${res.status}`);
           }
           const data: ChordProEntry[] = await res.json();
-          set({ entries: data, isLoaded: true, syncError: null });
+          set({ entries: data, isLoaded: true, syncError: null, pendingOps: [] });
         } catch (err) {
           console.error('Failed to fetch songs from database:', err);
           set({
@@ -89,6 +118,31 @@ export const useSongStore = create<SongStore>()(
             syncError: 'Não foi possível sincronizar o repertório com o servidor. Exibindo cópia local.',
           });
         }
+      },
+
+      retryPendingSync: async () => {
+        const ops = get().pendingOps;
+        if (ops.length === 0) {
+          await get().fetchEntries();
+          return get().syncError === null;
+        }
+        const remaining: PendingSongOp[] = [];
+        for (const op of ops) {
+          try {
+            await runSongOp(op);
+          } catch {
+            remaining.push(op);
+          }
+        }
+        if (remaining.length === 0) {
+          set({ pendingOps: [], syncError: null });
+          return true;
+        }
+        set({
+          pendingOps: remaining,
+          syncError: `${remaining.length} alteração(ões) ainda não sincronizadas com o servidor.`,
+        });
+        return false;
       },
 
       getSong: (id) => {
@@ -104,39 +158,32 @@ export const useSongStore = create<SongStore>()(
         const existingIds = new Set(get().entries.map((e) => e.id));
         const safeId = makeUniqueSongId(entry.id || slugifySongId(''), existingIds);
         const finalEntry: ChordProEntry = { id: safeId, text: entry.text };
+        const op: PendingSongOp = { kind: 'create', entry: finalEntry };
 
         set((s) => ({ entries: [...s.entries, finalEntry], syncError: null }));
-        fetch('/api/songs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finalEntry),
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          })
-          .catch((err) => {
-            console.error('Failed to sync added song:', err);
-            set({ syncError: 'Música adicionada localmente, mas falhou ao salvar no servidor.' });
-          });
+        runSongOp(op).catch((err) => {
+          console.error('Failed to sync added song:', err);
+          set((s) => ({
+            pendingOps: enqueueOp(s.pendingOps, op),
+            syncError: 'Música adicionada localmente, mas falhou ao salvar no servidor.',
+          }));
+        });
 
         return finalEntry;
       },
 
       removeEntry: (id) => {
         parsedCache.delete(id);
+        const op: PendingSongOp = { kind: 'delete', id };
         set((s) => ({ entries: s.entries.filter((e) => e.id !== id), syncError: null }));
-        fetch(`/api/songs/${id}`, {
-          method: 'DELETE',
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          })
-          .catch((err) => {
-            console.error('Failed to sync deleted song:', err);
-            set({ syncError: 'Não foi possível confirmar a exclusão no servidor.' });
-          });
+        runSongOp(op).catch((err) => {
+          console.error('Failed to sync deleted song:', err);
+          set((s) => ({
+            pendingOps: enqueueOp(s.pendingOps, op),
+            syncError: 'Não foi possível confirmar a exclusão no servidor.',
+          }));
+        });
 
-        // Cascade removal from setlists so prev/next and Show Mode never hit a deleted song.
         const setlistStore = useSetlistStore.getState();
         setlistStore.setlists.forEach((sl) => {
           if (sl.songIds.includes(id)) {
@@ -146,44 +193,36 @@ export const useSongStore = create<SongStore>()(
       },
 
       updateEntry: (id, text) => {
+        const op: PendingSongOp = { kind: 'update', id, text };
         set((s) => ({
           entries: s.entries.map((e) => (e.id === id ? { ...e, text } : e)),
           syncError: null,
         }));
-        fetch(`/api/songs/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          })
-          .catch((err) => {
-            console.error('Failed to sync updated song:', err);
-            set({ syncError: 'Alteração salva neste aparelho, mas falhou ao enviar ao servidor.' });
-          });
+        runSongOp(op).catch((err) => {
+          console.error('Failed to sync updated song:', err);
+          set((s) => ({
+            pendingOps: enqueueOp(s.pendingOps, op),
+            syncError: 'Alteração salva neste aparelho, mas falhou ao enviar ao servidor.',
+          }));
+        });
       },
 
       patchMeta: (id, key, value) => {
         const entry = get().entries.find((e) => e.id === id);
         if (!entry) return;
         const newText = patchChordProMeta(entry.text, key, value);
+        const op: PendingSongOp = { kind: 'update', id, text: newText };
         set((s) => ({
           entries: s.entries.map((e) => (e.id === id ? { ...e, text: newText } : e)),
           syncError: null,
         }));
-        fetch(`/api/songs/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: newText }),
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          })
-          .catch((err) => {
-            console.error('Failed to sync patched song metadata:', err);
-            set({ syncError: 'Alteração salva localmente, mas falhou ao sincronizar com o servidor.' });
-          });
+        runSongOp(op).catch((err) => {
+          console.error('Failed to sync patched song metadata:', err);
+          set((s) => ({
+            pendingOps: enqueueOp(s.pendingOps, op),
+            syncError: 'Alteração salva localmente, mas falhou ao sincronizar com o servidor.',
+          }));
+        });
       },
 
       exportEntry: (id) => {
@@ -191,20 +230,19 @@ export const useSongStore = create<SongStore>()(
         return entry ? entry.text : null;
       },
 
-      exportAll: () =>
-        get().entries.map((e) => e.text).join('\n\n---\n\n'),
+      exportAll: () => get().entries.map((e) => e.text).join('\n\n---\n\n'),
 
-      importEntries: (text: string) => {
+      importEntriesDetailed: (text: string) => {
         const raw = text.trim();
-        const parts = raw.includes('\n---\n')
-          ? raw.split(/\n---\n/)
-          : [raw];
-
-        const valid = parts
+        if (!raw) return { imported: 0, skipped: 0 };
+        const parts = raw
+          .split(/\r?\n---\r?\n/)
           .map((t) => t.trim())
-          .filter((t) => /^\{title:/im.test(t));
+          .filter(Boolean);
 
-        if (!valid.length) return 0;
+        const valid = parts.filter((t) => /^\{title:/im.test(t));
+        const skipped = parts.length - valid.length;
+        if (!valid.length) return { imported: 0, skipped };
 
         const existingIds = new Set(get().entries.map((e) => e.id));
         const newEntries: ChordProEntry[] = valid.map((t) => {
@@ -219,22 +257,20 @@ export const useSongStore = create<SongStore>()(
         set((s) => ({ entries: [...s.entries, ...newEntries], syncError: null }));
 
         newEntries.forEach((entry) => {
-          fetch('/api/songs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry),
-          })
-            .then((res) => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            })
-            .catch((err) => {
-              console.error('Failed to sync imported song:', err);
-              set({ syncError: 'Parte da importação falhou ao salvar no servidor.' });
-            });
+          const op: PendingSongOp = { kind: 'create', entry };
+          runSongOp(op).catch((err) => {
+            console.error('Failed to sync imported song:', err);
+            set((s) => ({
+              pendingOps: enqueueOp(s.pendingOps, op),
+              syncError: 'Parte da importação falhou ao salvar no servidor.',
+            }));
+          });
         });
 
-        return newEntries.length;
+        return { imported: newEntries.length, skipped };
       },
+
+      importEntries: (text: string) => get().importEntriesDetailed(text).imported,
     }),
     {
       name: 'jamshelf-songs',

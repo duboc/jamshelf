@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
+import { usePlayerStore } from '@/lib/stores/player-store';
 import {
   useDisplayStore,
   type DisplayMode,
@@ -12,6 +13,8 @@ import {
   type ThemeMode,
 } from '@/lib/stores/display-store';
 import { QuickSearchModal } from './QuickSearchModal';
+import { ShortcutsModal } from '@/components/ui/ShortcutsModal';
+import { HelpCircleIcon, JamshelfMark, PlusIcon } from '@/components/ui/Icons';
 
 const DEVICE_NAME_EVENT = 'jamshelf-device-name-change';
 
@@ -50,12 +53,55 @@ function getDesktopViewportServerSnapshot(): boolean {
   return true;
 }
 
+function Gm3Switch({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-[var(--ink)]">{label}</div>
+        <div className="text-xs text-[var(--muted)]">{description}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex items-center w-[50px] h-[30px] rounded-full transition-colors flex-shrink-0 cursor-pointer border ${
+          checked
+            ? 'bg-[var(--accent)] border-[var(--accent)]'
+            : 'bg-[var(--surface2)] border-[var(--line)]'
+        }`}
+      >
+        <span
+          className={`inline-block rounded-full transition-transform ${
+            checked
+              ? 'w-5 h-5 translate-x-[24px] bg-[var(--on-accent)]'
+              : 'w-4 h-4 translate-x-[5px] bg-[var(--muted)]'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 function DeviceSettingsPopover({
   compact = false,
   align = 'rail',
+  onOpenShortcuts,
 }: {
   compact?: boolean;
   align?: 'rail' | 'top-right';
+  onOpenShortcuts: () => void;
 }) {
   const {
     theme,
@@ -68,6 +114,8 @@ function DeviceSettingsPopover({
     setVisualPulseEnabled,
     scrollLeadInSec,
     setScrollLeadInSec,
+    singleKeyShortcuts,
+    setSingleKeyShortcuts,
   } = useDisplayStore();
 
   const [open, setOpen] = useState(false);
@@ -114,12 +162,13 @@ function DeviceSettingsPopover({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label="Preferências do aparelho"
         title="Preferências deste aparelho (tema, leitura, fonte e nome no Ao Vivo)"
         className={`rounded-full hover:bg-[var(--surface-high)] inline-flex items-center gap-2.5 transition-colors cursor-pointer ${
           compact ? 'w-11 h-11 justify-center' : 'h-11 px-3 w-full'
         }`}
       >
-        <span className="w-8 h-8 rounded-full bg-[var(--primary-container)] text-[var(--accent)] text-xs font-display font-semibold flex items-center justify-center flex-shrink-0">
+        <span className="w-8 h-8 rounded-full bg-[var(--primary-container)] text-[var(--on-primary-container)] text-xs font-display font-semibold flex items-center justify-center flex-shrink-0">
           {initial || (
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
               <circle cx="8" cy="5.2" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -144,7 +193,7 @@ function DeviceSettingsPopover({
         <div
           role="dialog"
           aria-label="Ajustes deste aparelho"
-          className={`absolute z-50 w-[min(332px,calc(100vw-24px))] max-h-[calc(100vh-110px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-5 flex flex-col gap-4 ${
+          className={`gm3-card gm3-dialog-enter absolute z-50 w-[min(340px,calc(100vw-24px))] max-h-[calc(100vh-110px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-5 flex flex-col gap-4 ${
             align === 'rail'
               ? 'left-0 bottom-[calc(100%+10px)]'
               : 'right-0 top-[calc(100%+10px)]'
@@ -152,7 +201,7 @@ function DeviceSettingsPopover({
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           <div className="flex items-center justify-between pb-1">
-            <span className="font-display text-base text-[var(--ink)]">Preferências do aparelho</span>
+            <span className="font-display text-base font-bold text-[var(--ink)]">Preferências do aparelho</span>
             <span className="studio-chip text-[var(--muted)]">Local</span>
           </div>
 
@@ -263,19 +312,21 @@ function DeviceSettingsPopover({
             </div>
           </div>
 
-          {/* Pulso visual */}
-          <label className="flex items-center justify-between gap-2 cursor-pointer">
-            <div>
-              <div className="text-[13px] font-medium text-[var(--ink)]">Pulso visual do metrônomo</div>
-              <div className="text-xs text-[var(--muted)]">Pisca a borda da tela no tempo</div>
-            </div>
-            <input
-              type="checkbox"
-              checked={visualPulseEnabled}
-              onChange={(e) => setVisualPulseEnabled(e.target.checked)}
-              className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
-            />
-          </label>
+          {/* Pulso visual (GM3 Switch) */}
+          <Gm3Switch
+            checked={visualPulseEnabled}
+            onChange={setVisualPulseEnabled}
+            label="Pulso visual do metrônomo"
+            description="Faixa discreta no topo (seguro <= 2.5 Hz)"
+          />
+
+          {/* Atalhos de tecla única (WCAG 2.1.4 opt-out) */}
+          <Gm3Switch
+            checked={singleKeyShortcuts}
+            onChange={setSingleKeyShortcuts}
+            label="Atalhos de tecla única"
+            description="Usar /, C, L, S e Espaço no teclado"
+          />
 
           {/* Nome do aparelho */}
           <div className="flex flex-col gap-1.5">
@@ -292,7 +343,22 @@ function DeviceSettingsPopover({
             />
           </div>
 
-          <p className="text-xs text-[var(--muted)] leading-relaxed pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onOpenShortcuts();
+            }}
+            className="pill-btn bg-[var(--bg)] h-10 px-4 text-xs justify-between w-full"
+          >
+            <span className="inline-flex items-center gap-2">
+              <HelpCircleIcon size={16} />
+              Atalhos e gestos de palco
+            </span>
+            <kbd className="font-mono text-xs text-[var(--muted)]">?</kbd>
+          </button>
+
+          <p className="text-xs text-[var(--muted)] leading-relaxed">
             Salvo apenas neste aparelho. Não altera a visão dos outros músicos.
           </p>
         </div>
@@ -309,13 +375,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setlists = useSetlistStore((s) => s.setlists);
   const fetchEntries = useSongStore((s) => s.fetchEntries);
   const fetchSetlists = useSetlistStore((s) => s.fetchSetlists);
+  const retrySongSync = useSongStore((s) => s.retryPendingSync);
+  const retrySetlistSync = useSetlistStore((s) => s.retryPendingSync);
+  const songPendingCount = useSongStore((s) => s.pendingOps.length);
+  const setlistPendingCount = useSetlistStore((s) => s.pendingOps.length);
   const songSyncError = useSongStore((s) => s.syncError);
   const setlistSyncError = useSetlistStore((s) => s.syncError);
   const clearSongError = useSongStore((s) => s.clearSyncError);
   const clearSetlistError = useSetlistStore((s) => s.clearSyncError);
-  const { theme, focusMode, setFocusMode } = useDisplayStore();
+  const { theme, focusMode, setFocusMode, singleKeyShortcuts } = useDisplayStore();
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [retryingSync, setRetryingSync] = useState(false);
   const isDesktopViewport = useSyncExternalStore(
     subscribeDesktopViewport,
     getDesktopViewportSnapshot,
@@ -329,6 +401,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return getSongs();
   }, [entries, getSongs]);
 
+  const validSongIds = useMemo(() => new Set(songs.map((s) => s.id)), [songs]);
   const favoriteCount = useMemo(() => songs.filter((s) => s.favorite).length, [songs]);
 
   useEffect(() => {
@@ -355,36 +428,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, focusMode, setFocusMode]);
 
-  // Global Cmd/Ctrl+K and '/' quick search shortcut
+  // Global Cmd/Ctrl+K, '/' quick search, and '?' shortcuts guide
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        if (usePlayerStore.getState().editMode) return;
         e.preventDefault();
         setSearchOpen((v) => !v);
         return;
       }
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const target = e.target as HTMLElement | null;
-        if (
-          target &&
-          (target.tagName === 'INPUT' ||
-            target.tagName === 'TEXTAREA' ||
-            target.tagName === 'SELECT' ||
-            target.isContentEditable)
-        ) {
-          return;
-        }
+      if (!singleKeyShortcuts) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === '/') {
+        if (usePlayerStore.getState().editMode) return;
         e.preventDefault();
         setSearchOpen(true);
+      } else if (e.key === '?') {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [singleKeyShortcuts]);
 
   const isSongPage = pathname.startsWith('/song/');
   const isShowMode = isSongPage && searchParams.get('show') === '1';
   const hideChrome = isShowMode || (isSongPage && focusMode);
+  const isHomeAll = pathname === '/' && (!searchParams.get('tab') || searchParams.get('tab') === 'all');
 
   const tabParam = searchParams.get('tab');
   const activeSetlistId = pathname.startsWith('/setlists/')
@@ -405,12 +486,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       : 'songs';
 
   const syncError = songSyncError || setlistSyncError;
+  const hasPendingWrites = songPendingCount > 0 || setlistPendingCount > 0;
 
-  const handleRetrySync = () => {
+  const handleRetrySync = async () => {
+    setRetryingSync(true);
+    try {
+      if (hasPendingWrites) {
+        if (songPendingCount > 0) await retrySongSync();
+        if (setlistPendingCount > 0) await retrySetlistSync();
+      } else {
+        clearSongError();
+        clearSetlistError();
+        await Promise.all([fetchEntries(), fetchSetlists()]);
+      }
+    } finally {
+      setRetryingSync(false);
+    }
+  };
+
+  const handleReloadFromServer = async () => {
     clearSongError();
     clearSetlistError();
-    fetchEntries();
-    fetchSetlists();
+    await Promise.all([fetchEntries(), fetchSetlists()]);
   };
 
   const handleDismissSync = () => {
@@ -422,17 +519,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {
       key: 'songs',
       label: 'Repertório',
-      shortLabel: 'Músicas',
+      shortLabel: 'Repertório',
       href: '/',
       count: songs.length,
       active: activeNav === 'songs',
+      softActive: false,
       icon: (active: boolean) => (
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           {active ? (
-            <path
-              d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z"
-              fill="currentColor"
-            />
+            <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z" fill="currentColor" />
           ) : (
             <path
               d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z"
@@ -453,6 +548,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       href: '/?tab=favorites',
       count: favoriteCount,
       active: activeNav === 'favorites',
+      softActive: false,
       icon: (active: boolean) => (
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -471,7 +567,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       shortLabel: 'Setlists',
       href: '/?tab=setlists',
       count: setlists.length,
-      active: activeNav === 'setlists',
+      // Avoid dual active pills when a specific pinned setlist is highlighted below
+      active: activeNav === 'setlists' && !(railExpanded && !isSongPage && activeSetlistId),
+      softActive: activeNav === 'setlists' && Boolean(railExpanded && !isSongPage && activeSetlistId),
       icon: (active: boolean) => (
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -502,12 +600,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         isSongPage ? 'h-screen overflow-hidden' : ''
       }`}
     >
+      {/* WCAG 2.4.1 Skip Link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] pill-btn pill-btn-primary h-10 px-4 text-sm"
+      >
+        Pular para o conteúdo principal
+      </a>
+
       {/* Desktop & Tablet GM3 Navigation Rail */}
       {!hideChrome && (
         <aside
           aria-label="Navegação principal"
           className={`hidden md:flex flex-col justify-between flex-shrink-0 sticky top-0 h-screen z-40 bg-[var(--bg)] py-5 transition-[width] duration-200 select-none ${
-            isExpandedRail ? 'w-[208px] px-4' : 'w-[88px] px-2 items-center'
+            isExpandedRail ? 'w-[216px] px-4' : 'w-[88px] px-2 items-center'
           }`}
         >
           {/* Top section: Menu toggle + Extended/Standard GM3 FAB */}
@@ -533,28 +639,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {isExpandedRail && (
                 <Link
                   href="/"
-                  className="font-expressive text-[19px] text-[var(--ink)] tracking-[-0.02em] pr-2 hover:text-[var(--accent)] transition-colors"
+                  className="inline-flex items-center gap-2 font-expressive text-[19px] text-[var(--ink)] tracking-[-0.02em] pr-1 hover:text-[var(--accent)] transition-colors"
                 >
-                  Jamshelf
+                  <JamshelfMark size={24} />
+                  <span>Jamshelf</span>
                 </Link>
               )}
             </div>
 
             <Link
               href="/add-song"
+              aria-label="Nova música"
               title="Adicionar nova música"
               className={`gm3-fab h-14 ${
                 isExpandedRail ? 'px-5 w-full justify-start text-[14px]' : 'w-14'
               }`}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" className="flex-shrink-0">
-                <path
-                  d="M12 5v14M5 12h14"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <PlusIcon size={20} className="flex-shrink-0" />
               {isExpandedRail && <span>Nova música</span>}
             </Link>
           </div>
@@ -570,15 +671,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     aria-current={item.active ? 'page' : undefined}
                     className={`h-11 px-4 rounded-full flex items-center justify-between gap-2 text-[14px] font-medium transition-colors ${
                       item.active
-                        ? 'bg-[var(--secondary-container)] text-[var(--secondary)]'
+                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                        : item.softActive
+                        ? 'text-[var(--ink)] font-semibold hover:bg-[var(--surface-high)]'
                         : 'text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
                     }`}
                   >
                     <span className="flex items-center gap-3 min-w-0">
-                      <span className="flex-shrink-0">{item.icon(item.active)}</span>
+                      <span className="flex-shrink-0">{item.icon(item.active || item.softActive)}</span>
                       <span className="truncate">{item.label}</span>
                     </span>
-                    <span className="font-mono text-xs opacity-75 tabular-nums">{item.count}</span>
+                    <span className="font-mono text-xs tabular-nums">{item.count}</span>
                   </Link>
                 ) : (
                   <Link
@@ -590,7 +693,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <span
                       className={`w-14 h-8 rounded-full flex items-center justify-center transition-colors ${
                         item.active
-                          ? 'bg-[var(--secondary-container)] text-[var(--secondary)]'
+                          ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
                           : 'text-[var(--muted)] group-hover:bg-[var(--surface-high)] group-hover:text-[var(--ink)]'
                       }`}
                     >
@@ -615,6 +718,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <nav aria-label="Setlists fixados" className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
                   {setlists.slice(0, 6).map((sl) => {
                     const isActive = activeSetlistId === sl.id;
+                    const validCount = sl.songIds.filter((sid) => validSongIds.has(sid)).length;
                     return (
                       <Link
                         key={sl.id}
@@ -622,19 +726,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         aria-current={isActive ? 'page' : undefined}
                         className={`h-9 px-4 rounded-full flex items-center justify-between gap-2 text-[13px] transition-colors ${
                           isActive
-                            ? 'bg-[var(--secondary-container)] text-[var(--secondary)] font-medium'
+                            ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)] font-medium'
                             : 'text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
                         }`}
                       >
                         <span className="flex items-center gap-2.5 min-w-0">
                           <span
                             className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                              isActive ? 'bg-[var(--accent)]' : 'bg-[var(--tune-dot)]'
+                              isActive
+                                ? 'bg-[var(--on-secondary-container)]'
+                                : validCount === 0
+                                ? 'bg-[var(--line)]'
+                                : 'bg-[var(--muted)]'
                             }`}
                           />
                           <span className="truncate">{sl.name}</span>
                         </span>
-                        <span className="font-mono text-xs opacity-70 tabular-nums">{sl.songIds.length}</span>
+                        <span className="font-mono text-xs tabular-nums">{validCount}</span>
                       </Link>
                     );
                   })}
@@ -648,6 +756,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
+              aria-label="Busca rápida"
               title="Busca rápida (/ ou Ctrl+K)"
               className={`rounded-full hover:bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] inline-flex items-center gap-2.5 transition-colors cursor-pointer ${
                 isExpandedRail ? 'h-11 px-4 justify-between w-full' : 'w-11 h-11 justify-center'
@@ -667,56 +776,81 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             </button>
 
-            <DeviceSettingsPopover compact={!isExpandedRail} align="rail" />
+            <DeviceSettingsPopover
+              compact={!isExpandedRail}
+              align="rail"
+              onOpenShortcuts={() => setShortcutsOpen(true)}
+            />
           </div>
         </aside>
       )}
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        {/* Compact mobile-only utility row (no heavy Cloud Console chrome) */}
+        {/* Compact mobile-only utility row */}
         {!hideChrome && !isSongPage && (
           <header className="md:hidden flex items-center justify-between gap-2 px-4 pt-3 pb-1">
-            <Link href="/" className="font-expressive text-xl text-[var(--ink)]">
-              Jamshelf
+            <Link href="/" className="inline-flex items-center gap-2 font-expressive text-xl text-[var(--ink)]">
+              <JamshelfMark size={24} />
+              <span>Jamshelf</span>
             </Link>
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                aria-label="Busca rápida"
-                className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
-              >
-                <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.9" />
-                  <path d="m16 16 4.2 4.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-                </svg>
-              </button>
-              <DeviceSettingsPopover compact align="top-right" />
+              {!isHomeAll && (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="Busca rápida"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
+                >
+                  <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.9" />
+                    <path d="m16 16 4.2 4.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+              <DeviceSettingsPopover
+                compact
+                align="top-right"
+                onOpenShortcuts={() => setShortcutsOpen(true)}
+              />
             </div>
           </header>
         )}
 
-        {/* Sync error banner */}
-        {syncError && !isShowMode && (
-          <div role="status" className="flex-shrink-0 px-4 sm:px-6 lg:px-8 pt-3">
+        {/* Sync error banner (retries pending local edits safely instead of overwriting them) */}
+        {syncError && (
+          <div role="alert" className="flex-shrink-0 px-4 sm:px-6 lg:px-8 pt-2.5">
             <div className="w-full rounded-2xl bg-[var(--rec-dim)] text-[var(--on-rec-container)] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[var(--rec)] flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-[var(--rec-dot)] flex-shrink-0" />
                 <span>{syncError}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
+                  disabled={retryingSync}
                   onClick={handleRetrySync}
-                  className="pill-btn px-3 py-1 text-xs"
+                  className="pill-btn h-8 px-3.5 text-xs"
                 >
-                  Recarregar
+                  {retryingSync
+                    ? 'Enviando…'
+                    : hasPendingWrites
+                    ? 'Tentar enviar novamente'
+                    : 'Recarregar'}
                 </button>
+                {hasPendingWrites && (
+                  <button
+                    type="button"
+                    onClick={handleReloadFromServer}
+                    className="px-2 py-1 text-xs underline underline-offset-2 cursor-pointer"
+                  >
+                    Descartar local
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleDismissSync}
-                  className="px-2 py-1 text-xs opacity-80 hover:opacity-100 cursor-pointer"
+                  className="px-2 py-1 text-xs hover:underline cursor-pointer"
                 >
                   Fechar
                 </button>
@@ -743,9 +877,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label="Nova música"
               className="md:hidden gm3-fab fixed right-4 bottom-20 z-30 h-14 px-5 text-sm shadow-md"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-              </svg>
+              <PlusIcon size={20} />
               <span>Nova música</span>
             </Link>
           )}
@@ -766,7 +898,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span
                     className={`w-16 h-8 rounded-full flex items-center justify-center transition-colors ${
                       item.active
-                        ? 'bg-[var(--secondary-container)] text-[var(--secondary)]'
+                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
                         : 'text-[var(--muted)]'
                     }`}
                   >
@@ -787,6 +919,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <QuickSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

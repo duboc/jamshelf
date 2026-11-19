@@ -32,7 +32,7 @@ export const PIANO_INTERVALS: Record<string, number[]> = {
   mmaj7: [0, 3, 7, 11],
 };
 
-// Theme-aware Google Cloud Console section accents (readable in both light and dark mode)
+// Theme-aware GM3 section accents (readable in both light and dark mode)
 export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string }> = {
   intro: {
     bg: 'var(--surface)',
@@ -45,17 +45,17 @@ export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string
     lb: 'var(--muted)',
   },
   'pre-chorus': {
-    bg: 'color-mix(in srgb, var(--warn) 6%, var(--surface))',
-    bd: 'var(--warn)',
+    bg: 'color-mix(in srgb, var(--warn) 9%, var(--surface))',
+    bd: 'var(--warn-icon)',
     lb: 'var(--warn-ink)',
   },
   chorus: {
-    bg: 'color-mix(in srgb, var(--sharp) 6%, var(--surface))',
+    bg: 'color-mix(in srgb, var(--sharp) 9%, var(--surface))',
     bd: 'var(--sharp)',
     lb: 'var(--sharp)',
   },
   bridge: {
-    bg: 'color-mix(in srgb, var(--tune) 6%, var(--surface))',
+    bg: 'color-mix(in srgb, var(--tune) 9%, var(--surface))',
     bd: 'var(--tune)',
     lb: 'var(--tune)',
   },
@@ -65,16 +65,25 @@ export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string
     lb: 'var(--flat)',
   },
   solo: {
-    bg: 'color-mix(in srgb, var(--accent) 6%, var(--surface))',
+    bg: 'color-mix(in srgb, var(--accent) 9%, var(--surface))',
     bd: 'var(--accent)',
     lb: 'var(--accent-ink)',
   },
   interlude: {
-    bg: 'color-mix(in srgb, var(--tune) 5%, var(--surface))',
+    bg: 'color-mix(in srgb, var(--tune) 7%, var(--surface))',
     bd: 'var(--tune)',
     lb: 'var(--tune)',
   },
 };
+
+/** Folds PT-BR diacritics and case so "evidencias" matches "Evidências". */
+export function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
 
 export function normalizeNote(n: string): string {
   return FLAT_TO_SHARP[n] || n;
@@ -86,6 +95,12 @@ export function noteIndex(n: string): number {
 
 export function transposeChord(chord: string, semitones: number, useFlats: boolean): string {
   if (!semitones) return chord;
+  const slashIdx = chord.indexOf('/');
+  if (slashIdx > 0) {
+    const main = chord.slice(0, slashIdx);
+    const bass = chord.slice(slashIdx + 1);
+    return `${transposeChord(main, semitones, useFlats)}/${transposeChord(bass, semitones, useFlats)}`;
+  }
   const m = chord.match(/^([A-G][#b]?)(.*)/);
   if (!m) return chord;
   const idx = noteIndex(m[1]);

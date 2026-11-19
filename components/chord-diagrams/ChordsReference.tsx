@@ -28,6 +28,8 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
               <button
                 key={chord}
                 type="button"
+                aria-pressed={isActive}
+                aria-label={`Abrir diagrama ampliado de ${chord}`}
                 onClick={() => store.setActiveChord(chord)}
                 className={`flex-shrink-0 rounded-2xl p-2 flex flex-col items-center justify-center min-w-[86px] transition-colors cursor-pointer ${
                   isActive

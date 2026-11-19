@@ -34,6 +34,7 @@ export interface ParsedSong {
   capo: number;
   displayKey: string;
   tempo: number;
+  tempoConfirmed: boolean; // true when explicit {tempo:} directive exists (not fallback 120)
   timeSignature: string;
   sections: Section[];
   rating: number; // 0 = unrated, 1-5 stars

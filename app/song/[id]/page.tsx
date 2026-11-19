@@ -48,6 +48,8 @@ import { CalibrationBar } from '@/components/song/CalibrationBar';
 import { StageNotesBar } from '@/components/song/StageNotesBar';
 import { CountInOverlay } from '@/components/song/CountInOverlay';
 import { useWakeLock } from '@/lib/hooks/use-wake-lock';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { ChevronLeftIcon, ChevronRightIcon } from '@/components/ui/Icons';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -60,15 +62,19 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const searchParams = useSearchParams();
 
   const entries = useSongStore((s) => s.entries);
+  const songsLoaded = useSongStore((s) => s.isLoaded);
   const { getSong, patchMeta, exportEntry, updateEntry } = useSongStore();
   const { setlists, addSongToSetlist } = useSetlistStore();
   const store = usePlayerStore();
   const {
     displayMode,
     setDisplayMode,
+    toggleHideChords,
     chordsRefOpen,
     focusMode,
     setFocusMode,
+    capoDisplay,
+    singleKeyShortcuts,
   } = useDisplayStore();
 
   // Source modal state (with live split preview!)
@@ -89,8 +95,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [showMoreSuggestions, setShowMoreSuggestions] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [showTransposeConfirm, setShowTransposeConfirm] = useState(false);
+  const [showClearCalConfirm, setShowClearCalConfirm] = useState(false);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
   const [editingNotes, setEditingNotes] = useState(false);
+  const choModalRef = useRef<HTMLDivElement>(null);
   const [localCountIn, setLocalCountIn] = useState<{
     nonce: number;
     bpm: number;
@@ -252,9 +260,12 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     if (!container) return;
     const target = container.querySelector<HTMLElement>(`#section-${sectionIdx}`);
     if (target) {
+      const reducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       container.scrollTo({
         top: Math.max(0, target.offsetTop - 16),
-        behavior: 'smooth',
+        behavior: reducedMotion ? 'auto' : 'smooth',
       });
     }
   }, []);
@@ -295,7 +306,45 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setAddTarget(null);
   }, [redoStack, editDraftText]);
 
-  // Global keyboard shortcuts on song page
+  const existingSetlistSongIds = useMemo(() => {
+    void entries;
+    return activeSetlist ? activeSetlist.songIds.filter((sid) => getSong(sid) !== null) : [];
+  }, [activeSetlist, getSong, entries]);
+  const setlistSongIdx = existingSetlistSongIds.indexOf(id);
+  const prevSongId = setlistSongIdx > 0 ? existingSetlistSongIds[setlistSongIdx - 1] : null;
+  const nextSongId =
+    setlistSongIdx >= 0 && setlistSongIdx < existingSetlistSongIds.length - 1
+      ? existingSetlistSongIds[setlistSongIdx + 1]
+      : null;
+
+  const editDirtyForUnload =
+    store.editMode && editOriginText !== null && editDraftText !== null && editDraftText !== editOriginText;
+
+  // Warn before accidental reload/close with unsaved visual edits
+  useEffect(() => {
+    if (!editDirtyForUnload) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [editDirtyForUnload]);
+
+  const choIsDirtyEarly = choDraft !== (exportEntry(id) ?? '');
+  const closeExportModalCallback = useCallback(() => {
+    if (choIsDirtyEarly && !discardArmed) {
+      setDiscardArmed(true);
+      setTimeout(() => setDiscardArmed(false), 6000);
+      return;
+    }
+    setDiscardArmed(false);
+    setShowExport(false);
+  }, [choIsDirtyEarly, discardArmed]);
+
+  useDialogA11y(showExport, closeExportModalCallback, choModalRef);
+
+  // Global keyboard shortcuts on song page (consistent with Show Mode + guarded for accessibility)
   useEffect(() => {
     if (showMode) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -319,8 +368,27 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
       if (inInput) return;
 
+      const modalOpen =
+        showExport ||
+        showEnhance ||
+        showHistory ||
+        showTransposeConfirm ||
+        showClearCalConfirm ||
+        showNamePrompt ||
+        showSpotifyPicker ||
+        showSetlistDrawer;
+
+      const onInteractiveControl = Boolean(
+        target &&
+          (target.tagName === 'BUTTON' ||
+            target.tagName === 'A' ||
+            target.tagName === 'SELECT' ||
+            target.tagName === 'SUMMARY' ||
+            target.getAttribute('role') === 'button')
+      );
+
       if (calibrating) {
-        if (e.key === ' ' || e.key === 'Enter') {
+        if ((e.key === ' ' || e.key === 'Enter') && !onInteractiveControl) {
           e.preventDefault();
           if (song && calNextIdx < song.sections.length) {
             markCalibrationSection(calNextIdx);
@@ -331,30 +399,45 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         return;
       }
 
-      if (e.key === 'Escape' && focusMode) {
+      if (e.key === 'Escape' && focusMode && !modalOpen) {
         setFocusMode(false);
-      } else if (
-        e.key === ' ' &&
-        !store.editMode &&
+        return;
+      }
+
+      if (modalOpen || store.editMode) return;
+
+      if (
+        activeSetlist &&
         !live.isFollowing &&
-        !showExport &&
-        !showEnhance &&
-        !showHistory
-      ) {
-        e.preventDefault();
-        store.toggleAutoScroll();
-      } else if (
-        e.key.toLowerCase() === 'c' &&
         !e.metaKey &&
         !e.ctrlKey &&
         !e.altKey &&
-        !store.editMode &&
-        !live.isFollowing &&
-        !showExport &&
-        !showEnhance &&
-        !showHistory &&
-        song
+        !onInteractiveControl
       ) {
+        if (e.key === 'ArrowRight' && nextSongId) {
+          e.preventDefault();
+          router.push(`/song/${nextSongId}?setlist=${activeSetlist.id}`);
+          return;
+        }
+        if (e.key === 'ArrowLeft' && prevSongId) {
+          e.preventDefault();
+          router.push(`/song/${prevSongId}?setlist=${activeSetlist.id}`);
+          return;
+        }
+      }
+
+      if (!singleKeyShortcuts || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === ' ' && !live.isFollowing && !onInteractiveControl) {
+        e.preventDefault();
+        store.toggleAutoScroll();
+      } else if (e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        toggleHideChords();
+      } else if (e.key.toLowerCase() === 's' && activeSetlist) {
+        e.preventDefault();
+        setShowSetlistDrawer((v) => !v);
+      } else if (e.key.toLowerCase() === 'c' && !live.isFollowing && song) {
         e.preventDefault();
         const bpb = parseInt(song.timeSignature, 10) || 4;
         setLocalCountIn({
@@ -364,6 +447,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           leaderName: live.isLeading ? live.deviceName : null,
         });
         if (live.isLeading) live.triggerCountIn(store.bpm, bpb);
+      } else if (e.key.toLowerCase() === 'm' && !live.isFollowing) {
+        e.preventDefault();
+        store.setMetronomeOn(!store.metronomeOn);
+      } else if ((e.key === '+' || e.key === '=') && !live.isFollowing) {
+        e.preventDefault();
+        store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1);
+      } else if ((e.key === '-' || e.key === '_') && !live.isFollowing) {
+        e.preventDefault();
+        store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -383,6 +475,17 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     showExport,
     showEnhance,
     showHistory,
+    showTransposeConfirm,
+    showClearCalConfirm,
+    showNamePrompt,
+    showSpotifyPicker,
+    showSetlistDrawer,
+    singleKeyShortcuts,
+    toggleHideChords,
+    activeSetlist,
+    nextSongId,
+    prevSongId,
+    router,
   ]);
 
   const handleGoLive = () => {
@@ -401,32 +504,49 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   };
 
   if (!song) {
+    if (!songsLoaded) {
+      return (
+        <div className="flex-1 flex flex-col">
+          <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Carregando…' }]} />
+          <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+            <div className="h-9 w-64 rounded-2xl bg-[var(--surface)] animate-pulse" />
+            <div className="h-12 w-full rounded-2xl bg-[var(--surface-high)] animate-pulse" />
+            <div className="h-44 w-full rounded-[24px] bg-[var(--surface)] animate-pulse" />
+            <div className="h-44 w-full rounded-[24px] bg-[var(--surface)] animate-pulse" />
+          </main>
+        </div>
+      );
+    }
     return (
       <div className="flex-1 flex flex-col">
         <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Não encontrada' }]} />
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <main id="main-content" className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
           <p className="text-sm text-[var(--muted)]">Essa música não foi encontrada no repertório.</p>
           <button
             type="button"
             onClick={() => router.push('/')}
-            className="pill-btn px-4 py-2 text-xs"
+            className="pill-btn pill-btn-tonal px-5 h-10 text-xs"
           >
-            Voltar para Músicas
+            Voltar para o repertório
           </button>
-        </div>
+        </main>
       </div>
     );
   }
 
   const allChords = extractChords(song.sections);
-  const totalShift = store.transpose + store.capo;
   const beatsPerBar = parseInt(song.timeSignature, 10) || 4;
-  const displayedKey = totalShift
-    ? transposeChord(song.displayKey, totalShift, store.useFlats)
+  // {key:} is already the concert sounding key; transpose shifts it without double-adding {capo:}.
+  const displayedKey = store.transpose
+    ? transposeChord(song.displayKey, store.transpose, store.useFlats)
     : song.displayKey;
+  const chordDisplayShift =
+    capoDisplay === 'shapes' ? store.transpose : store.transpose + store.capo;
   const pitchTarget =
     displayedKey ||
-    (allChords[0] ? transposeChord(allChords[0], totalShift, store.useFlats) : '');
+    (allChords[0]
+      ? transposeChord(allChords[0], store.transpose + store.capo, store.useFlats)
+      : '');
 
   const activeCountIn =
     localCountIn ??
@@ -451,15 +571,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     live.clearIncomingCountIn();
   };
 
-  const existingSetlistSongIds = activeSetlist
-    ? activeSetlist.songIds.filter((sid) => getSong(sid) !== null)
-    : [];
-  const setlistSongIdx = existingSetlistSongIds.indexOf(id);
-  const prevSongId = setlistSongIdx > 0 ? existingSetlistSongIds[setlistSongIdx - 1] : null;
-  const nextSongId =
-    setlistSongIdx >= 0 && setlistSongIdx < existingSetlistSongIds.length - 1
-      ? existingSetlistSongIds[setlistSongIdx + 1]
-      : null;
   const nextSongObj = nextSongId ? getSong(nextSongId) : null;
 
   if (activeSetlist && showMode) {
@@ -467,6 +578,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       <>
         <ShowModeView
           song={song}
+          displayedKey={displayedKey}
           activeSetlist={activeSetlist}
           setlistSongIdx={setlistSongIdx}
           totalSongs={existingSetlistSongIds.length}
@@ -486,6 +598,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             scrollStateRef.current = st;
           }}
           onTriggerCountIn={handleTriggerCountIn}
+          onSaveBpm={(nextBpm) => {
+            patchMeta(id, 'tempo', nextBpm);
+            flashStatus(`BPM salvo (${nextBpm})`);
+          }}
           handleGoLive={handleGoLive}
           confirmGoLive={confirmGoLive}
           showNamePrompt={showNamePrompt}
@@ -747,7 +863,13 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const handleClearCalibration = () => {
     const rawText = exportEntry(id);
     if (!rawText) return;
+    fetch(`/api/songs/${id}/versions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: rawText }),
+    }).catch(() => {});
     updateEntry(id, removeChordProMeta(rawText, 'marks'));
+    setShowClearCalConfirm(false);
     flashStatus('Calibração removida');
   };
 
@@ -820,25 +942,24 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   };
 
   const handleSaveAsKey = () => {
+    const prevRaw = exportEntry(id);
+    if (prevRaw) {
+      fetch(`/api/songs/${id}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: prevRaw }),
+      }).catch(() => {});
+    }
     const transposed = transposeSong(song, store.transpose, store.useFlats);
     updateEntry(id, songToChordPro(transposed));
     store.setTranspose(0);
     setShowTransposeConfirm(false);
-    flashStatus('✓ Salvo no novo tom');
+    flashStatus('Salvo no novo tom');
   };
 
-  const choIsDirty = choDraft !== (exportEntry(id) ?? '');
+  const choIsDirty = choIsDirtyEarly;
   const choIsValid = /^\{title:/im.test(choDraft.trim());
-
-  const closeExportModal = () => {
-    if (choIsDirty && !discardArmed) {
-      setDiscardArmed(true);
-      setTimeout(() => setDiscardArmed(false), 6000);
-      return;
-    }
-    setDiscardArmed(false);
-    setShowExport(false);
-  };
+  const closeExportModal = closeExportModalCallback;
 
   const handleSaveCho = () => {
     if (!choIsValid) return;
@@ -895,6 +1016,40 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                     { label: song.title },
                   ]
                 : [{ label: 'Início', href: '/' }, { label: song.title }]
+            }
+            rightSlot={
+              activeSetlist ? (
+                <div className="flex sm:hidden items-center gap-1 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => prevSongId && navigateInSetlist(prevSongId)}
+                    disabled={!prevSongId || live.isFollowing}
+                    className="pill-btn w-8 h-8"
+                    title="Música anterior no setlist"
+                    aria-label="Música anterior no setlist"
+                  >
+                    <ChevronLeftIcon size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSetlistDrawer(true)}
+                    className="pill-btn px-2 h-8 font-mono text-xs tabular-nums"
+                    title="Abrir lista do setlist"
+                  >
+                    {setlistSongIdx + 1}/{existingSetlistSongIds.length}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => nextSongId && navigateInSetlist(nextSongId)}
+                    disabled={!nextSongId || live.isFollowing}
+                    className="pill-btn w-8 h-8"
+                    title="Próxima música no setlist"
+                    aria-label="Próxima música no setlist"
+                  >
+                    <ChevronRightIcon size={15} />
+                  </button>
+                </div>
+              ) : undefined
             }
           />
 
@@ -964,6 +1119,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
           <SongToolbar
             beatsPerBar={beatsPerBar}
+            savedTempo={song.tempo}
+            tempoConfirmed={song.tempoConfirmed}
             chordCount={allChords.length}
             isFollowing={live.isFollowing}
             savedScrollSpeed={song.scrollSpeed}
@@ -980,9 +1137,13 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onCancelEdit={handleCancelVisualEdit}
             onEnterEdit={enterVisualEdit}
             hasNotes={Boolean(song.notes)}
+            onSaveBpm={(nextBpm) => {
+              patchMeta(id, 'tempo', nextBpm);
+              flashStatus(`✓ BPM salvo (${nextBpm})`);
+            }}
             onSaveScrollSpeed={handleSaveScrollSpeed}
             onStartCalibration={handleStartCalibration}
-            onClearCalibration={handleClearCalibration}
+            onClearCalibration={() => setShowClearCalConfirm(true)}
             onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
             onTriggerCountIn={handleTriggerCountIn}
             onToggleEditNotes={() => setEditingNotes((v) => !v)}
@@ -1015,7 +1176,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           {/* Collapsible Chords Reference Strip */}
           {!store.editMode && !calibrating && displayMode !== 'lyrics-only' && chordsRefOpen && (
             <ChordsReference
-              chords={allChords.map((c) => transposeChord(c, totalShift, store.useFlats))}
+              chords={allChords.map((c) => transposeChord(c, chordDisplayShift, store.useFlats))}
             />
           )}
 
@@ -1023,12 +1184,12 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           {store.editMode && (
             <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
               <p className="w-full rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] px-4 py-2 text-xs text-center font-medium">
-                {totalShift !== 0 && (
+                {store.transpose !== 0 && (
                   <span className="font-mono font-bold mr-2">
                     [Editando no tom original {song.originalKey || ''}]
                   </span>
                 )}
-                Digite direto nas letras · toque num acorde para mover/trocar/apagar · use o <b>+</b> no cursor para inserir · gerencie seções no topo de cada bloco · salve tudo em <b>✓ Salvar e sair</b>
+                Edite o texto direto · toque num acorde para mover ou trocar · clique em <b>+</b> no cursor para inserir · salve em <b>Salvar e sair</b>
               </p>
             </div>
           )}
@@ -1048,7 +1209,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {/* Main chord / lyric sheet */}
-      <div className="flex flex-1 relative min-h-0">
+      <main id="main-content" className="flex flex-1 relative min-h-0">
         <ChordSheet
           song={song}
           onChordTap={(chord) => store.setActiveChord(chord)}
@@ -1082,7 +1243,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onClose={() => store.setActiveChord(null)}
           />
         )}
-      </div>
+      </main>
 
       {/* Setlist Drawer */}
       {activeSetlist && showSetlistDrawer && (
@@ -1128,6 +1289,17 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         onCancel={() => setShowTransposeConfirm(false)}
       />
 
+      {/* Clear calibration confirmation */}
+      <ConfirmDialog
+        open={showClearCalConfirm}
+        title="Remover calibração desta música?"
+        description="Os tempos gravados por seção serão removidos e o auto-scroll voltará ao ritmo automático. Uma cópia ficará salva no histórico de versões."
+        confirmLabel="Remover calibração"
+        danger
+        onConfirm={handleClearCalibration}
+        onCancel={() => setShowClearCalConfirm(false)}
+      />
+
       {/* Edit raw ChordPro source modal with live split preview */}
       {showExport && (
         <div
@@ -1135,18 +1307,22 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           onClick={closeExportModal}
         >
           <div
+            ref={choModalRef}
             role="dialog"
             aria-modal="true"
-            className="bg-[var(--surface)] rounded-[28px] w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
+            aria-labelledby="cho-modal-title"
+            className="gm3-dialog-enter bg-[var(--surface)] rounded-[28px] w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 bg-[var(--surface-high)] flex-shrink-0">
-              <h3 className="font-display text-lg text-[var(--ink)]">Editar fonte ChordPro (.cho)</h3>
+              <h2 id="cho-modal-title" className="font-display text-lg font-bold text-[var(--ink)]">
+                Editar fonte ChordPro (.cho)
+              </h2>
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* View mode switch */}
-                <div className="inline-flex p-1 rounded-full bg-[var(--bg)] gap-0.5">
+                <div role="group" aria-label="Modo do editor ChordPro" className="inline-flex p-1 rounded-full bg-[var(--bg)] gap-0.5">
                   {(
                     [
                       { id: 'editor', label: 'Código' },
@@ -1157,6 +1333,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                     <button
                       key={v.id}
                       type="button"
+                      aria-pressed={choView === v.id}
                       onClick={() => setChoView(v.id)}
                       className={`px-3 py-1 rounded-full font-display text-xs font-medium transition-colors cursor-pointer ${
                         choView === v.id
@@ -1175,7 +1352,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                     navigator.clipboard.writeText(choDraft);
                     flashStatus('Copiado');
                   }}
-                  className="pill-btn px-3 py-1.5 text-xs"
+                  className="pill-btn px-3 h-9 text-xs"
                 >
                   Copiar
                 </button>
@@ -1183,14 +1360,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                   type="button"
                   onClick={handleSaveCho}
                   disabled={!choIsValid || !choIsDirty}
-                  className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
+                  className="pill-btn pill-btn-primary px-4 h-9 text-xs"
                 >
                   Salvar
                 </button>
                 <button
                   type="button"
                   onClick={closeExportModal}
-                  className={`pill-btn px-3 py-1.5 text-xs ${discardArmed ? 'pill-btn-rec' : ''}`}
+                  className={`pill-btn px-3 h-9 text-xs ${discardArmed ? 'pill-btn-rec' : ''}`}
                 >
                   {discardArmed ? 'Sair sem salvar' : 'Fechar'}
                 </button>
@@ -1203,7 +1380,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               }`}
             >
               {choView !== 'preview' && (
-                <div className="min-h-0 flex flex-col border-b lg:border-b-0 lg:border-r border-[var(--line)]">
+                <div className="min-h-0 flex flex-col border-b lg:border-b-0 lg:border-r border-[var(--line-subtle)]/40">
                   <ChordProEditor
                     value={choDraft}
                     onChange={(val) => {
@@ -1217,7 +1394,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
               {choView !== 'editor' && choPreviewSong && (
                 <div className="min-h-0 flex flex-col bg-[var(--bg)]/50">
-                  <div className="px-4 py-2 border-b border-[var(--line)] flex items-center justify-between flex-shrink-0">
+                  <div className="px-4 py-2 border-b border-[var(--line-subtle)]/40 flex items-center justify-between flex-shrink-0">
                     <span className="field-label">Prévia ao vivo</span>
                     <span className="font-mono text-xs text-[var(--muted)]">
                       {choPreviewSong.sections.length}{' '}
@@ -1228,6 +1405,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                     <ChordSheet
                       song={choPreviewSong}
                       onChordTap={() => {}}
+                      allowMultiColumn={false}
                       bottomPaddingClass="pb-8"
                     />
                   </div>
@@ -1236,7 +1414,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             </div>
 
             {!choIsValid && (
-              <div className="px-5 py-2 text-xs text-[var(--rec)] border-t border-[var(--line)] flex-shrink-0">
+              <div
+                role="alert"
+                className="px-5 py-2.5 text-xs font-medium text-[var(--on-rec-container)] bg-[var(--rec-dim)] flex-shrink-0"
+              >
                 Inclua a diretiva {'{title: ...}'} antes de salvar.
               </div>
             )}

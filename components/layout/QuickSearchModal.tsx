@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
+import { normalizeSearch } from '@/lib/utils/music';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
 
 interface QuickSearchModalProps {
   open: boolean;
@@ -23,33 +25,42 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
+
+  useDialogA11y(true, onClose, dialogRef);
 
   const songs = useMemo(() => {
     void entries;
     return getSongs();
   }, [entries, getSongs]);
 
+  const validSongIds = useMemo(() => new Set(songs.map((s) => s.id)), [songs]);
+
   const results = useMemo<SearchResult[]>(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeSearch(query);
     const matchedSetlists: SearchResult[] = setlists
-      .filter((sl) => !q || sl.name.toLowerCase().includes(q))
+      .filter((sl) => !q || normalizeSearch(sl.name).includes(q))
       .slice(0, q ? 4 : 3)
-      .map((sl) => ({
-        kind: 'setlist',
-        id: sl.id,
-        title: sl.name,
-        subtitle: 'Setlist',
-        meta: `${sl.songIds.length} ${sl.songIds.length === 1 ? 'música' : 'músicas'}`,
-        href: `/setlists/${sl.id}`,
-      }));
+      .map((sl) => {
+        const count = sl.songIds.filter((sid) => validSongIds.has(sid)).length;
+        return {
+          kind: 'setlist',
+          id: sl.id,
+          title: sl.name,
+          subtitle: 'Setlist',
+          meta: `${count} ${count === 1 ? 'música' : 'músicas'}`,
+          href: `/setlists/${sl.id}`,
+        };
+      });
 
     const matchedSongs: SearchResult[] = songs
       .filter(
         (s) =>
           !q ||
-          s.title.toLowerCase().includes(q) ||
-          s.artist.toLowerCase().includes(q) ||
-          s.displayKey.toLowerCase().includes(q)
+          normalizeSearch(s.title).includes(q) ||
+          normalizeSearch(s.artist).includes(q) ||
+          normalizeSearch(s.displayKey).includes(q)
       )
       .slice(0, q ? 12 : 8)
       .map((s) => ({
@@ -62,13 +73,16 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
       }));
 
     return [...matchedSongs, ...matchedSetlists];
-  }, [query, songs, setlists]);
+  }, [query, songs, setlists, validSongIds]);
 
   useEffect(() => {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
 
   const clampedIdx = results.length ? Math.min(activeIdx, results.length - 1) : 0;
+  const activeOptionId = results[clampedIdx]
+    ? `${listboxId}-opt-${results[clampedIdx].kind}-${results[clampedIdx].id}`
+    : undefined;
 
   const selectItem = (item: SearchResult) => {
     onClose();
@@ -76,10 +90,7 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    } else if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIdx((i) => (results.length ? (i + 1) % results.length : 0));
     } else if (e.key === 'ArrowUp') {
@@ -97,9 +108,11 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
+        aria-modal="true"
         aria-label="Busca rápida"
-        className="w-full max-w-xl rounded-[28px] bg-[var(--surface)] overflow-hidden"
+        className="gm3-card gm3-dialog-enter w-full max-w-xl rounded-[28px] bg-[var(--surface)] overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
@@ -112,6 +125,11 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
+            aria-label="Pesquisar músicas, artistas, tons e setlists"
+            aria-expanded="true"
+            aria-controls={listboxId}
+            aria-activedescendant={activeOptionId}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -125,7 +143,12 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
           </kbd>
         </div>
 
-        <div className="max-h-[55vh] overflow-y-auto p-2 space-y-0.5">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label="Resultados da busca"
+          className="max-h-[55vh] overflow-y-auto p-2 space-y-0.5"
+        >
           {results.length === 0 ? (
             <div className="py-10 text-center text-sm text-[var(--muted)]">
               Nada encontrado para &ldquo;{query}&rdquo;.
@@ -133,9 +156,13 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
           ) : (
             results.map((item, idx) => {
               const active = idx === clampedIdx;
+              const optId = `${listboxId}-opt-${item.kind}-${item.id}`;
               return (
                 <button
                   key={`${item.kind}-${item.id}`}
+                  id={optId}
+                  role="option"
+                  aria-selected={active}
                   type="button"
                   onMouseEnter={() => setActiveIdx(idx)}
                   onClick={() => selectItem(item)}
@@ -154,7 +181,7 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
                       {item.kind === 'setlist' ? 'Setlist' : 'Música'}
                     </span>
                     <div className="min-w-0">
-                      <div className="text-sm font-display font-medium text-[var(--ink)] truncate">{item.title}</div>
+                      <div className="text-sm font-display font-bold text-[var(--ink)] truncate">{item.title}</div>
                       <div className="text-xs text-[var(--muted)] truncate">{item.subtitle}</div>
                     </div>
                   </div>

@@ -1,18 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { processWithGemini } from '@/lib/utils/ai-import';
 import { parseChordPro, patchChordProMeta } from '@/lib/utils/chordpro-parser';
+import { normalizeSearch } from '@/lib/utils/music';
 import type { ChordProEntry } from '@/lib/types/song';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
+
+type InputMode = 'paste' | 'search';
+
+function createBlankSongEntry(): ChordProEntry {
+  const id = `song-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  return {
+    id,
+    text: [
+      '{title: Nova música}',
+      '{artist: }',
+      '{key: C}',
+      '{tempo: 120}',
+      '{time: 4/4}',
+      '',
+      '{comment: Verso 1}',
+      '[C]Primeira linha da [G]música',
+      '[Am]Segunda linha da [F]música',
+      '',
+      '{comment: Refrão}',
+      '[F]Refrão [G]aqui [C]',
+    ].join('\n'),
+  };
+}
 
 export default function AddSongPage() {
   const router = useRouter();
-  const { addEntry } = useSongStore();
+  const { addEntry, getSongs } = useSongStore();
+  const entries = useSongStore((s) => s.entries);
+  const [inputMode, setInputMode] = useState<InputMode>('paste');
   const [rawText, setRawText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,11 +48,28 @@ export default function AddSongPage() {
   const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
   const [selectedSpotifyId, setSelectedSpotifyId] = useState<string | null>(null);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const previewSong = preview ? parseChordPro(preview.id, preview.text) : null;
 
+  const duplicateSong = useMemo(() => {
+    void entries;
+    const title = previewSong?.title?.trim();
+    if (!title) return null;
+    const normTitle = normalizeSearch(title);
+    const normArtist = normalizeSearch(previewSong?.artist?.trim() ?? '');
+    return (
+      getSongs().find((s) => {
+        if (normalizeSearch(s.title) !== normTitle) return false;
+        if (!normArtist) return true;
+        return !s.artist || normalizeSearch(s.artist) === normArtist;
+      }) ?? null
+    );
+  }, [entries, getSongs, previewSong?.title, previewSong?.artist]);
+
   useEffect(() => {
-    if (!previewSong?.title) return;
+    if (!previewSong?.title || previewSong.title.trim() === 'Nova música') return;
     let cancelled = false;
     setSpotifyLoading(true);
     const query = `${previewSong.title} ${previewSong.artist}`.trim();
@@ -47,6 +92,12 @@ export default function AddSongPage() {
     };
   }, [previewSong?.title, previewSong?.artist]);
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const updatePreviewMeta = (key: string, value: string | number) => {
     if (!preview) return;
     const newText = patchChordProMeta(preview.text, key, value);
@@ -56,25 +107,55 @@ export default function AddSongPage() {
     });
   };
 
+  const handleCancelProcess = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
+    setError('Processamento cancelado.');
+  };
+
   const handleProcess = async () => {
     if (!rawText.trim()) {
-      setError('Cole uma cifra ou digite o nome da música primeiro.');
+      setError(
+        inputMode === 'paste'
+          ? 'Cole a cifra ou letra com acordes primeiro.'
+          : 'Digite o nome da música e artista para buscar com IA.'
+      );
       return;
     }
     setError('');
     setLoading(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const entry = await processWithGemini(rawText.trim());
+      const entry = await processWithGemini(rawText.trim(), {
+        signal: controller.signal,
+        forcePaste: inputMode === 'paste',
+      });
       setPreview(entry);
     } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Não foi possível processar a cifra.');
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setLoading(false);
+      }
     }
   };
 
+  const handleStartBlank = () => {
+    setError('');
+    setSpotifyResults([]);
+    setSelectedSpotifyId(null);
+    setPreview(createBlankSongEntry());
+  };
+
+  const canSave = Boolean(preview && previewSong?.title?.trim());
+
   const handleConfirm = () => {
-    if (!preview) return;
+    if (!preview || !previewSong?.title?.trim()) return;
     let text = preview.text;
     const selectedTrack = spotifyResults.find((t) => t.id === selectedSpotifyId);
     if (selectedSpotifyId) {
@@ -91,69 +172,171 @@ export default function AddSongPage() {
     <div className="flex-1 flex flex-col">
       <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Nova música' }]} />
 
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+      <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
         <div className="w-full space-y-5">
           <div className="space-y-1">
-            <h1 className="font-display text-3xl text-[var(--ink)]">Nova música</h1>
+            <h1 className="font-display text-3xl font-bold text-[var(--ink)]">Nova música</h1>
             <p className="text-sm text-[var(--muted)]">
-              Cole uma cifra pronta (formatada direto sem alterar sua versão) ou digite o nome e artista para buscar com IA.
+              Cole uma cifra pronta, busque por nome e artista com IA ou comece uma cifra em branco.
             </p>
           </div>
 
           {!preview ? (
-            <div className="rounded-[24px] bg-[var(--surface)] p-6 space-y-4">
+            <div className="gm3-card rounded-[24px] bg-[var(--surface)] p-6 space-y-4">
+              {/* Mode selector */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div
+                  role="group"
+                  aria-label="Como deseja criar a cifra"
+                  className="inline-flex p-1 rounded-full bg-[var(--surface-high)] gap-0.5"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={inputMode === 'paste'}
+                    onClick={() => {
+                      setInputMode('paste');
+                      setError('');
+                    }}
+                    className={`px-4 h-9 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                      inputMode === 'paste'
+                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                        : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                    }`}
+                  >
+                    Colar cifra
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={inputMode === 'search'}
+                    onClick={() => {
+                      setInputMode('search');
+                      setError('');
+                    }}
+                    className={`px-4 h-9 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                      inputMode === 'search'
+                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                        : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                    }`}
+                  >
+                    Buscar com IA
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleStartBlank}
+                  disabled={loading}
+                  className="pill-btn bg-[var(--bg)] h-9 px-4 text-xs"
+                >
+                  Criar em branco
+                </button>
+              </div>
+
               <div>
                 <label htmlFor="raw-song-input" className="field-label block mb-2">
-                  Cifra colada, nome da música ou URL
+                  {inputMode === 'paste'
+                    ? 'Cifra colada (mantém sua versão e formata para ChordPro)'
+                    : 'Nome da música e artista (ou URL de cifra)'}
                 </label>
                 <textarea
                   id="raw-song-input"
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
-                  rows={14}
-                  placeholder="Ex.: 'Evidências Chitãozinho e Xororó' ou cole aqui a cifra completa com letra e acordes..."
+                  rows={inputMode === 'paste' ? 14 : 4}
+                  placeholder={
+                    inputMode === 'paste'
+                      ? 'Cole aqui a cifra completa com acordes acima da letra ou já em ChordPro...'
+                      : 'Ex.: Evidências - Chitãozinho e Xororó'
+                  }
                   className="studio-input w-full px-4 py-3 font-mono text-xs sm:text-sm resize-y"
                 />
               </div>
 
               {error && (
-                <div className="text-sm font-medium text-[var(--on-rec-container)] bg-[var(--rec-dim)] rounded-2xl px-4 py-3">
+                <div
+                  role="alert"
+                  className="text-sm font-medium text-[var(--on-rec-container)] bg-[var(--rec-dim)] rounded-2xl px-4 py-3"
+                >
                   {error}
                 </div>
               )}
 
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancelProcess}
+                    className="pill-btn bg-[var(--bg)] h-11 px-5 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleProcess}
                   disabled={loading}
                   className="pill-btn pill-btn-primary h-11 px-6 text-sm"
                 >
-                  {loading ? 'Processando com IA...' : 'Converter para ChordPro'}
+                  {loading
+                    ? 'Processando com IA…'
+                    : inputMode === 'paste'
+                    ? 'Converter para ChordPro'
+                    : 'Buscar e gerar cifra'}
                 </button>
               </div>
             </div>
           ) : previewSong ? (
             <div className="space-y-5">
+              {/* Duplicate title warning */}
+              {duplicateSong && (
+                <div
+                  role="status"
+                  className="rounded-2xl bg-[var(--warn-dim)] px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-[var(--ink)]"
+                >
+                  <span>
+                    Já existe uma música chamada <strong>{duplicateSong.title}</strong>
+                    {duplicateSong.artist ? ` (${duplicateSong.artist})` : ''} no seu repertório.
+                  </span>
+                  <Link
+                    href={`/song/${duplicateSong.id}`}
+                    className="font-semibold text-[var(--accent-ink)] hover:underline"
+                  >
+                    Abrir existente
+                  </Link>
+                </div>
+              )}
+
               {/* Metadata editor */}
-              <div className="bg-[var(--surface)] rounded-[24px] p-6 space-y-4">
-                <h2 className="font-display text-sm text-[var(--ink)]">Dados da música</h2>
+              <div className="gm3-card bg-[var(--surface)] rounded-[24px] p-6 space-y-4">
+                <h2 className="font-display text-sm font-semibold text-[var(--ink)]">Dados da música</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block field-label mb-1.5">Título</label>
+                    <label htmlFor="song-title" className="block field-label mb-1.5">
+                      Título *
+                    </label>
                     <input
+                      id="song-title"
                       type="text"
+                      required
                       value={previewSong.title}
                       onChange={(e) => updatePreviewMeta('title', e.target.value)}
+                      placeholder="Nome da música"
                       className="studio-input w-full px-3 py-2 text-sm"
                     />
+                    {!previewSong.title.trim() && (
+                      <p className="text-xs text-[var(--rec)] mt-1">Informe um título para salvar.</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block field-label mb-1.5">Artista</label>
+                    <label htmlFor="song-artist" className="block field-label mb-1.5">
+                      Artista
+                    </label>
                     <input
+                      id="song-artist"
                       type="text"
                       value={previewSong.artist}
                       onChange={(e) => updatePreviewMeta('artist', e.target.value)}
+                      placeholder="Nome da banda ou artista"
                       className="studio-input w-full px-3 py-2 text-sm"
                     />
                   </div>
@@ -161,8 +344,11 @@ export default function AddSongPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <label className="block field-label mb-1.5">Tom</label>
+                    <label htmlFor="song-key" className="block field-label mb-1.5">
+                      Tom
+                    </label>
                     <input
+                      id="song-key"
                       type="text"
                       value={previewSong.originalKey}
                       onChange={(e) => updatePreviewMeta('key', e.target.value)}
@@ -170,30 +356,41 @@ export default function AddSongPage() {
                     />
                   </div>
                   <div>
-                    <label className="block field-label mb-1.5">Capo</label>
+                    <label htmlFor="song-capo" className="block field-label mb-1.5">
+                      Capo
+                    </label>
                     <input
+                      id="song-capo"
                       type="number"
                       value={previewSong.capo}
                       min={0}
                       max={12}
-                      onChange={(e) => updatePreviewMeta('capo', parseInt(e.target.value) || 0)}
+                      onChange={(e) => updatePreviewMeta('capo', Math.max(0, Math.min(12, parseInt(e.target.value, 10) || 0)))}
                       className="studio-input w-full px-3 py-2 text-sm font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block field-label mb-1.5">Tempo (BPM)</label>
+                    <label htmlFor="song-tempo" className="block field-label mb-1.5">
+                      Tempo (BPM)
+                    </label>
                     <input
+                      id="song-tempo"
                       type="number"
                       value={previewSong.tempo}
-                      min={20}
-                      max={300}
-                      onChange={(e) => updatePreviewMeta('tempo', parseInt(e.target.value) || 120)}
+                      min={40}
+                      max={240}
+                      onChange={(e) =>
+                        updatePreviewMeta('tempo', Math.max(40, Math.min(240, parseInt(e.target.value, 10) || 120)))
+                      }
                       className="studio-input w-full px-3 py-2 text-sm font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block field-label mb-1.5">Compasso</label>
+                    <label htmlFor="song-time" className="block field-label mb-1.5">
+                      Compasso
+                    </label>
                     <select
+                      id="song-time"
                       value={previewSong.timeSignature}
                       onChange={(e) => updatePreviewMeta('time', e.target.value)}
                       className="studio-input w-full px-3 py-2 text-sm font-mono"
@@ -211,42 +408,46 @@ export default function AddSongPage() {
 
               {/* Split ChordPro + Preview */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                <div className="lg:col-span-5 bg-[var(--surface)] rounded-[24px] overflow-hidden flex flex-col">
+                <div className="gm3-card lg:col-span-5 bg-[var(--surface)] rounded-[24px] overflow-hidden flex flex-col">
                   <div className="px-5 py-3 bg-[var(--surface-high)] flex justify-between items-center">
-                    <span className="field-label">Fonte ChordPro</span>
+                    <label htmlFor="preview-chordpro-source" className="field-label">
+                      Fonte ChordPro
+                    </label>
                     <span className="font-mono text-xs text-[var(--muted)]">Editável</span>
                   </div>
                   <textarea
+                    id="preview-chordpro-source"
                     value={preview.text}
                     onChange={(e) => setPreview({ ...preview, text: e.target.value })}
                     rows={18}
-                    className="w-full p-5 bg-[var(--surface)] text-[var(--ink)] font-mono text-xs leading-relaxed outline-none resize-none h-[460px] overflow-y-auto"
-                    title="Editar código ChordPro"
+                    spellCheck={false}
+                    className="w-full p-5 bg-[var(--surface)] text-[var(--ink)] font-mono text-xs leading-relaxed resize-none h-[460px] overflow-y-auto focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
                   />
                 </div>
 
-                <div className="lg:col-span-7 bg-[var(--surface)] rounded-[24px] overflow-hidden flex flex-col">
+                <div className="gm3-card lg:col-span-7 bg-[var(--surface)] rounded-[24px] overflow-hidden flex flex-col">
                   <div className="px-5 py-3 bg-[var(--surface-high)] flex justify-between items-center">
                     <span className="field-label">Prévia da cifra</span>
                     <span className="font-mono text-xs text-[var(--muted)]">Em tempo real</span>
                   </div>
                   <div className="h-[460px] overflow-y-auto bg-[var(--bg)]">
-                    <ChordSheet song={previewSong} onChordTap={() => {}} />
+                    <ChordSheet song={previewSong} onChordTap={() => {}} allowMultiColumn={false} />
                   </div>
                 </div>
               </div>
 
               {/* Spotify match */}
               {spotifyLoading ? (
-                <div className="text-xs font-mono text-[var(--muted)]">Buscando referência no Spotify...</div>
+                <div className="text-xs font-mono text-[var(--muted)]">Buscando referência no Spotify…</div>
               ) : spotifyResults.length > 0 ? (
-                <div className="bg-[var(--surface)] rounded-[24px] p-5 space-y-3">
+                <div className="gm3-card bg-[var(--surface)] rounded-[24px] p-5 space-y-3">
                   <div className="field-label">Referência no Spotify (opcional)</div>
                   <div className="space-y-1.5">
                     {spotifyResults.map((track) => (
                       <button
                         key={track.id}
                         type="button"
+                        aria-pressed={selectedSpotifyId === track.id}
                         onClick={() => setSelectedSpotifyId(track.id)}
                         className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-colors cursor-pointer ${
                           selectedSpotifyId === track.id
@@ -268,8 +469,9 @@ export default function AddSongPage() {
                     ))}
                     <button
                       type="button"
+                      aria-pressed={selectedSpotifyId === null}
                       onClick={() => setSelectedSpotifyId(null)}
-                      className={`pill-btn px-3.5 py-1.5 text-xs ${
+                      className={`pill-btn px-3.5 h-9 text-xs ${
                         selectedSpotifyId === null ? 'pill-btn-primary' : 'bg-[var(--bg)]'
                       }`}
                     >
@@ -282,15 +484,16 @@ export default function AddSongPage() {
               <div className="flex flex-wrap gap-3 justify-end">
                 <button
                   type="button"
-                  onClick={() => setPreview(null)}
-                  className="pill-btn px-4 py-2 text-sm"
+                  onClick={() => setConfirmResetOpen(true)}
+                  className="pill-btn h-11 px-5 text-sm"
                 >
                   Tentar novamente
                 </button>
                 <button
                   type="button"
+                  disabled={!canSave}
                   onClick={handleConfirm}
-                  className="pill-btn pill-btn-primary px-5 py-2 text-sm"
+                  className="pill-btn pill-btn-primary h-11 px-6 text-sm"
                 >
                   Salvar no repertório
                 </button>
@@ -299,6 +502,19 @@ export default function AddSongPage() {
           ) : null}
         </div>
       </main>
+
+      <ConfirmDialog
+        open={confirmResetOpen}
+        title="Descartar esta prévia?"
+        description="As edições feitas nos metadados e no código ChordPro desta nova música serão descartadas."
+        confirmLabel="Descartar"
+        danger
+        onConfirm={() => {
+          setConfirmResetOpen(false);
+          setPreview(null);
+        }}
+        onCancel={() => setConfirmResetOpen(false)}
+      />
     </div>
   );
 }

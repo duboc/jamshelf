@@ -1,6 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  CloseIcon,
+} from '@/components/ui/Icons';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const FLAT_NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
@@ -82,6 +90,10 @@ function OverlayInner({
 
   const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pointerMovedRef = useRef(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogA11y(true, onClose, dialogRef);
 
   const stopHold = () => {
     if (holdTimeoutRef.current) {
@@ -182,14 +194,18 @@ function OverlayInner({
       />
 
       <div
-        className="fixed bottom-0 inset-x-0 z-50 rounded-t-[28px] bg-[var(--surface)] max-h-[78vh] overflow-y-auto"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-chord-dialog-title"
+        className="gm3-sheet-enter fixed bottom-0 inset-x-0 md:bottom-4 md:max-w-xl md:mx-auto z-50 rounded-t-[28px] md:rounded-[28px] bg-[var(--surface)] max-h-[78vh] overflow-y-auto"
         style={{ boxShadow: 'var(--shadow-md)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="max-w-3xl mx-auto">
+        <div className="w-full">
           {mode === 'main' && isEdit && selected && (
-            <div className="px-4 py-4 space-y-3">
+            <div className="px-5 py-4 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div id="edit-chord-dialog-title" className="flex items-center gap-2">
                   <span className="field-label">Acorde selecionado</span>
                   <span className="text-base font-bold font-mono text-[var(--accent-ink)]">
                     {selected.chord}
@@ -198,43 +214,61 @@ function OverlayInner({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] text-lg cursor-pointer"
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
                   aria-label="Fechar"
                 >
-                  ×
+                  <CloseIcon size={16} />
                 </button>
               </div>
 
-              {/* Move row with hold-to-repeat */}
+              {/* Move row with hold-to-repeat + keyboard click fallback */}
               <div className="flex items-center gap-2">
                 <span className="field-label w-14">Mover</span>
                 <button
                   type="button"
                   onPointerDown={(e) => {
                     e.preventDefault();
+                    pointerMovedRef.current = true;
                     startHoldMove('left');
                   }}
                   onPointerUp={stopHold}
                   onPointerLeave={stopHold}
                   onPointerCancel={stopHold}
-                  className="flex-1 h-12 rounded-2xl bg-[var(--surface-high)] hover:bg-[var(--surface2)] active:bg-[var(--primary-container)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
+                  onClick={() => {
+                    if (pointerMovedRef.current) {
+                      pointerMovedRef.current = false;
+                      return;
+                    }
+                    triggerMove('left');
+                  }}
+                  className="flex-1 h-12 rounded-2xl bg-[var(--surface-high)] hover:bg-[var(--surface2)] active:bg-[var(--primary-container)] text-[var(--ink)] transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
                   title="Mover para esquerda (segure ou use seta ←)"
+                  aria-label="Mover acorde para a esquerda"
                 >
-                  ◀
+                  <ChevronLeftIcon size={20} />
                 </button>
                 <button
                   type="button"
                   onPointerDown={(e) => {
                     e.preventDefault();
+                    pointerMovedRef.current = true;
                     startHoldMove('right');
                   }}
                   onPointerUp={stopHold}
                   onPointerLeave={stopHold}
                   onPointerCancel={stopHold}
-                  className="flex-1 h-12 rounded-2xl bg-[var(--surface-high)] hover:bg-[var(--surface2)] active:bg-[var(--primary-container)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
+                  onClick={() => {
+                    if (pointerMovedRef.current) {
+                      pointerMovedRef.current = false;
+                      return;
+                    }
+                    triggerMove('right');
+                  }}
+                  className="flex-1 h-12 rounded-2xl bg-[var(--surface-high)] hover:bg-[var(--surface2)] active:bg-[var(--primary-container)] text-[var(--ink)] transition-colors flex items-center justify-center select-none touch-none cursor-pointer"
                   title="Mover para direita (segure ou use seta →)"
+                  aria-label="Mover acorde para a direita"
                 >
-                  ▶
+                  <ChevronRightIcon size={20} />
                 </button>
               </div>
 
@@ -284,9 +318,9 @@ function OverlayInner({
           )}
 
           {mode === 'change' && (
-            <div className="px-4 py-4 space-y-3">
+            <div className="px-5 py-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-[var(--ink)]">
+                <span id="edit-chord-dialog-title" className="text-sm font-semibold text-[var(--ink)]">
                   {isAdd ? 'Inserir acorde' : 'Trocar acorde'}:{' '}
                   <span className="font-mono font-bold text-[var(--accent-ink)]">
                     {customInput.trim() || builtChord}
@@ -295,18 +329,19 @@ function OverlayInner({
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
+                    aria-pressed={useFlats}
                     onClick={() => setUseFlats((f) => !f)}
-                    className={`pill-btn px-3 py-1.5 text-xs font-mono ${useFlats ? 'pill-btn-primary' : 'bg-[var(--bg)]'}`}
+                    className={`pill-btn px-3 h-9 text-xs font-mono ${useFlats ? 'pill-btn-primary' : 'bg-[var(--bg)]'}`}
                   >
                     {useFlats ? '♭ Bemóis' : '♯ Sustenidos'}
                   </button>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
                     aria-label="Fechar"
                   >
-                    ×
+                    <CloseIcon size={16} />
                   </button>
                 </div>
               </div>
@@ -342,12 +377,13 @@ function OverlayInner({
                   type="text"
                   value={customInput}
                   onChange={(e) => setCustomInput(e.target.value)}
+                  aria-label="Digitar acorde personalizado"
                   placeholder="Ou digite direto (ex.: D/F#, Cmaj7, Bm7b5)..."
-                  className="studio-input flex-1 px-3 py-1.5 text-sm font-mono"
+                  className="studio-input flex-1 px-3 py-2 text-sm font-mono"
                 />
                 <button
                   type="submit"
-                  className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
+                  className="pill-btn pill-btn-primary px-4 h-10 text-xs"
                 >
                   Usar
                 </button>
@@ -359,6 +395,7 @@ function OverlayInner({
                   <button
                     key={note}
                     type="button"
+                    aria-pressed={pickedRoot === note}
                     onClick={() => {
                       setPickedRoot(note);
                       setCustomInput(`${note}${pickedSuffix}${pickedBass ? `/${pickedBass}` : ''}`);
@@ -380,6 +417,7 @@ function OverlayInner({
                   <button
                     key={suf || 'maj'}
                     type="button"
+                    aria-pressed={pickedSuffix === suf}
                     onClick={() => {
                       setPickedSuffix(suf);
                       setCustomInput(`${pickedRoot}${suf}${pickedBass ? `/${pickedBass}` : ''}`);
@@ -400,10 +438,12 @@ function OverlayInner({
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
+                    aria-expanded={showBassPicker}
                     onClick={() => setShowBassPicker((v) => !v)}
-                    className="font-mono text-xs text-[var(--accent-ink)] hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 font-mono text-xs text-[var(--accent-ink)] hover:underline cursor-pointer"
                   >
-                    {showBassPicker ? '▾ Baixo invertido (/nota)' : '▸ Baixo invertido (/F#, /G, /B…)'}
+                    {showBassPicker ? <ChevronDownIcon size={14} /> : <ChevronUpIcon size={14} className="rotate-90" />}
+                    {showBassPicker ? 'Baixo invertido (/nota)' : 'Baixo invertido (/F#, /G, /B…)'}
                     {pickedBass ? ` · /${pickedBass}` : ''}
                   </button>
                   {pickedBass && (
@@ -425,6 +465,7 @@ function OverlayInner({
                       <button
                         key={`bass-${bass}`}
                         type="button"
+                        aria-pressed={pickedBass === bass}
                         onClick={() => {
                           const nextBass = pickedBass === bass ? '' : bass;
                           setPickedBass(nextBass);

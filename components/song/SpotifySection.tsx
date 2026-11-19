@@ -1,6 +1,9 @@
 'use client';
 
+import { useRef } from 'react';
 import type { SpotifyTrackResult } from '@/lib/spotify';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { CloseIcon } from '@/components/ui/Icons';
 
 interface SpotifySectionProps {
   spotifyTrackId: string | null;
@@ -31,6 +34,9 @@ export function SpotifySection({
   onToggleMoreSuggestions,
   onClosePicker,
 }: SpotifySectionProps) {
+  const pickerRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(showPicker, onClosePicker, pickerRef);
+
   return (
     <>
       {/* Embedded player */}
@@ -39,6 +45,7 @@ export function SpotifySection({
           <div className="w-full">
             <iframe
               key={spotifyTrackId}
+              title="Prévia da faixa no Spotify"
               src={`https://open.spotify.com/embed/track/${spotifyTrackId}?utm_source=generator`}
               width="100%"
               height="152"
@@ -95,9 +102,10 @@ export function SpotifySection({
                   type="button"
                   onClick={onDismissSuggestion}
                   title="Dispensar"
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer text-lg"
+                  aria-label="Dispensar sugestão do Spotify"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
                 >
-                  &times;
+                  <CloseIcon size={15} />
                 </button>
               </div>
             </div>
@@ -136,20 +144,25 @@ export function SpotifySection({
           onClick={onClosePicker}
         >
           <div
+            ref={pickerRef}
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-[28px] bg-[var(--surface)] p-6 space-y-3"
+            aria-labelledby="spotify-picker-title"
+            className="gm3-dialog-enter w-full max-w-md rounded-[28px] bg-[var(--surface)] p-6 space-y-3"
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg text-[var(--ink)]">Escolher faixa no Spotify</h3>
+              <h2 id="spotify-picker-title" className="font-display text-lg font-bold text-[var(--ink)]">
+                Escolher faixa no Spotify
+              </h2>
               <button
                 type="button"
                 onClick={onClosePicker}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer text-lg"
+                aria-label="Fechar seleção do Spotify"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
               >
-                &times;
+                <CloseIcon size={16} />
               </button>
             </div>
 

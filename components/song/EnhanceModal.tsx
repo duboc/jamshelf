@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { diffLines } from 'diff';
 import { useSongStore } from '@/lib/stores/song-store';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { CloseIcon } from '@/components/ui/Icons';
 
 interface EnhanceModalProps {
   songId: string;
@@ -41,6 +43,9 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
   const [originalText, setOriginalText] = useState('');
   const [editedText, setEditedText] = useState('');
   const [applying, setApplying] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogA11y(true, onClose, dialogRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,21 +96,25 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        className="bg-[var(--surface)] rounded-[28px] w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+        aria-labelledby="enhance-modal-title"
+        className="gm3-dialog-enter bg-[var(--surface)] rounded-[28px] w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 bg-[var(--surface-high)]">
-          <h2 className="font-display text-lg text-[var(--ink)]">Revisar letra e acordes com IA</h2>
+          <h2 id="enhance-modal-title" className="font-display text-lg font-bold text-[var(--ink)]">
+            Revisar letra e acordes com IA
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] text-lg cursor-pointer"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
             aria-label="Fechar"
           >
-            &times;
+            <CloseIcon size={16} />
           </button>
         </div>
 
@@ -117,7 +126,7 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
           )}
 
           {!loading && error && (
-            <div className="flex-1 flex items-center justify-center text-[var(--rec)] text-sm text-center px-4">
+            <div role="alert" className="flex-1 flex items-center justify-center text-[var(--rec)] text-sm text-center px-4">
               {error}
             </div>
           )}
@@ -133,8 +142,11 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
                   <DiffView oldText={originalText} newText={editedText} />
                 </div>
                 <div className="flex flex-col min-h-0">
-                  <div className="field-label mb-1.5">Texto proposto (editável)</div>
+                  <label htmlFor="enhance-proposed-text" className="field-label mb-1.5">
+                    Texto proposto (editável)
+                  </label>
                   <textarea
+                    id="enhance-proposed-text"
                     value={editedText}
                     onChange={(e) => setEditedText(e.target.value)}
                     spellCheck={false}

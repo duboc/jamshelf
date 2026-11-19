@@ -244,7 +244,27 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
     scheduleFlush(false);
   };
 
+  const openChordWidget = (widget: Element) => {
+    const root = rootRef.current;
+    if (!root) return;
+    let lineEl: Node | null = widget;
+    while (lineEl && lineEl.parentNode !== root) lineEl = lineEl.parentNode;
+    if (!lineEl || lineEl.nodeType !== Node.ELEMENT_NODE) return;
+    const lineIdx = Array.from(root.children).indexOf(lineEl as Element);
+    if (lineIdx === -1) return;
+    const segIdx = addressOf(lineEl as Element, widget);
+    scheduleFlush(true); // keep app state fresh before the overlay reads it
+    onChordSelect(lineIdx, segIdx);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    const widget = target?.closest?.('[data-chord]');
+    if (widget && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      openChordWidget(widget);
+      return;
+    }
     // Fallback for engines where Enter doesn't reliably route through
     // beforeinput — harmless on engines where it does, since a keydown
     // preventDefault() here suppresses that later beforeinput entirely.
@@ -269,16 +289,8 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const widget = target.closest('[data-chord]');
-    const root = rootRef.current;
-    if (!widget || !root) return;
-    let lineEl: Node | null = widget;
-    while (lineEl && lineEl.parentNode !== root) lineEl = lineEl.parentNode;
-    if (!lineEl || lineEl.nodeType !== Node.ELEMENT_NODE) return;
-    const lineIdx = Array.from(root.children).indexOf(lineEl as Element);
-    if (lineIdx === -1) return;
-    const segIdx = addressOf(lineEl as Element, widget);
-    scheduleFlush(true); // keep app state fresh before the overlay reads it
-    onChordSelect(lineIdx, segIdx);
+    if (!widget) return;
+    openChordWidget(widget);
   };
 
   const handleAddChordClick = () => {
@@ -299,8 +311,9 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleAddChordClick}
           style={{ top: caretMarker.top, left: caretMarker.left }}
-          className="absolute z-20 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] text-sm font-bold flex items-center justify-center shadow-lg transition-colors cursor-pointer"
+          className="absolute z-20 w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] text-sm font-bold flex items-center justify-center shadow-lg transition-colors cursor-pointer"
           title="Adicionar acorde aqui"
+          aria-label="Adicionar acorde na posição do cursor"
         >
           +
         </button>
@@ -312,7 +325,8 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
         spellCheck={false}
         autoCorrect="off"
         autoCapitalize="off"
-        className="outline-none"
+        aria-label="Editor visual de letra e acordes"
+        className="rounded-xl p-1 -m-1 focus:ring-2 focus:ring-[var(--accent)]/40"
         onInput={handleInput}
         onBlur={handleBlur}
         onCompositionStart={handleCompositionStart}

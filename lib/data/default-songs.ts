@@ -5,6 +5,8 @@ export const DEFAULT_CHORDPRO: ChordProEntry[] = [
     id: "3030-foda-que-ela-linda",
     text: `{title: Foda que Ela é Linda}
 {artist: 3030}
+{tempo: 148}
+{duration: 224}
 
 {comment: Chords Used: Gm7, Cm7, F}
 
@@ -93,6 +95,8 @@ Dona da situação
     id: "5-a-seco-ventos-de-netuno",
     text: `{title: Ventos de Netuno}
 {artist: 5 a Seco}
+{tempo: 86}
+{duration: 260}
 
 {section: Main Chords Used}
 {define: Bm6 base-fret 6 frets 2 x 2 2 4 x}
@@ -172,6 +176,8 @@ Eu não [Bm6]vou
     id: "arctic-monkeys-do-i-wanna-know",
     text: `{title: Do I Wanna Know?}
 {artist: Arctic Monkeys}
+{tempo: 85}
+{duration: 272}
 
 {comment: Main Chords: Gm, Eb, Cm, D, F}
 
@@ -255,6 +261,7 @@ Ever thought of [F] calling, darling?
 {artist: Arctic Monkeys}
 {key: Em}
 {tempo: 97}
+{duration: 257}
 
 {section: Main Chords}
 Em:  022000
@@ -337,6 +344,8 @@ By the [Em] scruff of your knee socks
     id: "arctic-monkeys-r-u-mine",
     text: `{title: R U Mine?}
 {artist: Arctic Monkeys}
+{tempo: 97}
+{duration: 201}
 
 {comment: Main Chords: F#m, D, Bm, A, C#, Am}
 
@@ -402,6 +411,8 @@ When she's [F#m]not right there beside me
     id: "beatles-come-together",
     text: `{title: Come Together}
 {artist: Beatles}
+{tempo: 83}
+{duration: 259}
 
 {comment: Main Chords Used: Dm, A7, G7, Bm, A, G}
 
@@ -463,6 +474,8 @@ When she's [F#m]not right there beside me
     id: "beatles-let-it-be",
     text: `{title: Let it Be}
 {artist: Beatles}
+{tempo: 72}
+{duration: 243}
 
 {comment: Chords Used: C, G, Am, F}
 
@@ -517,6 +530,8 @@ Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
 {artist: Billie Eilish}
 {key: F#m}
 {capo: 2}
+{tempo: 74}
+{duration: 261}
 
 {comment: Main Chords: Cmaj7, Bm7, Em, B7, D}
 
@@ -593,6 +608,8 @@ Do you [B7]see her in the [Em]back of your mind in my [D]eyes?
     id: "blink-182-i-miss-you",
     text: `{title: I Miss You}
 {artist: Blink 182}
+{tempo: 110}
+{duration: 227}
 
 {comment: Main Chords: B, Bmaj7, G#m, F#, E}
 
@@ -652,6 +669,8 @@ You're al[B]ready the voice in[E]side my head (I miss [B] you, miss [E] you)
     id: "blink-182-what-s-my-age-again",
     text: `{title: What's my Age Again?}
 {artist: Blink 182}
+{tempo: 158}
+{duration: 148}
 
 {comment: Main Chords: B, F#, C#, D#m}
 
@@ -721,6 +740,8 @@ What's my age again?
     id: "cake-i-will-survive",
     text: `{title: I Will Survive}
 {artist: Cake}
+{tempo: 116}
+{duration: 310}
 
 {comment: Main Chords: Am, Dm, G, C, F, B7, E, E7}
 
@@ -788,6 +809,8 @@ And I'll sur[E]vive, I will sur[E7]vive, yeah [Am]yeah`,
     id: "coldplay-clocks",
     text: `{title: Clocks}
 {artist: Coldplay}
+{tempo: 131}
+{duration: 307}
 
 {comment: Main Chords}
 {comment: Verse/Chorus: Eb, Bbm, Fm}
@@ -844,6 +867,8 @@ Oh I [Fm]beg, I beg and plead - singing
     id: "criolo-subirusdoistiozin",
     text: `{title: Subirusdoistiozin}
 {artist: Criolo}
+{tempo: 86}
+{duration: 214}
 
 {comment: Main Chords}
 {comment: Bm: x24432  D: xx0232  C#7: x46464  C7: x35353  G7: 353433  F#7: 242322}
@@ -908,6 +933,8 @@ Oh I [Fm]beg, I beg and plead - singing
     id: "djavan-sina",
     text: `{title: Sina}
 {artist: Djavan}
+{tempo: 104}
+{duration: 257}
 
 {comment: Main Chords: A, D/A, E7/G#, F#m7, C#m7, D7M, D#dim, E7(4/9), D7(4/9), D7(9), C#7(#9), G7(#11), E7(9)}
 
@@ -952,6 +979,8 @@ Como querer caetane[E7(4/9)]ar o que há de [A]bom [D/A]
     text: `{title: Heal Me}
 {artist: FARR}
 {key: Em}
+{tempo: 146}
+{duration: 198}
 
 {comment: Main Chords Used: Em, Bm7, Am, B7}
 
@@ -1014,6 +1043,8 @@ Never [Am]needed you [B7]closer than now
     id: "foo-fighters-learn-to-fly",
     text: `{title: Learn to Fly}
 {artist: Foo Fighters}
+{tempo: 136}
+{duration: 235}
 
 {section: Main Chords}
 B, F#m, E, G, A, D
@@ -1080,6 +1111,8 @@ B, F#m, E, G, A, D
     id: "foo-fighters-stranger-things-have-happened",
     text: `{title: Stranger Things Have Happened}
 {artist: Foo Fighters}
+{tempo: 104}
+{duration: 321}
 {album: Echoes, Silence, Patience & Grace}
 
 {comment: Main Chords}
@@ -1133,6 +1166,8 @@ I'm the [Bm7]same, I'm the [D/F#]same, I'm the [F]same, what [E7]do you want me 
     id: "fresno-biografia-em-r-menor",
     text: `{title: Biografia em Ré Menor}
 {artist: Fresno}
+{tempo: 78}
+{duration: 431}
 
 {comment: Main Chords}
 {chord: D} {chord: D4} {chord: D9} {chord: G} {chord: A} {chord: Bm} {chord: E} {chord: Bbº} {chord: Gm} {chord: Dm} {chord: F}
@@ -1176,6 +1211,8 @@ Você nem vai perceber
     id: "fresno-quando-crescer",
     text: `{title: Quando Crescer}
 {artist: Fresno}
+{tempo: 76}
+{duration: 257}
 
 {comment: Main Chords}
 {define: C frets x 3 2 0 1 0}
@@ -1231,6 +1268,8 @@ Aca[F]bou, e eu não [G]sou o seu can[Am]tor
     id: "gilsons-love-love",
     text: `{title: Love Love}
 {artist: Gilsons}
+{tempo: 126}
+{duration: 200}
 
 {comment: Main Chords}
 {comment: Bbm7, Ab7, F7, B6, Ebm7, Bb7, Gb7M, Gdim, Db7M}
@@ -1300,6 +1339,8 @@ Amor é onde eu que[Db7M]ria estar com vo[Gb7M]cê
     text: `{title: Basket Case}
 {artist: Green Day}
 {key: Eb}
+{tempo: 170}
+{duration: 181}
 {comment: Tuning: Half-step down (Eb Ab Db Gb Bb Eb) - chords written in standard E shapes}
 
 {section: Main Chords}
@@ -1358,6 +1399,8 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
     id: "harry-styles-adore-you",
     text: `{title: Adore You}
 {artist: Harry Styles}
+{tempo: 99}
+{duration: 207}
 {comment: Capo 3rd fret}
 {comment: Main Chords: Am, C, F, G}
 
@@ -1428,6 +1471,8 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
     id: "incubus-drive",
     text: `{title: Drive}
 {artist: Incubus}
+{tempo: 91}
+{duration: 232}
 
 {comment: Main Chords}
 {define: Em7 frets 0 2 2 0 3 3}
@@ -1504,6 +1549,8 @@ I'll be there [Em7] [Em9] [Cmaj7] [A7]`,
     id: "jacob-collier-coldplay-fix-you",
     text: `{title: Fix You}
 {artist: Jacob Collier / Coldplay}
+{tempo: 69}
+{duration: 295}
 
 {comment: Main Chords}
 {comment: Eb, Gm7, Cm7, Bbm, Ab, Fm7, Bb, E, D#maj7, C#m7, F#m7, B, G, Bm, Em7, Am7, D}
@@ -1560,6 +1607,8 @@ I----- will [B]fix [Em7]you [G]
     id: "jo-o-gomes-meu-peda-o-de-pecado",
     text: `{title: Meu Pedaço de Pecado}
 {artist: João Gomes}
+{tempo: 152}
+{duration: 157}
 
 {comment: Chords: Bm, A, Em, G}
 
@@ -1651,6 +1700,8 @@ Com vo[Am7]cê  [F]  [C]  [G]`,
     id: "jo-o-gomes-pontes-indestrut-veis",
     text: `{title: Pontes Indestrutíveis}
 {artist: João Gomes}
+{tempo: 80}
+{duration: 212}
 
 {comment: Chords Used: Dm, Am, Gm, Bb, C}
 
@@ -1739,6 +1790,8 @@ Por [F]pouco de [C]vez em [G]vez`,
     id: "kings-of-leon-use-somebody",
     text: `{title: Use Somebody}
 {artist: Kings of Leon}
+{tempo: 137}
+{duration: 231}
 
 {comment: Main Chords: C, Em, F, Am, D, F#m}
 
@@ -1801,6 +1854,8 @@ Por [F]pouco de [C]vez em [G]vez`,
 {artist: Lewis Capaldi}
 {key: Eb}
 {capo: 3}
+{tempo: 112}
+{duration: 215}
 
 {comment: Main Chords (Capo 3): C, Am, F, G}
 
@@ -1868,6 +1923,8 @@ Was there something I could've said to make it all stop hurting?
 {artist: Lewis Capaldi}
 {key: Eb}
 {capo: 1}
+{tempo: 118}
+{duration: 210}
 
 {comment: Main Chords: D, A, Bm, Bm7, G, Gm}
 
@@ -2009,6 +2066,8 @@ Assim, ro[C#7]mântica [C#m7]
     id: "lynyrd-skynyrd-sweet-home-alabama",
     text: `{title: Sweet Home Alabama}
 {artist: Lynyrd Skynyrd}
+{tempo: 98}
+{duration: 284}
 
 {section: Main Chords}
 D:  xx0232
@@ -2102,6 +2161,8 @@ They [D]pick me [C]up when I'm [G]feeling blue, now how about you?
     id: "mamonas-assassinas-robocop-gay",
     text: `{title: Robocop Gay}
 {artist: Mamonas Assassinas}
+{tempo: 144}
+{duration: 179}
 
 {comment: Main Chords: C, G, D, Bm, Am, F}
 
@@ -2180,6 +2241,8 @@ Um Robocop Gay
     id: "nx-zero-raz-es-e-emo-es",
     text: `{title: Razões e Emoções}
 {artist: NX Zero}
+{tempo: 124}
+{duration: 226}
 
 {comment: Chords Used}
 {define: E      base-fret 1 frets 0 2 2 1 0 0}
@@ -2252,6 +2315,8 @@ Um Robocop Gay
     id: "nickelback-never-again",
     text: `{title: Never Again}
 {artist: Nickelback}
+{tempo: 106}
+{duration: 260}
 
 {comment: Main Chords (Standard Drop D tuning: D A D G B E)}
 {comment: D5: 000xxx}
@@ -2319,6 +2384,8 @@ It's [Bb5] right out there in the [C5] waiting room with those hands
     id: "nossa-toca-adventure-of-a-lifetime",
     text: `{title: Adventure Of A Lifetime}
 {artist: Nossa Toca}
+{tempo: 112}
+{duration: 264}
 
 {comment: Main Chords}
 {comment: Fm7: 1-3-1-1-1-1}
@@ -2391,6 +2458,8 @@ Like I'm [Cm7]alive again
     id: "oasis-live-forever",
     text: `{title: Live Forever}
 {artist: Oasis}
+{tempo: 90}
+{duration: 276}
 
 {comment: Main Chords Used}
 {define: G base-fret 1 frets 3 2 0 0 3 3}
@@ -2479,6 +2548,8 @@ We see things they'll never [D]see
     id: "oasis-stop-crying-your-heart-out",
     text: `{title: Stop Crying Your Heart Out}
 {artist: Oasis}
+{tempo: 75}
+{duration: 303}
 
 {comment: Main Chords Used}
 {comment: Bm: x24432  A: x02220  E: 022100  G: 320033  D: xx0232}
@@ -2537,6 +2608,8 @@ And stop crying your [G]heart out
     id: "queen-crazy-little-thing-called-love",
     text: `{title: Crazy Little Thing Called Love}
 {artist: Queen}
+{tempo: 154}
+{duration: 163}
 
 {comment: Main Chords: D, Dsus4, G, C, Bb, E, A, F}
 
@@ -2603,6 +2676,8 @@ I ain't [D]ready
     id: "queens-of-the-stone-age-make-it-wit-chu",
     text: `{title: Make It Wit Chu}
 {artist: Queens Of The Stone Age}
+{tempo: 114}
+{duration: 290}
 
 {section: Main Chords}
 Chords: [C] [Am] [Em]
@@ -2679,6 +2754,8 @@ Anytime, anywhere.
     id: "red-hot-chili-peppers-dani-california",
     text: `{title: Dani California}
 {artist: Red Hot Chili Peppers}
+{tempo: 96}
+{duration: 282}
 
 {section: Main Chords Used}
 Am, G, Dm, F, C, Bm, D, F#
@@ -2755,6 +2832,8 @@ Am, G, Dm, F, C, Bm, D, F#
     id: "red-hot-chili-peppers-snow",
     text: `{title: Snow}
 {artist: Red Hot Chili Peppers}
+{tempo: 105}
+{duration: 334}
 
 {comment: Main Chords: G#m, E, B, F#, C#m}
 
@@ -2845,6 +2924,8 @@ And there's [B]nowhere to [F#]go [C#m]
     id: "rodrigo-alarcon-apesar-de-querer",
     text: `{title: Apesar de Querer}
 {artist: Rodrigo Alarcon}
+{tempo: 127}
+{duration: 216}
 
 {comment: Main Chords: Bm7, Bm7/A, A/G, C#m7, F#7}
 
@@ -2886,6 +2967,8 @@ E como eu quero, [F#7]como eu quero
     text: `{title: Start Me Up}
 {artist: Rolling Stones}
 {key: F}
+{tempo: 122}
+{duration: 213}
 
 [Main Chords]
 F:  133211
@@ -2959,6 +3042,8 @@ I'll [C]take you places that you've [Eb]never, [Bb]never [F]seen [Bb] [F] [Bb]
     id: "soad-spiders",
     text: `{title: Spiders}
 {artist: SOAD}
+{tempo: 125}
+{duration: 215}
 
 {comment: Main Chords}
 {define: Cm frets 3 3 5 5 4 3}
@@ -3022,6 +3107,8 @@ I'll [C]take you places that you've [Eb]never, [Bb]never [F]seen [Bb] [F] [Bb]
 {artist: Sawyer Hill}
 {key: Am}
 {capo: 3}
+{tempo: 88}
+{duration: 205}
 
 {comment: Main Chords: Am, E, F, C, G}
 
@@ -3081,6 +3168,8 @@ Fire[G]starters, we [Am] are`,
     id: "talking-heads-psycho-killer",
     text: `{title: Psycho Killer}
 {artist: Talking Heads}
+{tempo: 123}
+{duration: 259}
 
 {section: Main Chords}
 Am: x02210
@@ -3154,6 +3243,8 @@ A:  x02220
     id: "the-black-keys-wild-child",
     text: `{title: Wild Child}
 {artist: The Black Keys}
+{tempo: 120}
+{duration: 164}
 
 {section: Main Chords}
 Gm, C, Bb, Am, F, Dm
@@ -3220,6 +3311,8 @@ You're gonna get my love to-day-ay-ay-ay-yeah`,
     id: "the-killers-mr-brightside",
     text: `{title: Mr. Brightside}
 {artist: The Killers}
+{tempo: 148}
+{duration: 222}
 
 {comment: Main Chords: C, C/B, F, Am, G}
 {comment: Capo 1st fret to match original key of Db}
@@ -3317,6 +3410,8 @@ And [G] taking control
     id: "the-kooks-seaside",
     text: `{title: Seaside}
 {artist: The Kooks}
+{tempo: 100}
+{duration: 99}
 
 {comment: Capo 1st fret}
 {comment: Main Chords: Dm, F, Bb, C, G, G/F}
@@ -3354,6 +3449,8 @@ In the [F] seaside [Dm]`,
     text: `{title: Last Nite}
 {artist: The Strokes}
 {key: C}
+{tempo: 104}
+{duration: 193}
 
 {comment: Main Chords Used}
 {define: C   base-fret 1 frets x 3 2 0 1 0}
@@ -3428,6 +3525,8 @@ For just 'bout fifteen minutes now
     id: "van-halen-jump",
     text: `{title: Jump}
 {artist: Van Halen}
+{tempo: 130}
+{duration: 241}
 
 {comment: Main Chords: C, F, G, Gsus4, Am, G/B, Dm7, Bb, Ab, Fm, Db}
 

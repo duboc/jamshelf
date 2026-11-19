@@ -13,7 +13,7 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
   if (sections.length <= 1) return null;
 
   return (
-    <div
+    <nav
       aria-label="Seções da música"
       className="relative flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2"
     >
@@ -26,7 +26,8 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
               key={`${sec.label}-${idx}`}
               type="button"
               onClick={() => onJump(idx)}
-              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+              aria-current={isActive ? 'true' : undefined}
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                 isActive
                   ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
                   : 'bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
@@ -35,6 +36,7 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: colors.bd }}
+                aria-hidden="true"
               />
               {sec.label}
             </button>
@@ -45,6 +47,6 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
         aria-hidden="true"
         className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[var(--bg)] to-transparent"
       />
-    </div>
+    </nav>
   );
 }

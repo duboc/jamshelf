@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { CloseIcon } from '@/components/ui/Icons';
 
 interface VersionSummary {
   versionId: string;
@@ -39,6 +41,12 @@ export function VersionHistoryModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [loadedTexts, setLoadedTexts] = useState<Record<string, string>>({});
+  const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogA11y(true, onClose, dialogRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +66,27 @@ export function VersionHistoryModal({
     };
   }, [songId]);
 
+  const togglePreview = async (versionId: string) => {
+    if (expandedId === versionId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(versionId);
+    if (loadedTexts[versionId] !== undefined) return;
+    setLoadingPreviewId(versionId);
+    try {
+      const res = await fetch(`/api/songs/${songId}/versions/${versionId}`);
+      const data = await res.json();
+      if (res.ok && typeof data.text === 'string') {
+        setLoadedTexts((prev) => ({ ...prev, [versionId]: data.text }));
+      }
+    } catch {
+      // Ignore preview fetch failure; user can still restore directly
+    } finally {
+      setLoadingPreviewId(null);
+    }
+  };
+
   const handleRestore = async (versionId: string) => {
     setRestoringId(versionId);
     setError('');
@@ -67,10 +96,14 @@ export function VersionHistoryModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: currentText }),
       });
-      const res = await fetch(`/api/songs/${songId}/versions/${versionId}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Falha ao carregar versão');
-      updateEntry(songId, data.text);
+      const text =
+        loadedTexts[versionId] ??
+        (await fetch(`/api/songs/${songId}/versions/${versionId}`).then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Falha ao carregar versão');
+          return data.text as string;
+        }));
+      updateEntry(songId, text);
       onRestored();
       onClose();
     } catch (err) {
@@ -85,61 +118,90 @@ export function VersionHistoryModal({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        className="bg-[var(--surface)] rounded-[28px] w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+        aria-labelledby="history-modal-title"
+        className="gm3-dialog-enter bg-[var(--surface)] rounded-[28px] w-full max-w-xl max-h-[82vh] flex flex-col overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 bg-[var(--surface-high)]">
-          <h2 className="font-display text-lg text-[var(--ink)]">Histórico de versões</h2>
+          <h2 id="history-modal-title" className="font-display text-lg font-bold text-[var(--ink)]">
+            Histórico de versões
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] text-lg cursor-pointer"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
             aria-label="Fechar"
           >
-            &times;
+            <CloseIcon size={16} />
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-2">
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-2.5">
           {loading && <div className="text-center text-sm text-[var(--muted)] py-8">Carregando…</div>}
 
           {!loading && error && (
-            <div className="text-center text-sm text-[var(--rec)] py-4">{error}</div>
+            <div role="alert" className="text-center text-sm text-[var(--rec)] py-4">
+              {error}
+            </div>
           )}
 
           {!loading && !error && versions.length === 0 && (
             <div className="text-center text-sm text-[var(--muted)] py-8 leading-relaxed">
-              Nenhuma versão anterior salva ainda. Uma cópia é guardada automaticamente quando você aplica uma revisão com IA ou restaura uma versão.
+              Nenhuma versão anterior salva ainda. Uma cópia é guardada automaticamente quando você salva edições visuais, altera o código ChordPro, aplica uma transposição permanente ou revisa com IA.
             </div>
           )}
 
           {!loading &&
-            versions.map((v) => (
-              <div
-                key={v.versionId}
-                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--bg)]"
-              >
-                <div className="min-w-0">
-                  <div className="font-mono text-xs text-[var(--muted)]">
-                    {formatRelativeTime(v.createdAt)}
-                  </div>
-                  <div className="text-sm text-[var(--ink)] truncate mt-0.5">
-                    {v.preview || '(vazio)'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRestore(v.versionId)}
-                  disabled={restoringId !== null}
-                  className="pill-btn pill-btn-primary px-3.5 py-1.5 text-xs flex-shrink-0"
+            versions.map((v) => {
+              const isExpanded = expandedId === v.versionId;
+              return (
+                <div
+                  key={v.versionId}
+                  className="rounded-2xl bg-[var(--bg)] p-3.5 space-y-2.5"
                 >
-                  {restoringId === v.versionId ? 'Restaurando…' : 'Restaurar'}
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-mono text-xs text-[var(--muted)]">
+                        {formatRelativeTime(v.createdAt)}
+                      </div>
+                      <div className="text-sm text-[var(--ink)] truncate mt-0.5">
+                        {v.preview || '(vazio)'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => togglePreview(v.versionId)}
+                        aria-expanded={isExpanded}
+                        className="pill-btn px-3 h-8 text-xs"
+                      >
+                        {isExpanded ? 'Ocultar' : 'Ver prévia'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRestore(v.versionId)}
+                        disabled={restoringId !== null}
+                        className="pill-btn pill-btn-primary px-3.5 h-8 text-xs"
+                      >
+                        {restoringId === v.versionId ? 'Restaurando…' : 'Restaurar'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <pre className="max-h-48 overflow-auto rounded-xl bg-[var(--surface)] p-3 font-mono text-xs text-[var(--ink)] whitespace-pre-wrap leading-relaxed">
+                      {loadingPreviewId === v.versionId
+                        ? 'Carregando prévia…'
+                        : loadedTexts[v.versionId] ?? v.preview}
+                    </pre>
+                  )}
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>

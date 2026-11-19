@@ -1,5 +1,8 @@
 'use client';
 
+import { useId, useRef } from 'react';
+import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
@@ -21,6 +24,10 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(open, onCancel, dialogRef);
+
   if (!open) return null;
 
   return (
@@ -29,24 +36,28 @@ export function ConfirmDialog({
       onClick={onCancel}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-[28px] bg-[var(--surface)] p-6 space-y-5"
+        aria-labelledby={titleId}
+        className="gm3-card gm3-dialog-enter w-full max-w-sm rounded-[28px] bg-[var(--surface)] p-6 space-y-5"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="space-y-2">
-          <h3 className="font-display text-xl text-[var(--ink)]">{title}</h3>
+          <h2 id={titleId} className="font-display text-xl font-bold text-[var(--ink)]">
+            {title}
+          </h2>
           <div className="text-sm text-[var(--muted)] leading-relaxed">{description}</div>
         </div>
         <div className="flex items-center justify-end gap-2">
-          <button type="button" onClick={onCancel} className="pill-btn bg-[var(--bg)] px-4 py-2 text-sm">
+          <button type="button" onClick={onCancel} className="pill-btn bg-[var(--bg)] h-10 px-4 text-sm">
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`pill-btn px-5 py-2 text-sm ${danger ? 'pill-btn-rec' : 'pill-btn-primary'}`}
+            className={`pill-btn h-10 px-5 text-sm ${danger ? 'pill-btn-rec' : 'pill-btn-primary'}`}
           >
             {confirmLabel}
           </button>

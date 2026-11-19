@@ -61,7 +61,12 @@ export function PianoChordDiagram({ notes, label }: { notes: string[]; label: st
   });
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[240px]">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label={`Notas no teclado para o acorde ${label}`}
+      className="w-full max-w-[240px]"
+    >
       <text
         x={W / 2}
         y={12}
