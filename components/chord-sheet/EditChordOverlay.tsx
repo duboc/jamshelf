@@ -260,7 +260,7 @@ function OverlayInner({
                 <button
                   type="button"
                   onClick={openChangeMode}
-                  className="flex-1 h-11 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] font-semibold text-sm transition-colors cursor-pointer"
+                  className="flex-1 h-10 rounded-[4px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] font-display font-medium text-sm transition-colors cursor-pointer"
                 >
                   Outro acorde…
                 </button>
@@ -270,7 +270,7 @@ function OverlayInner({
                     onDelete(selected.sectionIdx, selected.lineIdx, selected.segIdx);
                     onClose();
                   }}
-                  className="flex-1 h-11 rounded-full bg-[var(--rec)]/15 hover:bg-[var(--rec)] text-[var(--rec)] hover:text-[var(--on-rec)] border border-[var(--rec)]/40 font-semibold text-sm transition-colors cursor-pointer"
+                  className="flex-1 h-10 rounded-[4px] bg-[var(--rec)]/10 hover:bg-[var(--rec)] text-[var(--rec)] hover:text-[var(--on-rec)] border border-[var(--rec)]/40 font-display font-medium text-sm transition-colors cursor-pointer"
                 >
                   Remover
                 </button>
@@ -379,9 +379,9 @@ function OverlayInner({
                       setPickedSuffix(suf);
                       setCustomInput(`${pickedRoot}${suf}${pickedBass ? `/${pickedBass}` : ''}`);
                     }}
-                    className={`px-2.5 h-8 rounded-lg text-[11px] font-mono font-bold transition-colors cursor-pointer border ${
+                    className={`px-2.5 h-8 rounded-[4px] text-[11px] font-mono font-bold transition-colors cursor-pointer border ${
                       pickedSuffix === suf
-                        ? 'bg-[var(--tune)] border-[var(--tune)] text-[var(--on-accent)]'
+                        ? 'bg-[var(--tune)] border-[var(--tune)] text-[var(--on-tune)]'
                         : 'bg-[var(--surface2)] border-[var(--line)] text-[var(--muted)] hover:text-[var(--ink)]'
                     }`}
                   >

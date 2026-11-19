@@ -15,10 +15,10 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
   return (
     <div
       aria-label="Seções da música"
-      className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--bg)]/80 px-4 sm:px-6 py-1.5"
+      className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6"
     >
-      <div className="max-w-6xl mx-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        <span className="eyebrow flex-shrink-0 mr-1 hidden sm:inline">Ir para</span>
+      <div className="max-w-6xl mx-auto flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+        <span className="eyebrow flex-shrink-0 mr-2 hidden sm:inline">Seções</span>
         {sections.map((sec, idx) => {
           const colors = SECTION_COLORS[sec.type] || SECTION_COLORS.verse;
           const isActive = idx === activeIdx;
@@ -27,10 +27,10 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
               key={`${sec.label}-${idx}`}
               type="button"
               onClick={() => onJump(idx)}
-              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] transition-all cursor-pointer border ${
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 font-display text-[12.5px] transition-colors cursor-pointer border-b-2 ${
                 isActive
-                  ? 'bg-[var(--surface)] border-[var(--accent)] text-[var(--ink)] font-semibold shadow-[var(--shadow-sm)]'
-                  : 'bg-transparent border-transparent text-[var(--muted)] hover:bg-[var(--surface2)] hover:text-[var(--ink)]'
+                  ? 'border-[var(--accent)] text-[var(--accent-ink)] font-medium'
+                  : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)]/60'
               }`}
             >
               <span

@@ -130,13 +130,13 @@ export function SpotifySection({
       {/* Manual Spotify picker modal */}
       {showPicker && (
         <div
-          className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
           onClick={onClosePicker}
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 space-y-3"
+            className="w-full max-w-md rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 space-y-3"
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >

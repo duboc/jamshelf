@@ -25,18 +25,18 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[70] bg-black/45 flex items-center justify-center p-4"
       onClick={onCancel}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 space-y-4"
+        className="w-full max-w-sm rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 space-y-4"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="space-y-1.5">
-          <h3 className="font-display text-xl text-[var(--ink)]">{title}</h3>
+          <h3 className="font-display text-lg text-[var(--ink)]">{title}</h3>
           <div className="text-sm text-[var(--muted)] leading-relaxed">{description}</div>
         </div>
         <div className="flex items-center justify-end gap-2">

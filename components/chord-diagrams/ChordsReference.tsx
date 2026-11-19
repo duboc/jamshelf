@@ -14,7 +14,7 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
   if (!chords || chords.length === 0) return null;
 
   return (
-    <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/70 px-4 sm:px-6 py-3">
+    <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-3">
       <div className="max-w-6xl mx-auto">
         <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
           {chords.map((chord) => {
@@ -29,9 +29,9 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
                 key={chord}
                 type="button"
                 onClick={() => store.setActiveChord(chord)}
-                className={`flex-shrink-0 rounded-xl border p-2 flex flex-col items-center justify-center min-w-[86px] transition-all cursor-pointer ${
+                className={`flex-shrink-0 rounded-lg border p-2 flex flex-col items-center justify-center min-w-[86px] transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[var(--accent-dim)] border-[var(--accent)] scale-[1.03]'
+                    ? 'bg-[var(--nav-active-bg)] border-[var(--accent)]'
                     : 'bg-[var(--surface)] border-[var(--line)] hover:border-[var(--muted)]'
                 }`}
               >

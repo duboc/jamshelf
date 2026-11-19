@@ -123,7 +123,7 @@ export function SongHeader({
   }, [moreOpen, metaOpen]);
 
   return (
-    <section className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/65 px-4 sm:px-6 py-3">
+    <section className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-3">
       <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Left: Setlist step controls + Title/Artist + compact editable metadata chips */}
         <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
@@ -204,12 +204,12 @@ export function SongHeader({
                   title="Ajustar capo, andamento (BPM), compasso e duração"
                 >
                   {displayedKey && (
-                    <span className="studio-chip text-[var(--accent-ink)] font-semibold">
+                    <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)] font-semibold">
                       Tom {displayedKey}
                     </span>
                   )}
                   {song.capo > 0 && (
-                    <span className="studio-chip text-[var(--tune)]">Capo {song.capo}</span>
+                    <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]">Capo {song.capo}</span>
                   )}
                   <span className="studio-chip text-[var(--muted)] group-hover:text-[var(--ink)]">
                     {song.tempo} BPM · {song.timeSignature}
@@ -221,7 +221,7 @@ export function SongHeader({
                   <div
                     role="dialog"
                     aria-label="Ajustes musicais da faixa"
-                    className="absolute left-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 space-y-3"
+                    className="absolute left-0 top-[calc(100%+8px)] z-50 w-64 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 space-y-3"
                     style={{ boxShadow: 'var(--shadow-md)' }}
                   >
                     <div className="eyebrow">Propriedades da música</div>
@@ -334,7 +334,7 @@ export function SongHeader({
           <div
             role="group"
             aria-label="Modo de leitura"
-            className="inline-flex rounded-full border border-[var(--line)] bg-[var(--surface2)]/80 p-0.5"
+            className="inline-flex rounded-[4px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden"
           >
             {(
               [
@@ -358,10 +358,10 @@ export function SongHeader({
                       ? 'Esconde os acordes e melhora a tipografia para cantar'
                       : undefined
                   }
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                  className={`px-3 py-1.5 font-display text-xs font-medium transition-colors cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed border-r border-[var(--line-subtle)] last:border-r-0 ${
                     active
-                      ? 'bg-[var(--surface)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
-                      : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                      ? 'bg-[var(--nav-active-bg)] text-[var(--accent-ink)]'
+                      : 'text-[var(--muted)] hover:bg-[var(--surface2)] hover:text-[var(--ink)]'
                   }`}
                 >
                   {label}
@@ -439,7 +439,7 @@ export function SongHeader({
                 {showNamePrompt && (
                   <div
                     role="dialog"
-                    className="absolute right-0 top-[calc(100%+8px)] w-60 bg-[var(--surface)] border border-[var(--line)] rounded-2xl z-50 p-3.5 space-y-2.5"
+                    className="absolute right-0 top-[calc(100%+8px)] w-60 bg-[var(--surface)] border border-[var(--line)] rounded-lg z-50 p-3.5 space-y-2.5"
                     style={{ boxShadow: 'var(--shadow-md)' }}
                   >
                     <div className="text-xs text-[var(--muted)]">
@@ -520,7 +520,7 @@ export function SongHeader({
             {moreOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-2"
+                className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-lg border border-[var(--line)] bg-[var(--surface)] py-2"
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 {/* Rating */}
@@ -534,8 +534,8 @@ export function SongHeader({
                         onClick={() => onPatchMeta('rating', song.rating === star ? 0 : star)}
                         className={`text-base px-0.5 cursor-pointer transition-colors ${
                           star <= song.rating
-                            ? 'text-[var(--accent)]'
-                            : 'text-[var(--line)] hover:text-[var(--accent)]/60'
+                            ? 'text-[var(--warn)]'
+                            : 'text-[var(--line)] hover:text-[var(--warn)]/65'
                         }`}
                       >
                         ★

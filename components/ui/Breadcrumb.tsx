@@ -33,32 +33,32 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
   return (
     <nav
       aria-label="Onde você está"
-      className="sticky top-0 z-20 flex-shrink-0 border-b border-[var(--line)] bg-[var(--bg)]/90 backdrop-blur-md"
+      className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]"
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-[44px] py-1.5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      <div className="px-3 sm:px-6 min-h-[42px] py-1 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {parentItem && (
             <button
               type="button"
               onClick={handleBack}
-              className="pill-btn px-2.5 py-1 text-xs flex-shrink-0"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--accent-ink)] hover:bg-[var(--nav-active-bg)] transition-colors flex-shrink-0 cursor-pointer"
               title={`Voltar para ${parentItem.label}`}
+              aria-label={`Voltar para ${parentItem.label}`}
             >
-              <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
                 <path
-                  d="M8.8 2.6 4.4 7l4.4 4.4"
+                  d="M13 8H3.5M7.5 3.8 3.3 8l4.2 4.2"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.8"
+                  strokeWidth="1.6"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
-              <span>Voltar</span>
             </button>
           )}
 
-          <ol className="flex items-center gap-1.5 text-[13px] min-w-0 overflow-hidden">
+          <ol className="flex items-center gap-1.5 text-[13px] font-display min-w-0 overflow-hidden">
             {items.map((item, i) => {
               const isLast = i === items.length - 1;
               const hideOnTiny = items.length > 2 && i < items.length - 2;
@@ -75,14 +75,14 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
                   {item.href && !isLast ? (
                     <Link
                       href={item.href}
-                      className="text-[var(--muted)] hover:text-[var(--ink)] hover:underline underline-offset-2 transition-colors truncate max-w-[160px]"
+                      className="text-[var(--muted)] hover:text-[var(--accent-ink)] hover:underline underline-offset-2 transition-colors truncate max-w-[180px]"
                     >
                       {item.label}
                     </Link>
                   ) : (
                     <span
                       aria-current={isLast ? 'page' : undefined}
-                      className="text-[var(--ink)] font-semibold truncate max-w-[240px]"
+                      className="text-[var(--ink)] font-medium truncate max-w-[260px]"
                     >
                       {item.label}
                     </span>

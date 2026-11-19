@@ -70,10 +70,10 @@ export function SongToolbar({
   // Dedicated clean edit toolbar when visual editor is active
   if (store.editMode) {
     return (
-      <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--bg)] px-4 sm:px-6 py-2">
+      <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-2">
         <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="studio-chip text-[var(--accent-ink)] bg-[var(--accent-dim)] font-semibold">
+            <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)] font-semibold">
               Modo edição
             </span>
             <button
@@ -123,7 +123,7 @@ export function SongToolbar({
   }
 
   return (
-    <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--bg)] px-4 sm:px-6 py-2">
+    <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-2">
       <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center flex-wrap gap-2 sm:gap-3">
           {/* Transpose controls: hidden in Singer (lyrics-only) mode */}

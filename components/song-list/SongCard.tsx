@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { Song } from '@/lib/types/song';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
+import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface SongCardProps {
@@ -50,10 +51,11 @@ export function SongCard({ song, onRemove }: SongCardProps) {
   };
 
   return (
-    <div className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 py-3.5 px-2 sm:px-3 border-b border-[var(--line)] hover:bg-[var(--surface2)]/45 transition-colors">
-      <Link href={`/song/${song.id}`} className="flex-1 min-w-0 block">
-        <div className="flex items-baseline gap-2 min-w-0">
-          <h3 className="font-display text-[19px] leading-snug text-[var(--ink)] group-hover:underline underline-offset-4 truncate">
+    <div className="group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_104px_146px_112px_76px] md:items-center gap-2 md:gap-3 py-3 px-4 border-b border-[var(--line-subtle)] last:border-b-0 hover:bg-[var(--nav-active-bg)]/40 transition-colors">
+      {/* Col 1: Title + Artist (resource link) */}
+      <Link href={`/song/${song.id}`} className="min-w-0 block">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="font-display text-[14.5px] font-medium leading-snug text-[var(--accent-ink)] group-hover:underline underline-offset-2 truncate">
             {song.title}
           </h3>
           {addedNotice && (
@@ -62,41 +64,74 @@ export function SongCard({ song, onRemove }: SongCardProps) {
             </span>
           )}
         </div>
-        <div className="text-[13.5px] text-[var(--muted)] truncate mt-0.5">
+        <div className="text-[12.5px] text-[var(--muted)] truncate mt-0.5">
           {song.artist || 'Artista não informado'}
         </div>
-        <div className="flex flex-wrap gap-1.5 mt-2">
+
+        {/* Mobile metadata chips */}
+        <div className="flex md:hidden flex-wrap gap-1.5 mt-1.5">
           {song.displayKey && (
-            <span className="studio-chip text-[var(--accent-ink)]">
-              Tom {song.displayKey}
+            <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)]">
+              {song.displayKey}
             </span>
           )}
           <span className="studio-chip text-[var(--muted)]">
-            {song.tempo} BPM
-          </span>
-          <span className="studio-chip text-[var(--muted)]">
-            {song.timeSignature}
+            {song.tempo} BPM · {song.timeSignature}
           </span>
           {song.capo > 0 && (
-            <span className="studio-chip text-[var(--tune)]">
+            <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]">
               Capo {song.capo}
+            </span>
+          )}
+          {song.duration && (
+            <span className="studio-chip text-[var(--muted)]">
+              {formatDuration(song.duration)}
             </span>
           )}
         </div>
       </Link>
 
-      <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0">
-        {/* Star rating */}
+      {/* Col 2: Key / Capo (desktop) */}
+      <div className="hidden md:flex items-center gap-1 flex-wrap">
+        {song.displayKey ? (
+          <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)]">
+            {song.displayKey}
+          </span>
+        ) : (
+          <span className="text-xs text-[var(--muted)]">-</span>
+        )}
+        {song.capo > 0 && (
+          <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]" title={`Capo casa ${song.capo}`}>
+            C{song.capo}
+          </span>
+        )}
+      </div>
+
+      {/* Col 3: Tempo / Compasso / Duration (desktop) */}
+      <div className="hidden md:flex items-center gap-1.5 font-mono text-[12px] text-[var(--muted)] tabular-nums">
+        <span>{song.tempo} BPM</span>
+        <span className="opacity-50">·</span>
+        <span>{song.timeSignature}</span>
+        {song.duration ? (
+          <>
+            <span className="opacity-50">·</span>
+            <span>{formatDuration(song.duration)}</span>
+          </>
+        ) : null}
+      </div>
+
+      {/* Col 4: Rating + Col 5: Actions (paired on mobile, split into grid cols on md+) */}
+      <div className="flex items-center justify-between md:contents">
         <div className="flex items-center gap-0.5" role="group" aria-label={`Avaliação de ${song.title}`}>
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
               type="button"
               onClick={(e) => handleStar(e, star)}
-              className={`w-6 h-6 flex items-center justify-center text-sm transition-colors cursor-pointer ${
+              className={`w-5 h-5 flex items-center justify-center text-[13px] transition-colors cursor-pointer ${
                 star <= song.rating
-                  ? 'text-[var(--accent)]'
-                  : 'text-[var(--line)] hover:text-[var(--accent)]/60'
+                  ? 'text-[var(--warn)]'
+                  : 'text-[var(--line)] hover:text-[var(--warn)]/65'
               }`}
               title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
               aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
@@ -106,12 +141,12 @@ export function SongCard({ song, onRemove }: SongCardProps) {
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-end gap-0.5">
           {/* Favorite toggle */}
           <button
             type="button"
             onClick={handleFavorite}
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-base transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-[15px] transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
               song.favorite ? 'text-[var(--rec)]' : 'text-[var(--muted)] hover:text-[var(--rec)]'
             }`}
             title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
@@ -132,15 +167,15 @@ export function SongCard({ song, onRemove }: SongCardProps) {
               aria-expanded={menuOpen}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                <circle cx="3.2" cy="8" r="1.3" fill="currentColor" />
+                <circle cx="8" cy="3.2" r="1.3" fill="currentColor" />
                 <circle cx="8" cy="8" r="1.3" fill="currentColor" />
-                <circle cx="12.8" cy="8" r="1.3" fill="currentColor" />
+                <circle cx="8" cy="12.8" r="1.3" fill="currentColor" />
               </svg>
             </button>
 
             {menuOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+4px)] z-40 w-52 rounded-xl border border-[var(--line)] bg-[var(--surface)] py-1.5"
+                className="absolute right-0 top-[calc(100%+4px)] z-40 w-56 rounded-lg border border-[var(--line)] bg-[var(--surface)] py-1.5"
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 <div className="px-3 py-1 eyebrow">Adicionar ao setlist</div>
@@ -148,7 +183,7 @@ export function SongCard({ song, onRemove }: SongCardProps) {
                   <Link
                     href="/?tab=setlists"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-2 text-xs text-[var(--accent-ink)] hover:bg-[var(--surface2)]"
+                    className="block px-3 py-2 text-xs font-medium text-[var(--accent-ink)] hover:bg-[var(--nav-active-bg)]"
                   >
                     Criar primeiro setlist →
                   </Link>
@@ -176,7 +211,7 @@ export function SongCard({ song, onRemove }: SongCardProps) {
                   </div>
                 )}
 
-                <div className="my-1 border-t border-[var(--line)]" />
+                <div className="my-1 border-t border-[var(--line-subtle)]" />
 
                 <button
                   type="button"

@@ -1016,25 +1016,25 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {/* Edit raw ChordPro source modal with live split preview */}
       {showExport && (
         <div
-          className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4"
+          className="fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-3 sm:p-4"
           onClick={closeExportModal}
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
+            className="bg-[var(--surface)] border border-[var(--line)] rounded-lg w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 border-b border-[var(--line)] flex-shrink-0">
               <div>
                 <div className="eyebrow">ChordPro (.cho)</div>
-                <h3 className="font-display text-xl text-[var(--ink)]">Editar fonte da música</h3>
+                <h3 className="font-display text-lg text-[var(--ink)]">Editar fonte da música</h3>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* View mode switch */}
-                <div className="inline-flex rounded-full border border-[var(--line)] bg-[var(--surface2)]/80 p-0.5">
+                <div className="inline-flex rounded-[4px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
                   {(
                     [
                       { id: 'editor', label: 'Código' },
@@ -1046,10 +1046,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                       key={v.id}
                       type="button"
                       onClick={() => setChoView(v.id)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 font-display text-xs font-medium transition-colors cursor-pointer border-r border-[var(--line-subtle)] last:border-r-0 ${
                         choView === v.id
-                          ? 'bg-[var(--surface)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
-                          : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                          ? 'bg-[var(--nav-active-bg)] text-[var(--accent-ink)]'
+                          : 'text-[var(--muted)] hover:bg-[var(--surface2)] hover:text-[var(--ink)]'
                       }`}
                     >
                       {v.label}

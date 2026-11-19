@@ -32,10 +32,10 @@ export const PIANO_INTERVALS: Record<string, number[]> = {
   mmaj7: [0, 3, 7, 11],
 };
 
-// Theme-aware studio console section tints (readable in both dark and light mode)
+// Theme-aware Google Cloud Console section accents (readable in both light and dark mode)
 export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string }> = {
   intro: {
-    bg: 'color-mix(in srgb, var(--flat) 7%, var(--surface))',
+    bg: 'var(--surface)',
     bd: 'var(--flat)',
     lb: 'var(--flat)',
   },
@@ -45,32 +45,32 @@ export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string
     lb: 'var(--muted)',
   },
   'pre-chorus': {
-    bg: 'color-mix(in srgb, var(--accent) 9%, var(--surface))',
-    bd: 'var(--accent)',
-    lb: 'var(--accent-ink)',
+    bg: 'color-mix(in srgb, var(--warn) 6%, var(--surface))',
+    bd: 'var(--warn)',
+    lb: 'var(--warn)',
   },
   chorus: {
-    bg: 'color-mix(in srgb, var(--sharp) 9%, var(--surface))',
+    bg: 'color-mix(in srgb, var(--sharp) 6%, var(--surface))',
     bd: 'var(--sharp)',
     lb: 'var(--sharp)',
   },
   bridge: {
-    bg: 'color-mix(in srgb, var(--tune) 9%, var(--surface))',
+    bg: 'color-mix(in srgb, var(--tune) 6%, var(--surface))',
     bd: 'var(--tune)',
     lb: 'var(--tune)',
   },
   outro: {
-    bg: 'color-mix(in srgb, var(--flat) 7%, var(--surface))',
+    bg: 'var(--surface)',
     bd: 'var(--flat)',
     lb: 'var(--flat)',
   },
   solo: {
-    bg: 'color-mix(in srgb, var(--accent) 11%, var(--surface))',
-    bd: 'var(--accent-ink)',
+    bg: 'color-mix(in srgb, var(--accent) 6%, var(--surface))',
+    bd: 'var(--accent)',
     lb: 'var(--accent-ink)',
   },
   interlude: {
-    bg: 'color-mix(in srgb, var(--tune) 7%, var(--surface))',
+    bg: 'color-mix(in srgb, var(--tune) 5%, var(--surface))',
     bd: 'var(--tune)',
     lb: 'var(--tune)',
   },

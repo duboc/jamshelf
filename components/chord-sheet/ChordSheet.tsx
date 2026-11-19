@@ -384,7 +384,7 @@ export function ChordSheet({
       {leadInLeft > 0 && (
         <div className="sticky top-2 z-20 flex justify-center mb-3 pointer-events-none">
           <div
-            className="pointer-events-auto flex items-center gap-3 rounded-full border border-[var(--accent)] bg-[var(--surface)]/95 backdrop-blur-md px-4 py-2 text-xs"
+            className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--accent)] bg-[var(--surface)] px-4 py-2 text-xs"
             style={{ boxShadow: 'var(--shadow-md)' }}
           >
             <span className="font-mono font-bold text-[var(--accent-ink)] tabular-nums">
@@ -417,7 +417,7 @@ export function ChordSheet({
       {/* Subtle manual-scroll yield indicator */}
       {userPausedNotice && isAutoScrolling && leadInLeft === 0 && (
         <div className="sticky top-2 z-20 flex justify-center mb-2 pointer-events-none">
-          <span className="studio-chip border border-[var(--line)] bg-[var(--surface)]/90 text-[var(--muted)]">
+          <span className="studio-chip border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]">
             Rolagem manual detectada · retomando daqui…
           </span>
         </div>
@@ -425,7 +425,7 @@ export function ChordSheet({
 
       <div
         className={`mx-auto ${
-          isSingerMode ? 'max-w-2xl font-sans' : 'max-w-3xl font-mono'
+          isSingerMode ? 'max-w-2xl font-display' : 'max-w-3xl font-mono'
         }`}
       >
         {song.sections.map((section, i) => (
@@ -457,7 +457,7 @@ export function ChordSheet({
 
         {/* Add new section bar in visual edit mode */}
         {editMode && onAddSection && (
-          <div className="mt-4 mb-6 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)]/60 p-4 space-y-2.5">
+          <div className="mt-4 mb-6 rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-4 space-y-2.5">
             <div className="eyebrow">Adicionar nova seção</div>
             <div className="flex flex-wrap gap-1.5">
               {QUICK_SECTION_PRESETS.map((preset) => (

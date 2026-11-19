@@ -110,11 +110,11 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
         }
       />
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-5">
         {/* Header */}
-        <section className="flex flex-wrap items-end justify-between gap-4">
-          <div className="space-y-1 min-w-0 flex-1">
-            <div className="eyebrow">Setlist · toque no nome para renomear</div>
+        <section className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <div className="eyebrow">Setlist · clique no nome para renomear</div>
             <div className="flex items-baseline gap-3 flex-wrap">
               {editingName ? (
                 <input
@@ -126,11 +126,11 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                     if (e.key === 'Enter') commitRename();
                     if (e.key === 'Escape') setEditingName(false);
                   }}
-                  className="font-display text-3xl bg-transparent border-b-2 border-[var(--accent)] outline-none text-[var(--ink)] min-w-[200px]"
+                  className="font-display text-2xl bg-transparent border-b-2 border-[var(--accent)] outline-none text-[var(--ink)] min-w-[200px]"
                 />
               ) : (
                 <h1
-                  className="font-display text-3xl sm:text-4xl text-[var(--ink)] cursor-pointer hover:text-[var(--accent-ink)] transition-colors leading-tight"
+                  className="font-display text-2xl text-[var(--ink)] cursor-pointer hover:text-[var(--accent-ink)] transition-colors leading-tight"
                   title="Clique para renomear"
                   onClick={startRename}
                 >
@@ -153,14 +153,14 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                   ? 'Adicione uma música primeiro'
                   : 'Abrir visão de palco focada com deslize entre músicas'
               }
-              className="pill-btn pill-btn-rec px-4 py-2 text-xs"
+              className="pill-btn pill-btn-rec px-3.5 py-1.5 text-xs"
             >
               ▶ Modo Show
             </button>
             <button
               type="button"
               onClick={() => setShowAddSong((v) => !v)}
-              className="pill-btn pill-btn-primary px-4 py-2 text-xs"
+              className="pill-btn pill-btn-primary px-3.5 py-1.5 text-xs"
             >
               {showAddSong ? 'Fechar lista' : '+ Adicionar música'}
             </button>
@@ -169,7 +169,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
 
         {/* Add song picker */}
         {showAddSong && (
-          <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 space-y-3">
+          <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="eyebrow">Adicionar do repertório</span>
               <button
@@ -178,7 +178,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                   setShowAddSong(false);
                   setSearch('');
                 }}
-                className="text-xs text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+                className="text-xs font-display font-medium text-[var(--accent-ink)] hover:underline cursor-pointer"
               >
                 Concluir
               </button>
@@ -189,9 +189,9 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
               placeholder="Buscar música ou artista para incluir..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="studio-input w-full px-3.5 py-2 text-sm"
+              className="studio-input w-full px-3 py-1.5 text-sm"
             />
-            <div className="max-h-60 overflow-y-auto divide-y divide-[var(--line)] border-t border-[var(--line)]">
+            <div className="max-h-60 overflow-y-auto divide-y divide-[var(--line-subtle)] border-t border-[var(--line-subtle)]">
               {filtered.length === 0 ? (
                 <div className="text-center py-6 text-[var(--muted)] text-sm">
                   {notInSetlist.length === 0
@@ -207,10 +207,10 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                       addSongToSetlist(id, song.id);
                       setSearch('');
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-2 py-2.5 hover:bg-[var(--surface2)]/60 transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center justify-between gap-3 px-2 py-2.5 hover:bg-[var(--nav-active-bg)]/45 transition-colors text-left cursor-pointer"
                   >
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-[var(--ink)] truncate">{song.title}</div>
+                      <div className="text-sm font-display font-medium text-[var(--ink)] truncate">{song.title}</div>
                       <div className="text-xs text-[var(--muted)] truncate">
                         {song.artist || 'Artista não informado'}
                         {song.displayKey ? ` · ${song.displayKey}` : ''}
@@ -225,41 +225,44 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
         )}
 
         {/* Ordered song list */}
-        <section>
+        <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
           {setlistSongs.length === 0 ? (
-            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-6 py-14 text-center space-y-3">
+            <div className="px-6 py-14 text-center space-y-3">
               <p className="text-sm text-[var(--muted)]">
                 Nenhuma música neste setlist ainda. Toque em &ldquo;+ Adicionar música&rdquo; para montar a sequência.
               </p>
               <button
                 type="button"
                 onClick={() => setShowAddSong(true)}
-                className="pill-btn pill-btn-primary px-4 py-2 text-xs"
+                className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
               >
                 + Adicionar música
               </button>
             </div>
           ) : (
-            <div className="space-y-1">
-              <p className="font-mono text-[11px] text-[var(--muted)] pb-2">
-                Arraste pelo ícone ⠿ para mudar a ordem · toque em uma música para abrir no contexto do setlist.
-              </p>
-              <div className="border-t border-[var(--line)]">
+            <div>
+              <div className="px-4 py-2 bg-[var(--surface2)]/75 border-b border-[var(--line)] flex items-center justify-between gap-2 text-[12px] font-display font-medium text-[var(--muted)]">
+                <span>Ordem das faixas</span>
+                <span className="font-mono text-[11px] font-normal hidden sm:inline">
+                  Arraste pelo ícone ⠿ para reordenar
+                </span>
+              </div>
+              <div>
                 {setlistSongs.map((song, idx) => (
                   <div
                     key={song.id}
                     data-display-idx={idx}
-                    className={`group flex items-center gap-3 py-3 px-2 sm:px-3 border-b border-[var(--line)] transition-colors ${
+                    className={`group flex items-center gap-3 py-2.5 px-4 border-b border-[var(--line-subtle)] last:border-b-0 transition-colors ${
                       drag !== null && drag.to === idx
-                        ? 'bg-[var(--surface2)] ring-1 ring-[var(--accent)] rounded-xl'
-                        : 'hover:bg-[var(--surface2)]/45'
+                        ? 'bg-[var(--nav-active-bg)] ring-1 ring-[var(--accent)]'
+                        : 'hover:bg-[var(--nav-active-bg)]/40'
                     }`}
                   >
                     {/* Drag handle + order index */}
                     <div
                       {...getHandleProps(idx)}
                       title="Arrastar para reordenar"
-                      className="flex items-center gap-2 text-[var(--muted)] select-none touch-none cursor-grab active:cursor-grabbing py-2 px-1 -ml-1 flex-shrink-0"
+                      className="flex items-center gap-2 text-[var(--muted)] select-none touch-none cursor-grab active:cursor-grabbing py-1.5 px-1 -ml-1 flex-shrink-0"
                     >
                       <span className="text-sm leading-none opacity-70">⠿</span>
                       <span className="font-mono text-xs w-5 text-right tabular-nums">
@@ -268,13 +271,15 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                     </div>
 
                     <Link href={`/song/${song.id}?setlist=${id}`} className="flex-1 min-w-0">
-                      <div className="font-display text-[19px] leading-snug text-[var(--ink)] group-hover:underline underline-offset-4 truncate">
+                      <div className="font-display text-[14.5px] font-medium leading-snug text-[var(--accent-ink)] group-hover:underline underline-offset-2 truncate">
                         {song.title}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-[var(--muted)]">
                         <span className="truncate">{song.artist || 'Artista não informado'}</span>
                         {song.displayKey && (
-                          <span className="studio-chip text-[var(--accent-ink)]">{song.displayKey}</span>
+                          <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)]">
+                            {song.displayKey}
+                          </span>
                         )}
                         <span className="studio-chip text-[var(--muted)]">{song.tempo} BPM</span>
                       </div>

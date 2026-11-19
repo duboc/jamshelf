@@ -59,7 +59,7 @@ export function SetlistDrawer({
       />
       <aside
         aria-label={`Setlist ${setlist.name}`}
-        className="fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col bg-[var(--surface)]/98 backdrop-blur-md border-r border-[var(--line)]"
+        className="fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col bg-[var(--surface)] border-r border-[var(--line)]"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
@@ -94,12 +94,12 @@ export function SetlistDrawer({
                 key={song.id}
                 data-display-idx={displayIdx}
                 data-current={isCurrent || undefined}
-                className={`flex items-center gap-1 rounded-xl border transition-colors ${
+                className={`flex items-center gap-1 rounded-md border transition-colors ${
                   isDragged
                     ? 'border-[var(--accent)] bg-[var(--surface2)]'
                     : isCurrent
-                    ? 'border-[var(--accent)]/60 bg-[var(--accent-dim)]'
-                    : 'border-transparent hover:bg-[var(--surface2)]/60'
+                    ? 'border-[var(--accent)]/50 bg-[var(--nav-active-bg)]'
+                    : 'border-transparent hover:bg-[var(--surface2)]/70'
                 }`}
               >
                 <span

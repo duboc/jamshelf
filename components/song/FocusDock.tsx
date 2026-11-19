@@ -33,7 +33,7 @@ export function FocusDock({
   return (
     <>
       {/* Minimal top bar so singer/musician always knows song title & can exit in one tap */}
-      <div className="flex-shrink-0 border-b border-[var(--line)]/70 bg-[var(--bg)]/90 backdrop-blur-md px-4 sm:px-6 py-2">
+      <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)] px-4 sm:px-6 py-2">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             {hasSetlist && (
@@ -48,7 +48,7 @@ export function FocusDock({
             )}
             <span className="font-display text-lg text-[var(--ink)] truncate">{songTitle}</span>
             {displayedKey && !chordsHidden && (
-              <span className="studio-chip text-[var(--accent-ink)] flex-shrink-0">
+              <span className="studio-chip bg-[var(--nav-active-bg)] text-[var(--accent-ink)] flex-shrink-0">
                 {displayedKey}
               </span>
             )}
@@ -71,7 +71,7 @@ export function FocusDock({
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div
-          className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center rounded-full border border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-md px-2.5 py-1.5"
+          className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           {hasSetlist && !isFollowing && (

@@ -81,13 +81,13 @@ export function VersionHistoryModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+        className="bg-[var(--surface)] border border-[var(--line)] rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >

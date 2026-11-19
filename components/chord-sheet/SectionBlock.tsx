@@ -67,7 +67,7 @@ export function SectionBlock({
         id={`section-${sectionIdx}`}
         data-section-idx={sectionIdx}
         onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-        className={`scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-xl border border-[var(--line)] border-l-[3px] px-4 py-2.5 ${
+        className={`scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-lg border border-[var(--line)] border-l-[3px] px-4 py-2.5 ${
           onCalibrationTap ? 'cursor-pointer hover:border-[var(--accent)]' : ''
         } ${isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''}`}
         style={{
@@ -98,7 +98,7 @@ export function SectionBlock({
       id={`section-${sectionIdx}`}
       data-section-idx={sectionIdx}
       onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-      className={`scroll-mt-4 relative rounded-2xl border border-[var(--line)] border-l-4 ${
+      className={`scroll-mt-4 relative rounded-lg border border-[var(--line)] border-l-[3px] ${
         isSingerMode ? 'px-5 sm:px-7 py-5 mb-4' : 'p-4 sm:p-5 mb-3.5'
       } ${onCalibrationTap ? 'cursor-pointer hover:border-[var(--accent)]' : ''} ${
         isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''
@@ -161,13 +161,15 @@ export function SectionBlock({
       ) : (
         <div className="flex items-center justify-between gap-2 mb-2.5">
           <div
-            className="font-mono text-[11px] font-semibold uppercase tracking-[0.09em]"
+            className="font-display text-[11.5px] font-semibold uppercase tracking-[0.06em]"
             style={{ color: colors.lb }}
           >
             {section.label}
           </div>
           {calibrationMarkSec !== null && (
-            <span className="studio-chip text-[var(--tune)]">{formatMark(calibrationMarkSec)}</span>
+            <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)]">
+              {formatMark(calibrationMarkSec)}
+            </span>
           )}
         </div>
       )}

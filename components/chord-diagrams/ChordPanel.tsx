@@ -21,7 +21,7 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
   return (
     <aside
       aria-label={`Diagramas do acorde ${chord}`}
-      className="fixed right-0 top-0 bottom-0 w-72 max-w-[85vw] bg-[var(--surface)]/95 backdrop-blur-md border-l border-[var(--line)] z-50 flex flex-col"
+      className="fixed right-0 top-0 bottom-0 w-72 max-w-[85vw] bg-[var(--surface)] border-l border-[var(--line)] z-50 flex flex-col"
       style={{ boxShadow: 'var(--shadow-md)' }}
     >
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)]">
