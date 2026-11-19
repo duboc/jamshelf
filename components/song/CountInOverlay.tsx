@@ -63,6 +63,7 @@ export function CountInOverlay({
 
   return (
     <div
+      data-motion-scheme="standard"
       onClick={onCancel}
       className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4"
     >
@@ -85,14 +86,25 @@ export function CountInOverlay({
         </div>
 
         <div
-          key={currentBeat}
           aria-live="assertive"
           aria-atomic="true"
-          className={`gm3-beat-pop font-expressive text-[104px] leading-none select-none ${
-            currentBeat === 1 ? 'text-[var(--accent)]' : 'text-[var(--ink)]'
-          }`}
+          className="relative flex items-center justify-center h-[112px]"
         >
-          {currentBeat}
+          {currentBeat === 1 && (
+            <span
+              key={`halo-${currentBeat}`}
+              aria-hidden="true"
+              className="gm3-downbeat-ring pointer-events-none absolute w-28 h-28 rounded-full border-2 border-[var(--accent)]"
+            />
+          )}
+          <span
+            key={currentBeat}
+            className={`inline-block gm3-beat-pop font-expressive text-[104px] leading-none select-none ${
+              currentBeat === 1 ? 'text-[var(--accent)]' : 'text-[var(--ink)]'
+            }`}
+          >
+            {currentBeat}
+          </span>
         </div>
 
         <div className="flex items-center justify-center gap-3" aria-hidden="true">

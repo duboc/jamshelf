@@ -60,6 +60,7 @@ function SetlistCardMenu({
         onClick={() => setOpen((v) => !v)}
         aria-label={`Mais ações para ${setlistName}`}
         aria-expanded={open}
+        aria-haspopup="dialog"
         className="gm3-icon-btn w-10 h-10 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
       >
         <MoreVertIcon size={18} />
@@ -68,7 +69,7 @@ function SetlistCardMenu({
         <div
           role="dialog"
           aria-label={`Menu do setlist ${setlistName}`}
-          className="gm3-card gm3-popover-enter absolute right-0 top-[calc(100%+6px)] z-30 w-44 rounded-[20px] bg-[var(--surface)] p-1.5"
+          className="gm3-card gm3-popover-top-right absolute right-0 top-[calc(100%+6px)] z-30 w-44 rounded-[20px] bg-[var(--surface)] p-1.5"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           <button
@@ -77,7 +78,7 @@ function SetlistCardMenu({
               setOpen(false);
               onDelete();
             }}
-            className="w-full text-left px-3 py-2 rounded-xl text-[13px] font-medium text-[var(--rec)] hover:bg-[var(--rec-dim)]/50 transition-colors cursor-pointer"
+            className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] font-medium text-[var(--rec)] hover:bg-[var(--rec-dim)]/50 cursor-pointer"
           >
             Excluir setlist
           </button>
@@ -247,8 +248,7 @@ function HomeContent() {
   return (
     <main
       id="main-content"
-      key={tab}
-      className="gm3-page-enter flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-6"
+      className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-6"
     >
       {/* Expressive GM3 Page Header directly on the #F0F4F9 canvas */}
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -316,10 +316,10 @@ function HomeContent() {
 
       {/* Songs & Favorites */}
       {tab !== 'setlists' && (
-        <section className="space-y-4">
+        <section key={tab} className="gm3-page-enter space-y-4">
           {/* Floating GM3 pill search + filters + Cards/List toggle */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-            <div className="relative w-full lg:flex-1 flex items-center h-12 px-4 rounded-full bg-[var(--surface)] focus-within:ring-2 focus-within:ring-[var(--secondary)]/50 transition-shadow">
+            <div className="gm3-search-pill relative w-full lg:flex-1 flex items-center h-12 px-4 bg-[var(--surface)] focus-within:ring-2 focus-within:ring-[var(--secondary)]/50">
               <svg
                 width="18"
                 height="18"
@@ -351,7 +351,7 @@ function HomeContent() {
                   type="button"
                   onClick={() => setSearch('')}
                   aria-label="Limpar busca"
-                  className="absolute right-2.5 w-8 h-8 rounded-full text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex items-center justify-center cursor-pointer"
+                  className="gm3-icon-btn absolute right-2.5 w-8 h-8 text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex items-center justify-center cursor-pointer"
                 >
                   <CloseIcon size={16} />
                 </button>
@@ -364,8 +364,9 @@ function HomeContent() {
                   <select
                     aria-label="Filtrar por tom"
                     value={keyFilter}
+                    data-active={keyFilter ? 'true' : undefined}
                     onChange={(e) => setKeyFilter(e.target.value)}
-                    className="appearance-none h-10 pl-4 pr-9 rounded-full bg-[var(--surface)] hover:bg-[var(--surface-high)] text-sm font-medium text-[var(--ink)] cursor-pointer transition-colors"
+                    className="gm3-select appearance-none h-10 pl-4 pr-9 text-sm font-medium cursor-pointer"
                   >
                     <option value="">Todos os tons</option>
                     {availableKeys.map((k) => (
@@ -374,7 +375,12 @@ function HomeContent() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDownIcon size={14} className="pointer-events-none absolute right-3 text-[var(--muted)]" />
+                  <ChevronDownIcon
+                    size={14}
+                    className={`pointer-events-none absolute right-3 ${
+                      keyFilter ? 'text-[var(--on-secondary-container)]' : 'text-[var(--muted)]'
+                    }`}
+                  />
                 </div>
               )}
 
@@ -382,30 +388,34 @@ function HomeContent() {
                 <select
                   aria-label="Ordenar músicas"
                   value={sortBy}
+                  data-active={sortBy !== 'title' ? 'true' : undefined}
                   onChange={(e) => setSortBy(e.target.value as SortMode)}
-                  className="appearance-none h-10 pl-4 pr-9 rounded-full bg-[var(--surface)] hover:bg-[var(--surface-high)] text-sm font-medium text-[var(--ink)] cursor-pointer transition-colors"
+                  className="gm3-select appearance-none h-10 pl-4 pr-9 text-sm font-medium cursor-pointer"
                 >
                   <option value="title">Nome (A-Z)</option>
                   <option value="rating">Avaliação</option>
                   <option value="favorites">Favoritas</option>
                   <option value="bpm">Andamento (BPM)</option>
                 </select>
-                <ChevronDownIcon size={14} className="pointer-events-none absolute right-3 text-[var(--muted)]" />
+                <ChevronDownIcon
+                  size={14}
+                  className={`pointer-events-none absolute right-3 ${
+                    sortBy !== 'title' ? 'text-[var(--on-secondary-container)]' : 'text-[var(--muted)]'
+                  }`}
+                />
               </div>
 
-              {/* Cards | Lista segmented pill toggle */}
+              {/* Cards | Lista M3 Expressive Connected Button Group */}
               <div
                 role="group"
                 aria-label="Modo de visualização"
-                className="gm3-segmented inline-flex p-1 bg-[var(--surface-high)] h-10 items-center gap-0.5"
+                className="gm3-connected-group"
               >
                 <button
                   type="button"
                   onClick={() => setViewMode('cards')}
                   aria-pressed={viewMode === 'cards'}
-                  className={`gm3-segment px-3.5 h-8 text-xs font-medium cursor-pointer ${
-                    viewMode === 'cards' ? '' : 'text-[var(--muted)]'
-                  }`}
+                  className="gm3-connected-btn px-4 h-10 text-xs font-medium cursor-pointer"
                 >
                   Cards
                 </button>
@@ -413,9 +423,7 @@ function HomeContent() {
                   type="button"
                   onClick={() => setViewMode('list')}
                   aria-pressed={viewMode === 'list'}
-                  className={`gm3-segment px-3.5 h-8 text-xs font-medium cursor-pointer ${
-                    viewMode === 'list' ? '' : 'text-[var(--muted)]'
-                  }`}
+                  className="gm3-connected-btn px-4 h-10 text-xs font-medium cursor-pointer"
                 >
                   Lista
                 </button>
@@ -426,7 +434,7 @@ function HomeContent() {
           {!songsLoaded && songs.length === 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5" aria-busy="true">
               {Array.from({ length: 8 }, (_, idx) => (
-                <div key={idx} className="h-32 rounded-[20px] bg-[var(--surface)] animate-pulse" />
+                <div key={idx} className="gm3-skeleton h-32 rounded-[20px]" />
               ))}
             </div>
           ) : filteredSongs.length === 0 ? (
@@ -471,13 +479,13 @@ function HomeContent() {
               )}
             </div>
           ) : viewMode === 'cards' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
+            <div key="cards" className="gm3-view-enter grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
               {filteredSongs.map((song) => (
                 <SongCard key={song.id} song={song} onRemove={removeEntry} variant="card" />
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-[2px]">
+            <div key="list" className="gm3-view-enter flex flex-col gap-[2px]">
               {filteredSongs.map((song, idx) => {
                 const position =
                   filteredSongs.length === 1
@@ -504,7 +512,7 @@ function HomeContent() {
 
       {/* Setlists tonal cards */}
       {tab === 'setlists' && (
-        <section className="space-y-4">
+        <section key="setlists" className="gm3-page-enter space-y-4">
           {showNewSetlist && (
             <div className="gm3-card gm3-panel-enter rounded-[24px] bg-[var(--surface)] p-5 flex flex-wrap gap-3 items-center">
               <input
@@ -547,7 +555,7 @@ function HomeContent() {
           {!setlistsLoaded && setlists.length === 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" aria-busy="true">
               {Array.from({ length: 3 }, (_, idx) => (
-                <div key={idx} className="h-36 rounded-[20px] bg-[var(--surface)] animate-pulse" />
+                <div key={idx} className="gm3-skeleton h-36 rounded-[20px]" />
               ))}
             </div>
           ) : setlists.length === 0 && !showNewSetlist ? (

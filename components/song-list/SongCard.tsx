@@ -80,6 +80,7 @@ export function SongCard({
         title="Mais ações"
         aria-label={`Mais ações para ${song.title}`}
         aria-expanded={menuOpen}
+        aria-haspopup="dialog"
       >
         <MoreVertIcon size={18} />
       </button>
@@ -88,7 +89,7 @@ export function SongCard({
         <div
           role="dialog"
           aria-label={`Ações de ${song.title}`}
-          className="gm3-card gm3-popover-enter absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2"
+          className="gm3-card gm3-popover-top-right absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           {/* Rating inside menu (accessible 36px stars with WCAG AA contrast) */}
@@ -100,7 +101,7 @@ export function SongCard({
                   key={star}
                   type="button"
                   onClick={(e) => handleStar(e, star)}
-                  className={`gm3-icon-btn gm3-star-btn w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
+                  className={`gm3-icon-btn gm3-star-btn w-9 h-9 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
                     star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--line)] hover:text-[var(--warn-icon)]'
                   }`}
                   title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
@@ -120,12 +121,12 @@ export function SongCard({
             <Link
               href="/?tab=setlists"
               onClick={() => setMenuOpen(false)}
-              className="block px-4 py-2 text-xs font-medium text-[var(--accent-ink)] hover:bg-[var(--surface-high)]"
+              className="gm3-menu-item block mx-1.5 px-3 py-2 text-xs font-medium text-[var(--accent-ink)] hover:bg-[var(--surface-high)]"
             >
               Criar primeiro setlist →
             </Link>
           ) : (
-            <div className="max-h-44 overflow-y-auto px-1.5">
+            <div className="max-h-44 overflow-y-auto px-1.5 py-0.5">
               {setlists.map((sl) => {
                 const already = sl.songIds.includes(song.id);
                 return (
@@ -134,7 +135,7 @@ export function SongCard({
                     type="button"
                     disabled={already}
                     onClick={() => !already && handleAddToSetlist(sl.id, sl.name)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-[13px] flex items-center justify-between gap-2 transition-colors ${
+                    className={`gm3-menu-item w-full text-left px-3 py-2 text-[13px] flex items-center justify-between gap-2 ${
                       already
                         ? 'text-[var(--muted)] opacity-60 cursor-default'
                         : 'text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer'
@@ -157,7 +158,7 @@ export function SongCard({
                 setMenuOpen(false);
                 setConfirmDelete(true);
               }}
-              className="w-full text-left px-3 py-2 rounded-xl text-[13px] font-medium text-[var(--rec)] hover:bg-[var(--rec-dim)]/50 transition-colors cursor-pointer"
+              className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] font-medium text-[var(--rec)] hover:bg-[var(--rec-dim)]/50 cursor-pointer"
             >
               Excluir música
             </button>
@@ -249,7 +250,7 @@ export function SongCard({
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
-                className="studio-chip bg-[var(--warn-dim)] text-[var(--warn-ink)] cursor-pointer hover:opacity-90"
+                className="pill-btn h-7 px-2.5 text-xs bg-[var(--warn-dim)] text-[var(--warn-ink)]"
                 title={`Avaliação: ${song.rating} de 5 estrelas. Clique para ajustar`}
                 aria-label={`Avaliação ${song.rating} de 5 estrelas para ${song.title}`}
               >
@@ -314,7 +315,7 @@ export function SongCard({
 
       <div className="flex items-center gap-1.5">
         {song.displayKey ? (
-          <span className="min-w-[40px] h-8 px-2.5 rounded-xl bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-base leading-none inline-flex items-center justify-center">
+          <span className="gm3-key-badge min-w-[40px] h-8 px-2.5 bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-base leading-none inline-flex items-center justify-center">
             {song.displayKey}
           </span>
         ) : (
@@ -345,7 +346,7 @@ export function SongCard({
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              className="studio-chip bg-[var(--warn-dim)] text-[var(--warn-ink)] cursor-pointer"
+              className="pill-btn h-7 px-2.5 text-xs bg-[var(--warn-dim)] text-[var(--warn-ink)]"
               aria-label={`Avaliação ${song.rating} de 5 estrelas para ${song.title}`}
             >
               <StarIcon size={13} filled className="text-[var(--warn-icon)]" />

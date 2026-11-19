@@ -123,6 +123,7 @@ function DeviceSettingsPopover({
     getDeviceNameServerSnapshot
   );
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -132,7 +133,10 @@ function DeviceSettingsPopover({
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('mousedown', onDocClick);
     document.addEventListener('keydown', onKey);
@@ -156,6 +160,7 @@ function DeviceSettingsPopover({
   return (
     <div ref={wrapRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
@@ -191,10 +196,10 @@ function DeviceSettingsPopover({
         <div
           role="dialog"
           aria-label="Ajustes deste aparelho"
-          className={`gm3-card gm3-popover-enter absolute z-50 w-[min(340px,calc(100vw-24px))] max-h-[calc(100vh-110px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-5 flex flex-col gap-4 ${
+          className={`gm3-card absolute z-50 w-[min(340px,calc(100vw-24px))] max-h-[calc(100vh-110px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-5 flex flex-col gap-4 ${
             align === 'rail'
-              ? 'left-0 bottom-[calc(100%+10px)]'
-              : 'right-0 top-[calc(100%+10px)]'
+              ? 'gm3-popover-bottom-left left-0 bottom-[calc(100%+10px)]'
+              : 'gm3-popover-top-right right-0 top-[calc(100%+10px)]'
           }`}
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
@@ -206,7 +211,11 @@ function DeviceSettingsPopover({
           {/* Tema */}
           <div className="flex flex-col gap-2">
             <span className="field-label">Tema</span>
-            <div className="gm3-segmented grid grid-cols-3 gap-1 p-1 bg-[var(--bg)]">
+            <div
+              role="group"
+              aria-label="Tema de cores"
+              className="gm3-connected-group gm3-connected-group-subtle w-full"
+            >
               {(
                 [
                   { id: 'system', label: 'Sistema' },
@@ -219,9 +228,7 @@ function DeviceSettingsPopover({
                   type="button"
                   onClick={() => setTheme(opt.id)}
                   aria-pressed={theme === opt.id}
-                  className={`gm3-segment text-xs font-medium py-1.5 cursor-pointer ${
-                    theme === opt.id ? '' : 'text-[var(--muted)]'
-                  }`}
+                  className="gm3-connected-btn flex-1 min-h-[36px] text-xs font-medium py-2 cursor-pointer"
                 >
                   {opt.label}
                 </button>
@@ -232,7 +239,11 @@ function DeviceSettingsPopover({
           {/* Modo de leitura padrão */}
           <div className="flex flex-col gap-2">
             <span className="field-label">Leitura na música</span>
-            <div className="gm3-segmented grid grid-cols-3 gap-1 p-1 bg-[var(--bg)]">
+            <div
+              role="group"
+              aria-label="Modo de leitura padrão"
+              className="gm3-connected-group gm3-connected-group-subtle w-full"
+            >
               {(
                 [
                   { id: 'both', label: 'Cifra' },
@@ -245,9 +256,7 @@ function DeviceSettingsPopover({
                   type="button"
                   onClick={() => setDisplayMode(opt.id)}
                   aria-pressed={displayMode === opt.id}
-                  className={`gm3-segment text-xs font-medium py-1.5 cursor-pointer ${
-                    displayMode === opt.id ? '' : 'text-[var(--muted)]'
-                  }`}
+                  className="gm3-connected-btn flex-1 min-h-[36px] text-xs font-medium py-2 cursor-pointer"
                 >
                   {opt.label}
                 </button>
@@ -258,7 +267,7 @@ function DeviceSettingsPopover({
           {/* Tamanho da fonte */}
           <div className="flex items-center justify-between gap-2">
             <span className="field-label">Tamanho da letra</span>
-            <div className="flex items-center gap-1.5">
+            <div className="gm3-btn-group">
               <button
                 type="button"
                 onClick={() => setFontSize(fontSize - 10)}
@@ -287,15 +296,19 @@ function DeviceSettingsPopover({
               <div className="text-[13px] font-medium text-[var(--ink)]">Atraso do auto-scroll</div>
               <div className="text-xs text-[var(--muted)]">Tempo para segurar o instrumento</div>
             </div>
-            <div className="gm3-segmented inline-flex gap-1 p-1 bg-[var(--bg)]">
+            <div
+              role="group"
+              aria-label="Atraso do auto-scroll"
+              className="gm3-connected-group gm3-connected-group-subtle"
+            >
               {([0, 3, 5] as ScrollLeadIn[]).map((sec) => (
                 <button
                   key={sec}
                   type="button"
                   onClick={() => setScrollLeadInSec(sec)}
                   aria-pressed={scrollLeadInSec === sec}
-                  className={`gm3-segment font-mono text-xs px-2.5 py-1 cursor-pointer ${
-                    scrollLeadInSec === sec ? 'font-semibold' : 'text-[var(--muted)]'
+                  className={`gm3-connected-btn min-w-[40px] min-h-[36px] font-mono text-xs px-2.5 py-1.5 cursor-pointer ${
+                    scrollLeadInSec === sec ? 'font-semibold' : ''
                   }`}
                 >
                   {sec === 0 ? '0s' : `${sec}s`}
@@ -604,7 +617,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!hideChrome && (
         <aside
           aria-label="Navegação principal"
-          className={`hidden md:flex flex-col justify-between flex-shrink-0 sticky top-0 h-screen z-40 bg-[var(--bg)] py-5 transition-[width] duration-[280ms] ease-[cubic-bezier(0.05,0.7,0.1,1)] select-none ${
+          className={`gm3-rail hidden md:flex flex-col justify-between flex-shrink-0 sticky top-0 h-screen z-40 bg-[var(--bg)] py-5 select-none ${
             isExpandedRail ? 'w-[216px] px-4' : 'w-[88px] px-2 items-center'
           }`}
         >
@@ -614,9 +627,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setRailOverride(!railExpanded)}
+                aria-expanded={isExpandedRail}
                 aria-label={isExpandedRail ? 'Recolher barra lateral' : 'Expandir barra lateral'}
                 title={isExpandedRail ? 'Recolher menu' : 'Expandir menu'}
-                className="gm3-icon-btn w-11 h-11 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                className="gm3-icon-btn gm3-rail-toggle w-11 h-11 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -682,7 +696,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     key={item.key}
                     href={item.href}
                     aria-current={item.active ? 'page' : undefined}
-                    className="group flex flex-col items-center gap-1 w-full"
+                    className="group flex flex-col items-center gap-1 w-full rounded-2xl"
                   >
                     <span
                       data-active={item.active || undefined}
@@ -710,7 +724,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {isExpandedRail && setlists.length > 0 && (
               <div className="gm3-rail-label space-y-1.5 pt-2">
                 <div className="px-4 text-xs font-medium text-[var(--muted)]">Setlists</div>
-                <nav aria-label="Setlists fixados" className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
+                <nav aria-label="Setlists fixados" className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar py-1.5">
                   {setlists.slice(0, 6).map((sl) => {
                     const isActive = activeSetlistId === sl.id;
                     const validCount = sl.songIds.filter((sid) => validSongIds.has(sid)).length;
@@ -871,7 +885,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               href="/add-song"
               aria-label="Nova música"
-              className="md:hidden gm3-fab fixed right-4 bottom-20 z-30 h-14 px-5 text-sm shadow-md"
+              className="md:hidden gm3-fab gm3-dialog-enter fixed right-4 bottom-20 z-30 h-14 px-5 text-sm shadow-md"
             >
               <PlusIcon size={20} />
               <span>Nova música</span>
@@ -889,7 +903,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.key}
                   href={item.href}
                   aria-current={item.active ? 'page' : undefined}
-                  className="group flex flex-col items-center justify-center gap-1"
+                  className="group flex flex-col items-center justify-center gap-1 rounded-2xl"
                 >
                   <span
                     data-active={item.active || undefined}

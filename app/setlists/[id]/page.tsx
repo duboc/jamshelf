@@ -86,10 +86,10 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
         <div className="flex-1 flex flex-col">
           <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Setlists', href: '/?tab=setlists' }, { label: 'Carregando...' }]} />
           <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4" aria-busy="true">
-            <div className="h-10 w-64 rounded-2xl bg-[var(--surface)] animate-pulse" />
+            <div className="gm3-skeleton h-10 w-64 rounded-2xl" />
             <div className="space-y-2">
               {Array.from({ length: 5 }, (_, idx) => (
-                <div key={idx} className="h-20 rounded-[16px] bg-[var(--surface)] animate-pulse" />
+                <div key={idx} className="gm3-skeleton h-20 rounded-[16px]" />
               ))}
             </div>
           </main>
@@ -252,17 +252,12 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
             </button>
             <button
               type="button"
+              aria-expanded={showAddSong}
               onClick={() => setShowAddSong((v) => !v)}
               className="pill-btn pill-btn-tonal h-11 px-5 text-sm"
             >
-              {showAddSong ? (
-                'Fechar lista'
-              ) : (
-                <>
-                  <PlusIcon size={16} />
-                  Adicionar música
-                </>
-              )}
+              <PlusIcon size={16} className="gm3-plus-toggle" />
+              {showAddSong ? 'Fechar lista' : 'Adicionar música'}
             </button>
           </div>
         </section>
@@ -340,7 +335,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                       setLiveAnnouncement(`${song.title} adicionada ao setlist.`);
                       setSearch('');
                     }}
-                    className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl hover:bg-[var(--surface-high)] transition-colors text-left cursor-pointer"
+                    className="gm3-menu-item w-full flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-[var(--surface-high)] text-left cursor-pointer"
                   >
                     <div className="min-w-0">
                       <div className="text-[16px] font-display font-bold text-[var(--ink)] truncate">{song.title}</div>
@@ -425,7 +420,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                         <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-[var(--muted)]">
                           <span className="truncate">{song.artist || 'Artista não informado'}</span>
                           {song.displayKey && (
-                            <span className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold">
+                            <span className="gm3-key-badge inline-flex items-center px-2.5 py-0.5 text-xs bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold leading-snug">
                               {song.displayKey}
                             </span>
                           )}

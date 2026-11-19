@@ -125,6 +125,8 @@ export function SongHeader({
   const [durationHint, setDurationHint] = useState('');
   const moreRef = useRef<HTMLDivElement>(null);
   const metaRef = useRef<HTMLDivElement>(null);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const metaTriggerRef = useRef<HTMLButtonElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const goLiveDialogRef = useRef<HTMLDivElement>(null);
 
@@ -182,8 +184,14 @@ export function SongHeader({
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMoreOpen(false);
-        setMetaOpen(false);
+        if (moreOpen) {
+          setMoreOpen(false);
+          moreTriggerRef.current?.focus();
+        }
+        if (metaOpen) {
+          setMetaOpen(false);
+          metaTriggerRef.current?.focus();
+        }
       }
     };
     document.addEventListener('mousedown', onDocClick);
@@ -210,7 +218,7 @@ export function SongHeader({
         {/* Col 1, Row 1 (+ Row 2 on desktop): Setlist stepper (sm+) + Title + Artist + calm metadata */}
         <div className="col-start-1 row-start-1 min-w-0 flex items-center gap-3">
           {activeSetlist && (
-            <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+            <div className="hidden sm:inline-flex gm3-btn-group flex-shrink-0">
               <button
                 type="button"
                 onClick={() => prevSongId && onNavigateSong(prevSongId)}
@@ -290,7 +298,7 @@ export function SongHeader({
                       setEditingIdentity(true);
                       requestAnimationFrame(() => titleInputRef.current?.focus());
                     }}
-                    className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                    className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
                     title="Editar título e artista"
                     aria-label="Editar título e artista"
                   >
@@ -335,21 +343,23 @@ export function SongHeader({
 
           <div ref={moreRef} className="relative">
             <button
+              ref={moreTriggerRef}
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
               aria-expanded={moreOpen}
+              aria-haspopup="dialog"
               className="pill-btn px-2.5 sm:px-3 h-9 text-xs"
               title="Mais ações da música"
             >
               Mais
-              <ChevronDownIcon size={14} />
+              <ChevronDownIcon size={14} className="gm3-chevron" />
             </button>
 
             {moreOpen && (
               <div
                 role="dialog"
                 aria-label="Mais ações da música"
-                className="gm3-popover-enter absolute right-0 top-[calc(100%+8px)] z-50 w-[min(280px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] py-2"
+                className="gm3-popover-top-right absolute right-0 top-[calc(100%+8px)] z-50 w-[min(280px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] py-2"
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 {/* Rating */}
@@ -363,7 +373,7 @@ export function SongHeader({
                         aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
                         aria-pressed={song.rating === star}
                         onClick={() => onPatchMeta('rating', song.rating === star ? 0 : star)}
-                        className={`gm3-icon-btn gm3-star-btn w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
+                        className={`gm3-icon-btn gm3-star-btn w-9 h-9 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
                           star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--muted)]'
                         }`}
                       >
@@ -385,13 +395,13 @@ export function SongHeader({
                         setMoreOpen(false);
                         onGoToCreateSetlist();
                       }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-[var(--accent-ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                      className="gm3-menu-item w-full text-left px-3 py-2 text-xs font-medium text-[var(--accent-ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                     >
                       Criar primeiro setlist
                     </button>
                   </div>
                 ) : (
-                  <div className="max-h-36 overflow-y-auto px-1.5">
+                  <div className="max-h-36 overflow-y-auto px-1.5 py-1">
                     {setlists.map((sl) => {
                       const already = sl.songIds.includes(song.id);
                       return (
@@ -405,7 +415,7 @@ export function SongHeader({
                               setMoreOpen(false);
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-[13px] flex items-center justify-between gap-2 transition-colors ${
+                          className={`gm3-menu-item w-full text-left px-3 py-2 text-[13px] flex items-center justify-between gap-2 ${
                             already
                               ? 'text-[var(--muted)] opacity-65 cursor-default'
                               : 'text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer'
@@ -429,7 +439,7 @@ export function SongHeader({
                         setMoreOpen(false);
                         onToggleSpotifyPreview();
                       }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer transition-colors"
+                      className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                     >
                       {showSpotifyPreview ? 'Ocultar player do Spotify' : 'Ouvir prévia no Spotify'}
                     </button>
@@ -440,7 +450,7 @@ export function SongHeader({
                       setMoreOpen(false);
                       onEditNotes();
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer transition-colors"
+                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                   >
                     {song.notes ? 'Editar notas de palco' : 'Adicionar notas de palco'}
                   </button>
@@ -450,7 +460,7 @@ export function SongHeader({
                       setMoreOpen(false);
                       onOpenSpotifyPicker();
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer transition-colors"
+                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                   >
                     {song.spotifyTrackId ? 'Trocar vínculo no Spotify' : 'Buscar faixa no Spotify'}
                   </button>
@@ -460,7 +470,7 @@ export function SongHeader({
                       setMoreOpen(false);
                       onOpenEnhance();
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer transition-colors"
+                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                   >
                     Revisar letra e acordes com IA
                   </button>
@@ -470,7 +480,7 @@ export function SongHeader({
                       setMoreOpen(false);
                       onOpenHistory();
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer transition-colors"
+                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                   >
                     Histórico de versões
                   </button>
@@ -480,7 +490,7 @@ export function SongHeader({
                       setMoreOpen(false);
                       onOpenChordPro();
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer transition-colors"
+                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                   >
                     Editar fonte ChordPro (.cho)
                   </button>
@@ -517,6 +527,7 @@ export function SongHeader({
           {/* Compact metadata trigger -> opens popover cleanly outside scroll */}
           <div ref={metaRef} className="relative flex items-center gap-1.5 flex-wrap">
             <button
+              ref={metaTriggerRef}
               type="button"
               onClick={() => {
                 setBpmDraft(String(song.tempo));
@@ -526,7 +537,8 @@ export function SongHeader({
                 setMetaOpen((v) => !v);
               }}
               aria-expanded={metaOpen}
-              className="inline-flex items-center gap-1.5 min-h-[28px] cursor-pointer group rounded-full"
+              aria-haspopup="dialog"
+              className="pill-btn bg-transparent hover:bg-[var(--surface-high)] px-1.5 h-8 group"
               title="Ajustar capo, andamento (BPM), compasso e duração"
             >
               {displayedKey && (
@@ -539,7 +551,7 @@ export function SongHeader({
                   Capo {song.capo}
                 </span>
               )}
-              <span className="font-mono text-xs text-[var(--muted)] group-hover:text-[var(--ink)] transition-colors tabular-nums">
+              <span className="font-mono text-xs text-[var(--muted)] group-hover:text-[var(--ink)] tabular-nums">
                 {!song.tempoConfirmed ? '~' : ''}{song.tempo} BPM · {song.timeSignature}
                 {song.duration ? ` · ${formatDuration(song.duration)}` : ''}
               </span>
@@ -552,7 +564,7 @@ export function SongHeader({
                 onClick={() =>
                   setCapoDisplay(capoDisplay === 'shapes' ? 'sounding' : 'shapes')
                 }
-                className={`pill-btn px-2.5 h-7 text-xs ${
+                className={`pill-btn px-3 h-9 text-xs ${
                   capoDisplay === 'shapes' ? 'pill-btn-tonal' : ''
                 }`}
                 title={
@@ -579,7 +591,7 @@ export function SongHeader({
               <div
                 role="dialog"
                 aria-label="Ajustes musicais da faixa"
-                className="gm3-popover-enter absolute left-0 top-[calc(100%+8px)] z-50 w-[min(296px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3"
+                className="gm3-popover-top-left absolute left-0 top-[calc(100%+8px)] z-50 w-[min(296px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3"
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 <div className="field-label">Propriedades da música</div>
@@ -587,7 +599,7 @@ export function SongHeader({
                 {/* Capo */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-[var(--ink)]">Capotraste</span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="gm3-btn-group">
                     <button
                       type="button"
                       onClick={() => onPatchMeta('capo', Math.max(0, song.capo - 1))}
@@ -613,14 +625,16 @@ export function SongHeader({
                 {song.capo > 0 && (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-[var(--muted)]">Mostrar acordes como</span>
-                    <div className="gm3-segmented inline-flex p-0.5 bg-[var(--bg)] gap-0.5">
+                    <div
+                      role="group"
+                      aria-label="Formato de exibição dos acordes com capo"
+                      className="gm3-connected-group gm3-connected-group-subtle"
+                    >
                       <button
                         type="button"
                         aria-pressed={capoDisplay === 'sounding'}
                         onClick={() => setCapoDisplay('sounding')}
-                        className={`gm3-segment px-2.5 py-1 text-xs font-medium cursor-pointer ${
-                          capoDisplay === 'sounding' ? '' : 'text-[var(--muted)]'
-                        }`}
+                        className="gm3-connected-btn min-h-[36px] px-3 py-1 text-xs font-medium cursor-pointer"
                       >
                         Tom real
                       </button>
@@ -628,9 +642,7 @@ export function SongHeader({
                         type="button"
                         aria-pressed={capoDisplay === 'shapes'}
                         onClick={() => setCapoDisplay('shapes')}
-                        className={`gm3-segment px-2.5 py-1 text-xs font-medium cursor-pointer ${
-                          capoDisplay === 'shapes' ? '' : 'text-[var(--muted)]'
-                        }`}
+                        className="gm3-connected-btn min-h-[36px] px-3 py-1 text-xs font-medium cursor-pointer"
                       >
                         Formas
                       </button>
@@ -647,7 +659,7 @@ export function SongHeader({
                       </label>
                       <span className="text-xs text-[var(--muted)]">40 a 240 BPM</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="gm3-btn-group">
                       <button
                         type="button"
                         onClick={() => {
@@ -777,11 +789,11 @@ export function SongHeader({
                 </button>
               )}
 
-              {/* Reading mode switch */}
+              {/* Reading mode M3 Expressive Connected Button Group */}
               <div
                 role="group"
                 aria-label="Modo de leitura"
-                className="gm3-segmented inline-flex flex-shrink-0 p-0.5 bg-[var(--bg)] lg:bg-[var(--surface-high)] gap-0.5"
+                className="gm3-connected-group flex-shrink-0"
               >
                 {(
                   [
@@ -805,9 +817,7 @@ export function SongHeader({
                           ? 'Esconde os acordes e melhora a tipografia para cantar (atalho: L)'
                           : undefined
                       }
-                      className={`gm3-segment px-3 h-8 text-xs font-medium cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
-                        active ? '' : 'text-[var(--muted)]'
-                      }`}
+                      className="gm3-connected-btn px-3 h-9 text-xs font-medium cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
                     >
                       {label}
                     </button>
@@ -825,7 +835,7 @@ export function SongHeader({
                   }`}
                   title={`Tocar acorde-guia (${pitchTarget}) para pegar o tom antes de começar`}
                 >
-                  <PitchWaveIcon size={14} />
+                  <PitchWaveIcon size={14} className={pitchRinging ? 'gm3-wave-ringing' : undefined} />
                   {pitchRinging ? 'Tocando…' : 'Guia'}
                 </button>
               )}

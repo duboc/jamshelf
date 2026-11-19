@@ -188,7 +188,7 @@ export default function AddSongPage() {
                 <div
                   role="group"
                   aria-label="Como deseja criar a cifra"
-                  className="gm3-segmented inline-flex p-1 bg-[var(--surface-high)] gap-0.5"
+                  className="gm3-connected-group gm3-connected-group-subtle"
                 >
                   <button
                     type="button"
@@ -197,9 +197,7 @@ export default function AddSongPage() {
                       setInputMode('paste');
                       setError('');
                     }}
-                    className={`gm3-segment px-4 h-9 text-xs font-semibold cursor-pointer ${
-                      inputMode === 'paste' ? '' : 'text-[var(--muted)]'
-                    }`}
+                    className="gm3-connected-btn px-4 h-10 text-xs font-semibold cursor-pointer"
                   >
                     Colar cifra
                   </button>
@@ -210,9 +208,7 @@ export default function AddSongPage() {
                       setInputMode('search');
                       setError('');
                     }}
-                    className={`gm3-segment px-4 h-9 text-xs font-semibold cursor-pointer ${
-                      inputMode === 'search' ? '' : 'text-[var(--muted)]'
-                    }`}
+                    className="gm3-connected-btn px-4 h-10 text-xs font-semibold cursor-pointer"
                   >
                     Buscar com IA
                   </button>

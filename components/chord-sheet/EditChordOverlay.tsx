@@ -6,7 +6,6 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronUpIcon,
   CloseIcon,
 } from '@/components/ui/Icons';
 
@@ -442,7 +441,7 @@ function OverlayInner({
                     onClick={() => setShowBassPicker((v) => !v)}
                     className="inline-flex items-center gap-1 font-mono text-xs text-[var(--accent-ink)] hover:underline cursor-pointer"
                   >
-                    {showBassPicker ? <ChevronDownIcon size={14} /> : <ChevronUpIcon size={14} className="rotate-90" />}
+                    <ChevronDownIcon size={14} className="gm3-chevron" />
                     {showBassPicker ? 'Baixo invertido (/nota)' : 'Baixo invertido (/F#, /G, /B…)'}
                     {pickedBass ? ` · /${pickedBass}` : ''}
                   </button>

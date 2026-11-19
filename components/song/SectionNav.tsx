@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import type { Section } from '@/lib/types/song';
 import { SECTION_COLORS } from '@/lib/utils/music';
 
@@ -10,6 +11,23 @@ interface SectionNavProps {
 }
 
 export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
+  const railRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const activeBtn = rail.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!activeBtn) return;
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    activeBtn.scrollIntoView({
+      inline: 'center',
+      block: 'nearest',
+      behavior: reduced ? 'auto' : 'smooth',
+    });
+  }, [activeIdx]);
+
   if (sections.length <= 1) return null;
 
   return (
@@ -17,7 +35,7 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
       aria-label="Seções da música"
       className="relative flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2"
     >
-      <div className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar pr-6">
+      <div ref={railRef} className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-6">
         {sections.map((sec, idx) => {
           const colors = SECTION_COLORS[sec.type] || SECTION_COLORS.verse;
           const isActive = idx === activeIdx;
@@ -34,9 +52,7 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
               }`}
             >
               <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 transition-transform duration-[220ms] ${
-                  isActive ? 'scale-120' : ''
-                }`}
+                className="gm3-section-dot w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: colors.bd }}
                 aria-hidden="true"
               />

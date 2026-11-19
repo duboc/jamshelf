@@ -86,7 +86,11 @@ export function EditIcon({ size = 15, ...rest }: IconProps) {
 export function PitchWaveIcon({ size = 15, ...rest }: IconProps) {
   return (
     <svg {...baseProps(size)} {...rest}>
-      <path d="M4 12v0M8 8v8M12 5v14M16 8v8M20 12v0" />
+      <line className="gm3-wave-bar" x1="4" y1="10" x2="4" y2="14" />
+      <line className="gm3-wave-bar" x1="8" y1="7.5" x2="8" y2="16.5" />
+      <line className="gm3-wave-bar" x1="12" y1="5" x2="12" y2="19" />
+      <line className="gm3-wave-bar" x1="16" y1="7.5" x2="16" y2="16.5" />
+      <line className="gm3-wave-bar" x1="20" y1="10" x2="20" y2="14" />
     </svg>
   );
 }

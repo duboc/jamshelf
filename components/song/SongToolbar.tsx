@@ -6,7 +6,6 @@ import { Metronome } from '@/components/metronome/Metronome';
 import {
   CheckIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
   CloseIcon,
   ColumnsIcon,
   EditIcon,
@@ -179,7 +178,7 @@ export function SongToolbar({
 
       {/* Speed stepper + presets while scrolling */}
       {!isFollowing && !calibrating && store.isAutoScrolling && (
-        <div className="flex items-center gap-1 flex-nowrap flex-shrink-0 lg:order-4">
+        <div className="gm3-btn-group flex-nowrap flex-shrink-0 lg:order-4">
           <button
             type="button"
             onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
@@ -237,7 +236,7 @@ export function SongToolbar({
 
       {/* Transpose controls: hidden in Singer (lyrics-only) mode */}
       {!isSingerMode && (
-        <div className="flex items-center gap-1 flex-shrink-0 lg:order-1">
+        <div className="gm3-btn-group flex-shrink-0 lg:order-1">
           <span className="field-label hidden sm:inline mr-0.5">Tom</span>
           <button
             type="button"
@@ -305,7 +304,7 @@ export function SongToolbar({
       )}
 
       {/* Font size */}
-      <div className="flex items-center gap-1 flex-shrink-0 lg:order-2">
+      <div className="gm3-btn-group flex-shrink-0 lg:order-2">
         <button
           type="button"
           onClick={() => setFontSize(fontSize - 10)}
@@ -442,7 +441,7 @@ export function SongToolbar({
               title="Abrir ou recolher os diagramas dos acordes desta música"
             >
               Diagramas ({chordCount})
-              {chordsRefOpen ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
+              <ChevronDownIcon size={14} className="gm3-chevron" />
             </button>
           )
         )}

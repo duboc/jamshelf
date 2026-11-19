@@ -41,11 +41,17 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
             <button
               type="button"
               onClick={handleBack}
-              className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--surface)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+              className="group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--surface)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
               title={`Voltar para ${parentItem.label}`}
               aria-label={`Voltar para ${parentItem.label}`}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+                className="transition-transform group-hover:-translate-x-0.5"
+              >
                 <path
                   d="M13 8H3.5M7.5 3.8 3.3 8l4.2 4.2"
                   fill="none"

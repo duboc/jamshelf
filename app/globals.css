@@ -67,17 +67,97 @@
   --font-google-text: "Google Sans Text", "Google Sans Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-google-mono: "Google Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
-  /* GM3 Expressive motion tokens (100-400ms scale, zero overshoot) */
+  /* GM3 Expressive motion physics tokens (Spatial springs vs. critically damped Effects) */
   --motion-duration-none: 0ms;
-  --motion-duration-micro: 120ms;
-  --motion-duration-state: 220ms;
-  --motion-duration-expressive: 280ms;
-  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --motion-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --motion-ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
-  --motion-ease-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* Effects curves (damping=1.0, zero overshoot: opacity, color, border, shadow) */
+  --motion-effects-fast-duration: 150ms;
+  --motion-effects-fast: cubic-bezier(0.31, 0.94, 0.34, 1);
+  --motion-effects-default-duration: 200ms;
+  --motion-effects-default: cubic-bezier(0.34, 0.80, 0.34, 1);
+  --motion-effects-slow-duration: 300ms;
+  --motion-effects-slow: cubic-bezier(0.34, 0.88, 0.34, 1);
+
+  /* Tactile press-in compression before spring release */
+  --motion-press-duration: 110ms;
+  --motion-press-ease: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* Spatial fallbacks for engines without CSS linear() (Safari < 17.2) */
+  --motion-spring-expressive-fast-duration: 350ms;
+  --motion-spring-expressive-fast: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-spring-expressive-default-duration: 480ms;
+  --motion-spring-expressive-default: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --motion-spring-expressive-slow-duration: 600ms;
+  --motion-spring-expressive-slow: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --motion-spring-standard-fast-duration: 200ms;
+  --motion-spring-standard-fast: cubic-bezier(0.2, 0, 0, 1);
+  --motion-spring-standard-default-duration: 300ms;
+  --motion-spring-standard-default: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Active semantic scheme (Expressive default for library, nav, menus, cards) */
+  --motion-spatial-fast-duration: var(--motion-spring-expressive-fast-duration);
+  --motion-spatial-fast: var(--motion-spring-expressive-fast);
+  --motion-spatial-default-duration: var(--motion-spring-expressive-default-duration);
+  --motion-spatial-default: var(--motion-spring-expressive-default);
+  --motion-spatial-slow-duration: var(--motion-spring-expressive-slow-duration);
+  --motion-spatial-slow: var(--motion-spring-expressive-slow);
+
+  /* Semantic aliases retained for backwards compatibility */
+  --motion-duration-micro: var(--motion-press-duration);
+  --motion-duration-state: var(--motion-spatial-fast-duration);
+  --motion-duration-expressive: var(--motion-spring-standard-default-duration);
+  --motion-ease-standard: var(--motion-effects-fast);
+  --motion-ease-emphasized: var(--motion-spatial-fast);
+  --motion-ease-emphasized-decel: var(--motion-spatial-default);
+  --motion-ease-emphasized-accel: var(--motion-press-ease);
 
   color-scheme: light;
+}
+
+/* Official M3 Expressive damped harmonic oscillator spring curves (progressive enhancement) */
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    /* Expressive Spatial Fast: damping=0.6, stiffness=800 (peak 1.095) */
+    --motion-spring-expressive-fast: linear(
+      0, 0.0665 4%, 0.2228 8%, 0.465 13%, 0.6955 18%, 0.9073 24%,
+      1.0473 31%, 1.0934 38%, 1.0948 39.7%, 1.0805 46%, 1.0401 55%,
+      1.0054 65%, 0.9916 76%, 0.9933 88%, 1
+    );
+    /* Expressive Spatial Default: damping=0.8, stiffness=380 (peak 1.015) */
+    --motion-spring-expressive-default: linear(
+      0, 0.0616 4%, 0.1994 8%, 0.4036 13%, 0.5937 18%, 0.772 24%,
+      0.906 31%, 0.9766 38%, 1.0088 46%, 1.0152 53.7%, 1.0151 55%,
+      1.0101 65%, 1.0041 76%, 1.0008 88%, 1
+    );
+    /* Expressive Spatial Slow: damping=0.8, stiffness=200 (peak 1.015) */
+    --motion-spring-expressive-slow: linear(
+      0, 0.0555 4%, 0.1817 8%, 0.3734 13%, 0.5574 18%, 0.7368 24%,
+      0.8791 31%, 0.9601 38%, 1.0022 46%, 1.0149 55%, 1.0152 57%,
+      1.0124 65%, 1.0062 76%, 1.0018 88%, 1
+    );
+    /* Standard Spatial Fast: damping=0.9, stiffness=1400 (stage-crisp, zero wobble) */
+    --motion-spring-standard-fast: linear(
+      0, 0.0375 4%, 0.1255 8%, 0.2663 13%, 0.412 18%, 0.57 24%,
+      0.7173 31%, 0.8238 38%, 0.9039 46%, 0.9559 55%, 0.9845 65%,
+      0.9971 76%, 1.0011 88%, 1
+    );
+    /* Standard Spatial Default: damping=0.9, stiffness=700 (calm large surfaces) */
+    --motion-spring-standard-default: linear(
+      0, 0.0417 4%, 0.1382 8%, 0.2896 13%, 0.4426 18%, 0.6041 24%,
+      0.7497 31%, 0.8509 38%, 0.9236 46%, 0.968 55%, 0.9906 65%,
+      0.9994 76%, 1.0015 88%, 1
+    );
+  }
+}
+
+/* Stage-critical motion scope: zero-wobble precision in Show Mode, Focus Mode, Metronome & Count-In */
+[data-motion-scheme="standard"] {
+  --motion-spatial-fast-duration: var(--motion-spring-standard-fast-duration);
+  --motion-spatial-fast: var(--motion-spring-standard-fast);
+  --motion-spatial-default-duration: var(--motion-spring-standard-default-duration);
+  --motion-spatial-default: var(--motion-spring-standard-default);
+  --motion-spatial-slow-duration: var(--motion-spring-standard-default-duration);
+  --motion-spatial-slow: var(--motion-spring-standard-default);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -267,7 +347,7 @@
     color: var(--muted);
   }
 
-  /* GM3 Expressive Pill buttons (numeric 22px radius enables fluid morph to 10px squircle on press & 12px when toggled) */
+  /* GM3 Expressive Pill buttons (numeric 22px radius morphs on Spatial Fast spring, color on Effects Fast) */
   .pill-btn {
     display: inline-flex;
     align-items: center;
@@ -280,13 +360,13 @@
     font-family: var(--font-google-text);
     font-weight: 500;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 150ms var(--motion-ease-standard),
-      color 150ms var(--motion-ease-standard),
-      border-color 150ms var(--motion-ease-standard),
-      box-shadow 150ms var(--motion-ease-standard),
-      opacity 150ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      border-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      box-shadow var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      opacity var(--motion-effects-fast-duration) var(--motion-effects-fast);
     cursor: pointer;
     white-space: nowrap;
   }
@@ -304,8 +384,8 @@
   .pill-btn:active:not(:disabled) {
     border-radius: 10px;
     transform: scale(0.97);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   .pill-btn[aria-pressed="true"]:active:not(:disabled),
@@ -366,7 +446,7 @@
     background: color-mix(in srgb, var(--on-rec-fill) 10%, var(--rec-fill));
   }
 
-  /* GM3 Expressive FAB: 16px squircle at rest -> 20px hover (+ icon turn) -> 28px full rounded pill on press/active */
+  /* GM3 Expressive FAB: 16px squircle at rest -> 20px hover (+ icon spring turn) -> 28px full rounded pill on press/active */
   .gm3-fab {
     display: inline-flex;
     align-items: center;
@@ -378,16 +458,16 @@
     font-family: var(--font-google-text);
     font-weight: 500;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 160ms var(--motion-ease-standard),
-      box-shadow 180ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      box-shadow var(--motion-effects-default-duration) var(--motion-effects-default);
     cursor: pointer;
     white-space: nowrap;
   }
 
   .gm3-fab svg {
-    transition: transform var(--motion-duration-state) var(--motion-ease-emphasized-decel);
+    transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
   }
 
   .gm3-fab:hover {
@@ -396,7 +476,7 @@
     box-shadow: var(--shadow-sm);
   }
 
-  .gm3-fab:hover svg {
+  .gm3-fab:not([aria-current="page"]):hover svg {
     transform: rotate(90deg);
   }
 
@@ -409,69 +489,167 @@
   .gm3-fab:active {
     border-radius: 28px;
     transform: scale(0.96);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+
+  .gm3-fab:not([aria-current="page"]):active svg {
+    transform: rotate(90deg) scale(1.06);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   /* GM3 Expressive circular icon button: morphs circle (22px) -> squircle (12px) on press / open */
   .gm3-icon-btn {
     border-radius: 22px;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 150ms var(--motion-ease-standard),
-      color 150ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-icon-btn:active:not(:disabled) {
     border-radius: 12px;
     transform: scale(0.93);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
-  /* GM3 Expressive Segmented Control (concentric 22px track -> 18px segment -> 10px press) */
-  .gm3-segmented {
-    border-radius: 22px;
+  /* GM3 Expressive Connected Button Group (outer 20px, inner 6px seams, selected springs to full 20px pill) */
+  .gm3-connected-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
   }
 
-  .gm3-segment {
-    border-radius: 18px;
+  .gm3-connected-btn {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--muted);
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized-decel),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 150ms var(--motion-ease-standard),
-      color 150ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
-  .gm3-segment:hover:not(:disabled):not([aria-pressed="true"]) {
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--ink) 6%, transparent);
+  .gm3-connected-group-subtle .gm3-connected-btn {
+    background: var(--bg);
+  }
+
+  .gm3-connected-btn:first-child {
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+  }
+
+  .gm3-connected-btn:last-child {
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+
+  .gm3-connected-btn:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
+    border-radius: 10px;
+    background: var(--surface-high);
     color: var(--ink);
   }
 
-  .gm3-segment[aria-pressed="true"] {
-    border-radius: 18px;
+  .gm3-connected-btn:first-child:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+  }
+
+  .gm3-connected-btn:last-child:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+
+  .gm3-connected-btn[aria-pressed="true"] {
+    border-radius: 20px;
     background: var(--secondary-container);
     color: var(--on-secondary-container);
   }
 
-  .gm3-segment:active:not(:disabled) {
-    border-radius: 10px;
+  .gm3-connected-btn:active:not(:disabled) {
+    border-radius: 8px;
     transform: scale(0.96);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
-  /* GM3 Navigation Rail & Bottom Bar active indicator (GPU scaleX from center + tactile corner morph) */
+  .gm3-connected-btn[aria-pressed="true"]:active:not(:disabled) {
+    border-radius: 10px;
+    transform: scale(0.96);
+  }
+
+  .gm3-connected-btn:focus-visible {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* GM3 Expressive Standard Button Group (GPU-only neighbor coupling, Standard damped nudge to avoid toolbar wobble) */
+  .gm3-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .gm3-btn-group > * {
+    transition:
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-btn-group > button:active:not(:disabled) {
+    transform: scaleX(1.04) scaleY(0.95);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+
+  .gm3-btn-group > :has(+ button:active:not(:disabled)) {
+    transform: translateX(-2px) scaleX(0.97);
+  }
+
+  .gm3-btn-group > button:active:not(:disabled) + * {
+    transform: translateX(2px) scaleX(0.97);
+  }
+
+  /* GM3 Expressive Disclosure Icons (persistent chevron / plus rotations on aria-expanded) */
+  .gm3-chevron,
+  .gm3-plus-toggle {
+    transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
+  }
+
+  [aria-expanded="true"] .gm3-chevron {
+    transform: rotate(180deg);
+  }
+
+  [aria-expanded="true"] .gm3-plus-toggle {
+    transform: rotate(45deg);
+  }
+
+  .gm3-icon-swap {
+    animation: gm3-icon-turn var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) both;
+  }
+
+  /* GM3 Navigation Rail & Bottom Bar: separate hover (::before) and active center-bloom (::after) indicators */
+  .gm3-rail {
+    transition-property: width;
+    transition-duration: var(--motion-spring-standard-default-duration);
+    transition-timing-function: var(--motion-spring-standard-default);
+  }
+
   .gm3-nav-pill {
     position: relative;
     isolation: isolate;
     border-radius: 16px;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      color 150ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-nav-pill-expanded {
@@ -483,20 +661,29 @@
     position: absolute;
     inset: 0;
     border-radius: inherit;
+    z-index: -2;
+    opacity: 0;
+    background: var(--surface-high);
+    transition: opacity var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-nav-pill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
     z-index: -1;
     opacity: 0;
-    transform: scaleX(0.58);
-    background: var(--surface-high);
+    transform: scaleX(0.38);
+    background: var(--secondary-container);
     transition:
-      transform 240ms var(--motion-ease-emphasized-decel),
-      opacity 180ms var(--motion-ease-standard),
-      background-color 150ms var(--motion-ease-standard);
+      transform var(--motion-spatial-default-duration) var(--motion-spatial-default),
+      opacity var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-nav-pill:hover::before,
   .group:hover .gm3-nav-pill::before {
     opacity: 1;
-    transform: scaleX(1);
   }
 
   .gm3-nav-pill[data-active="true"],
@@ -504,19 +691,18 @@
     color: var(--on-secondary-container);
   }
 
-  .gm3-nav-pill[data-active="true"]::before,
-  .gm3-nav-pill[aria-current="page"]::before {
+  .gm3-nav-pill[data-active="true"]::after,
+  .gm3-nav-pill[aria-current="page"]::after {
     opacity: 1;
     transform: scaleX(1);
-    background: var(--secondary-container);
   }
 
   .gm3-nav-pill:active,
   .group:active .gm3-nav-pill {
     border-radius: 10px;
     transform: scale(0.96);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   .gm3-nav-pill-expanded:active {
@@ -524,15 +710,17 @@
   }
 
   .gm3-rail-label {
-    animation: gm3-label-in 180ms var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-label-spatial var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
-  /* GM3 Switch (pure GPU transform via --switch-x, zero width/height reflow) */
+  /* GM3 Switch (pure GPU transform via --switch-x, Expressive Fast spring settle) */
   .gm3-switch-track {
     border-radius: 16px;
     transition:
-      background-color var(--motion-duration-state) var(--motion-ease-standard),
-      border-color var(--motion-duration-state) var(--motion-ease-standard);
+      background-color var(--motion-effects-default-duration) var(--motion-effects-default),
+      border-color var(--motion-effects-default-duration) var(--motion-effects-default);
   }
 
   .gm3-switch-thumb {
@@ -543,8 +731,8 @@
     border-radius: 12px;
     transform: translateX(var(--switch-x)) scale(var(--switch-s));
     transition:
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color var(--motion-duration-state) var(--motion-ease-standard);
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-default-duration) var(--motion-effects-default);
   }
 
   .gm3-switch-track[aria-checked="true"] .gm3-switch-thumb {
@@ -554,52 +742,114 @@
 
   .gm3-switch-track:active .gm3-switch-thumb {
     --switch-s: 1.12;
-    transition-duration: var(--motion-duration-micro);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
-  /* GM3 Expressive Interactive Cards & Segmented List Rows */
+  /* GM3 Expressive Interactive Cards, Menu Items, Filter Selects, Search Bar & Segmented List Rows */
   .gm3-card-interactive {
     border-radius: 20px;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 160ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-default-duration) var(--motion-spatial-default),
+      transform var(--motion-spatial-default-duration) var(--motion-spatial-default),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-card-interactive:hover {
     border-radius: 22px;
   }
 
-  .gm3-card-interactive:active:not(:has(button:active)) {
+  .gm3-card-interactive:active:not(:has(button:active, a.pill-btn:active)) {
     border-radius: 26px;
     transform: scale(0.988);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   .gm3-key-badge {
     border-radius: 16px;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
   }
 
-  .gm3-card-interactive:hover .gm3-key-badge {
+  .gm3-card-interactive:hover .gm3-key-badge,
+  .gm3-list-row:hover .gm3-key-badge {
     border-radius: 20px;
   }
 
   .gm3-list-row {
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 150ms var(--motion-ease-standard),
-      box-shadow 180ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-default-duration) var(--motion-spatial-default),
+      transform var(--motion-spatial-default-duration) var(--motion-spatial-default),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      box-shadow var(--motion-effects-default-duration) var(--motion-effects-default);
+  }
+
+  .gm3-menu-item {
+    border-radius: 12px;
+    transition:
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-menu-item:hover:not(:disabled) {
+    border-radius: 16px;
+  }
+
+  .gm3-menu-item:active:not(:disabled) {
+    border-radius: 20px;
+    transform: scale(0.985);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+
+  .gm3-select {
+    border-radius: 22px;
+    background: var(--surface);
+    color: var(--ink);
+    transition:
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-select:hover {
+    background: var(--surface-high);
+  }
+
+  .gm3-select[data-active="true"] {
+    border-radius: 12px;
+    background: var(--secondary-container);
+    color: var(--on-secondary-container);
+  }
+
+  .gm3-select:active {
+    border-radius: 10px;
+    transform: scale(0.98);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+
+  .gm3-search-pill {
+    border-radius: 24px;
+    transition:
+      border-radius var(--motion-spatial-default-duration) var(--motion-spatial-default),
+      box-shadow var(--motion-effects-default-duration) var(--motion-effects-default);
+  }
+
+  .gm3-search-pill:focus-within {
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
   }
 
   /* Favorite heart & star tactile micro-interactions */
   .gm3-fav-btn svg,
   .gm3-star-btn svg {
-    transition: transform var(--motion-duration-state) var(--motion-ease-emphasized-decel);
+    transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
   }
 
   .gm3-fav-btn:hover svg,
@@ -610,21 +860,22 @@
   .gm3-fav-btn:active svg,
   .gm3-star-btn:active svg {
     transform: scale(0.84);
-    transition-duration: var(--motion-duration-micro);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   .gm3-pop-once svg {
-    animation: gm3-icon-pop 260ms var(--motion-ease-emphasized-decel);
+    animation: gm3-icon-pop var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
   }
 
-  /* Interactive musical surfaces: ChordBadge, SectionNav, Metronome dots, ChordsReference tiles */
+  /* Interactive musical surfaces: ChordBadge, SectionNav, Metronome dots, PitchWave, CountIn, ChordsReference */
   .gm3-chord-badge {
     border-radius: 8px;
     transition:
-      border-radius 180ms var(--motion-ease-emphasized),
-      transform 180ms var(--motion-ease-emphasized),
-      background-color 140ms var(--motion-ease-standard),
-      color 140ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-chord-badge:hover {
@@ -634,33 +885,33 @@
   .gm3-chord-badge:active {
     border-radius: 14px;
     transform: scale(0.94);
-    transition-duration: 100ms;
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   .gm3-chord-badge-lg {
     border-radius: 20px;
     transition:
-      border-radius 180ms var(--motion-ease-emphasized),
-      transform 180ms var(--motion-ease-emphasized),
-      background-color 140ms var(--motion-ease-standard),
-      color 140ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-chord-badge-lg:active {
     border-radius: 10px;
     transform: scale(0.95);
-    transition-duration: 100ms;
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   .gm3-section-pill {
     border-radius: 18px;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized-decel),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 150ms var(--motion-ease-standard),
-      color 150ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-section-pill[aria-current="true"] {
@@ -670,23 +921,56 @@
   .gm3-section-pill:active {
     border-radius: 10px;
     transform: scale(0.96);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+
+  .gm3-section-dot {
+    transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
+  }
+
+  .gm3-section-pill[aria-current="true"] .gm3-section-dot {
+    transform: scale(1.25);
   }
 
   .gm3-beat-dot {
     border-radius: 8px;
     transition:
-      transform var(--motion-duration-micro) var(--motion-ease-emphasized-decel),
-      background-color var(--motion-duration-micro) var(--motion-ease-standard);
+      transform var(--motion-press-duration) var(--motion-spring-standard-fast),
+      background-color var(--motion-press-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-wave-bar {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .gm3-wave-ringing .gm3-wave-bar {
+    animation: gm3-wave-eq 620ms ease-in-out infinite alternate;
+  }
+
+  .gm3-wave-ringing .gm3-wave-bar:nth-child(2) {
+    animation-delay: 90ms;
+  }
+
+  .gm3-wave-ringing .gm3-wave-bar:nth-child(3) {
+    animation-delay: 180ms;
+  }
+
+  .gm3-wave-ringing .gm3-wave-bar:nth-child(4) {
+    animation-delay: 90ms;
+  }
+
+  .gm3-downbeat-ring {
+    animation: gm3-downbeat-halo 520ms var(--motion-effects-default) both;
   }
 
   .gm3-chord-tile {
     border-radius: 16px;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 150ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-chord-tile:hover {
@@ -700,8 +984,24 @@
   .gm3-chord-tile:active {
     border-radius: 22px;
     transform: scale(0.96);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+
+  /* Calm GM3 tonal skeleton shimmer (pure GPU translateX) */
+  .gm3-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .gm3-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, var(--surface-high) 50%, transparent 100%);
+    transform: translateX(-100%);
+    animation: gm3-shimmer 1.4s ease-in-out infinite;
   }
 
   /* GM3 Text / Tonal toolbar action */
@@ -719,11 +1019,11 @@
     background: var(--surface);
     border: 1px solid transparent;
     transition:
-      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
-      transform var(--motion-duration-state) var(--motion-ease-emphasized),
-      background-color 150ms var(--motion-ease-standard),
-      color 150ms var(--motion-ease-standard),
-      opacity 150ms var(--motion-ease-standard);
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      opacity var(--motion-effects-fast-duration) var(--motion-effects-fast);
     cursor: pointer;
     white-space: nowrap;
   }
@@ -736,8 +1036,8 @@
   .cloud-action-btn:active:not(:disabled) {
     border-radius: 10px;
     transform: scale(0.97);
-    transition-duration: var(--motion-duration-micro);
-    transition-timing-function: var(--motion-ease-emphasized-accel);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
   }
 
   .cloud-action-btn:disabled {
@@ -770,9 +1070,9 @@
     font-family: var(--font-google-text);
     outline: none;
     transition:
-      border-color 150ms var(--motion-ease-standard),
-      box-shadow 150ms var(--motion-ease-standard),
-      background-color 150ms var(--motion-ease-standard);
+      border-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      box-shadow var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .studio-input:hover:not(:focus) {
@@ -794,41 +1094,80 @@
     border: 1px solid transparent;
   }
 
-  /* GM3 Expressive overlay, panel & route motion utilities */
+  /* GM3 Expressive overlays, anchored popovers, sheets & drawers (decoupled Spatial + Effects animations) */
   .gm3-backdrop-enter {
-    animation: gm3-fade-in var(--motion-duration-state) var(--motion-ease-standard) both;
+    animation: gm3-fade-in var(--motion-effects-default-duration) var(--motion-effects-default) both;
   }
 
   .gm3-dialog-enter {
-    animation: gm3-dialog-in var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-dialog-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
-  .gm3-popover-enter {
-    animation: gm3-popover-in 180ms var(--motion-ease-emphasized-decel) both;
+  .gm3-popover-enter,
+  .gm3-popover-top-right,
+  .gm3-popover-top-left {
+    animation:
+      gm3-popover-down-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+  }
+
+  .gm3-popover-top-right {
+    transform-origin: top right;
+  }
+
+  .gm3-popover-top-left {
+    transform-origin: top left;
+  }
+
+  .gm3-popover-bottom-left {
+    transform-origin: bottom left;
+    animation:
+      gm3-popover-up-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
   .gm3-panel-enter {
-    animation: gm3-panel-in var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-panel-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+  }
+
+  .gm3-view-enter {
+    animation:
+      gm3-view-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
   .gm3-sheet-enter {
-    animation: gm3-sheet-in var(--motion-duration-expressive) var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-sheet-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
   .gm3-drawer-left {
-    animation: gm3-slide-left var(--motion-duration-expressive) var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-slide-left-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
   .gm3-drawer-right {
-    animation: gm3-slide-right var(--motion-duration-expressive) var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-slide-right-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
   .gm3-page-enter {
-    animation: gm3-page-in var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-page-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
   }
 
   .gm3-beat-pop {
-    animation: gm3-beat-scale var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
+    animation:
+      gm3-beat-spatial var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) both,
+      gm3-fade-in var(--motion-press-duration) var(--motion-effects-fast) both;
   }
 
   .no-scrollbar {
@@ -841,22 +1180,32 @@
 }
 
 /* Unlayered state overrides so dynamic morph states win cleanly over resting Tailwind utilities */
-.gm3-icon-btn[aria-expanded="true"] {
+.gm3-icon-btn:not(.gm3-rail-toggle)[aria-expanded="true"],
+.pill-btn[aria-expanded="true"] {
   border-radius: 12px;
   background: var(--secondary-container);
   color: var(--on-secondary-container);
 }
 
-.gm3-list-row:active:not(:has(button:active)) {
-  border-radius: 18px;
+.gm3-list-row:active:not(:has(button:active, a.pill-btn:active)) {
+  border-radius: 20px;
   transform: scale(0.992);
-  transition-duration: var(--motion-duration-micro);
-  transition-timing-function: var(--motion-ease-emphasized-accel);
+  transition-duration: var(--motion-press-duration);
+  transition-timing-function: var(--motion-press-ease);
 }
 
 .gm3-list-row[data-dragging="true"] {
+  position: relative;
+  z-index: 10;
   border-radius: 20px;
-  box-shadow: var(--shadow-sm);
+  transform: scale(1.015);
+  box-shadow: var(--shadow-md);
+}
+
+@media (forced-colors: active) {
+  .gm3-connected-btn[aria-pressed="true"] {
+    border-color: Highlight;
+  }
 }
 
 @keyframes metronome-flash {
@@ -869,55 +1218,85 @@
   to { opacity: 1; }
 }
 
-@keyframes gm3-label-in {
-  from { opacity: 0; transform: translateX(-4px); }
-  to { opacity: 1; transform: translateX(0); }
+@keyframes gm3-label-spatial {
+  from { transform: translateX(-4px); }
+  to { transform: translateX(0); }
 }
 
-@keyframes gm3-dialog-in {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+@keyframes gm3-dialog-spatial {
+  from { transform: scale(0.94) translateY(10px); }
+  to { transform: scale(1) translateY(0); }
 }
 
-@keyframes gm3-popover-in {
-  from { opacity: 0; transform: scale(0.96) translateY(4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+@keyframes gm3-popover-down-spatial {
+  from { transform: scale(0.93) translateY(-6px); }
+  to { transform: scale(1) translateY(0); }
 }
 
-@keyframes gm3-panel-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes gm3-popover-up-spatial {
+  from { transform: scale(0.93) translateY(6px); }
+  to { transform: scale(1) translateY(0); }
 }
 
-@keyframes gm3-sheet-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes gm3-panel-spatial {
+  from { transform: translateY(-6px) scale(0.99); }
+  to { transform: translateY(0) scale(1); }
 }
 
-@keyframes gm3-slide-left {
-  from { transform: translateX(-28px); opacity: 0.7; }
-  to { transform: translateX(0); opacity: 1; }
+@keyframes gm3-view-spatial {
+  from { transform: translateY(6px) scale(0.994); }
+  to { transform: translateY(0) scale(1); }
 }
 
-@keyframes gm3-slide-right {
-  from { transform: translateX(28px); opacity: 0.7; }
-  to { transform: translateX(0); opacity: 1; }
+@keyframes gm3-sheet-spatial {
+  from { transform: translateY(28px); }
+  to { transform: translateY(0); }
 }
 
-@keyframes gm3-page-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes gm3-slide-left-spatial {
+  from { transform: translateX(-56px); }
+  to { transform: translateX(0); }
 }
 
-@keyframes gm3-beat-scale {
-  0% { transform: scale(1.18); opacity: 0.75; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes gm3-slide-right-spatial {
+  from { transform: translateX(56px); }
+  to { transform: translateX(0); }
+}
+
+@keyframes gm3-page-spatial {
+  from { transform: translateY(8px); }
+  to { transform: translateY(0); }
+}
+
+@keyframes gm3-beat-spatial {
+  0% { transform: scale(1.16); }
+  100% { transform: scale(1); }
 }
 
 @keyframes gm3-icon-pop {
   0% { transform: scale(0.84); }
   55% { transform: scale(1.18); }
   100% { transform: scale(1); }
+}
+
+@keyframes gm3-icon-turn {
+  from { transform: scale(0.82) rotate(-24deg); }
+  to { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes gm3-wave-eq {
+  0% { transform: scaleY(0.45); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes gm3-downbeat-halo {
+  0% { transform: scale(0.84); opacity: 0.34; }
+  100% { transform: scale(1.48); opacity: 0; }
+}
+
+@keyframes gm3-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 @keyframes gm3-reduced-fade {
@@ -927,6 +1306,17 @@
 
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --motion-press-duration: var(--motion-duration-none);
+    --motion-spring-expressive-fast-duration: var(--motion-duration-none);
+    --motion-spring-expressive-default-duration: var(--motion-duration-none);
+    --motion-spring-expressive-slow-duration: var(--motion-duration-none);
+    --motion-spring-standard-fast-duration: var(--motion-duration-none);
+    --motion-spring-standard-default-duration: var(--motion-duration-none);
+    --motion-spring-expressive-fast: linear;
+    --motion-spring-expressive-default: linear;
+    --motion-spring-expressive-slow: linear;
+    --motion-spring-standard-fast: linear;
+    --motion-spring-standard-default: linear;
     --motion-duration-micro: var(--motion-duration-none);
     --motion-duration-state: var(--motion-duration-none);
     --motion-duration-expressive: var(--motion-duration-none);
@@ -936,50 +1326,79 @@
     scroll-behavior: auto !important;
   }
 
+  /* Safety net preventing Tailwind or newly added utility transitions from leaking */
+  *,
+  *::before,
+  *::after {
+    transition-duration: var(--motion-duration-none) !important;
+  }
+
   .gm3-fab:active,
   .gm3-fab:hover svg,
+  .gm3-fab:active svg,
   .pill-btn:active,
   .cloud-action-btn:active,
   .gm3-icon-btn:active,
-  .gm3-segment:active,
+  .gm3-connected-btn:active,
+  .gm3-btn-group > *,
   .gm3-nav-pill:active,
-  .gm3-nav-pill::before,
+  .group:active .gm3-nav-pill,
+  .gm3-nav-pill::after,
   .gm3-card-interactive:active,
+  .gm3-key-badge,
   .gm3-list-row:active,
+  .gm3-list-row[data-dragging="true"],
+  .gm3-menu-item:active,
+  .gm3-select:active,
   .gm3-chord-badge:active,
   .gm3-chord-badge-lg:active,
   .gm3-section-pill:active,
+  .gm3-section-dot,
+  .gm3-beat-dot,
   .gm3-chord-tile:active,
   .gm3-fav-btn:hover svg,
   .gm3-fav-btn:active svg,
   .gm3-star-btn:hover svg,
   .gm3-star-btn:active svg {
     transform: none !important;
-    transition-duration: var(--motion-duration-none) !important;
   }
 
-  /* Preserve Gm3Switch translateX position while disabling slide motion */
-  .gm3-switch-track,
-  .gm3-switch-thumb,
-  .gm3-beat-dot {
-    transition-duration: var(--motion-duration-none) !important;
+  /* Preserve Gm3Switch translateX position while removing press-size jump */
+  .gm3-switch-track:active .gm3-switch-thumb {
+    --switch-s: 0.75;
+  }
+
+  .gm3-switch-track[aria-checked="true"]:active .gm3-switch-thumb {
+    --switch-s: 1;
   }
 
   .gm3-backdrop-enter,
   .gm3-dialog-enter,
   .gm3-popover-enter,
+  .gm3-popover-top-right,
+  .gm3-popover-top-left,
+  .gm3-popover-bottom-left,
   .gm3-sheet-enter,
   .gm3-drawer-left,
   .gm3-drawer-right,
   .gm3-panel-enter,
+  .gm3-view-enter,
   .gm3-page-enter,
   .gm3-rail-label {
     animation: gm3-reduced-fade 120ms ease-out both !important;
   }
 
   .gm3-beat-pop,
-  .gm3-pop-once,
+  .gm3-pop-once svg,
+  .gm3-icon-swap,
+  .gm3-wave-ringing .gm3-wave-bar,
+  .gm3-downbeat-ring,
+  .gm3-skeleton::after,
   .animate-pulse {
     animation: none !important;
+  }
+
+  .gm3-skeleton {
+    background: var(--surface-high);
   }
 }

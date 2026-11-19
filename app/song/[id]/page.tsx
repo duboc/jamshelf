@@ -509,10 +509,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         <div className="flex-1 flex flex-col">
           <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Carregando…' }]} />
           <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 space-y-4">
-            <div className="h-9 w-64 rounded-2xl bg-[var(--surface)] animate-pulse" />
-            <div className="h-12 w-full rounded-2xl bg-[var(--surface-high)] animate-pulse" />
-            <div className="h-44 w-full rounded-[24px] bg-[var(--surface)] animate-pulse" />
-            <div className="h-44 w-full rounded-[24px] bg-[var(--surface)] animate-pulse" />
+            <div className="gm3-skeleton h-9 w-64 rounded-2xl" />
+            <div className="gm3-skeleton h-12 w-full rounded-2xl" />
+            <div className="gm3-skeleton h-44 w-full rounded-[24px]" />
+            <div className="gm3-skeleton h-44 w-full rounded-[24px]" />
           </main>
         </div>
       );
@@ -1019,7 +1019,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             }
             rightSlot={
               activeSetlist ? (
-                <div className="flex sm:hidden items-center gap-1 flex-shrink-0">
+                <div className="inline-flex sm:hidden gm3-btn-group flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => prevSongId && navigateInSetlist(prevSongId)}
@@ -1322,8 +1322,12 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
               </h2>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {/* View mode switch */}
-                <div role="group" aria-label="Modo do editor ChordPro" className="gm3-segmented inline-flex p-1 bg-[var(--bg)] gap-0.5">
+                {/* View mode M3 Expressive Connected Button Group */}
+                <div
+                  role="group"
+                  aria-label="Modo do editor ChordPro"
+                  className="gm3-connected-group gm3-connected-group-subtle"
+                >
                   {(
                     [
                       { id: 'editor', label: 'Código' },
@@ -1336,9 +1340,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                       type="button"
                       aria-pressed={choView === v.id}
                       onClick={() => setChoView(v.id)}
-                      className={`gm3-segment px-3 py-1 font-display text-xs font-medium cursor-pointer ${
-                        choView === v.id ? '' : 'text-[var(--muted)]'
-                      }`}
+                      className="gm3-connected-btn px-3 h-9 font-display text-xs font-medium cursor-pointer"
                     >
                       {v.label}
                     </button>

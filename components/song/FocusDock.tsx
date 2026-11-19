@@ -72,7 +72,7 @@ export function FocusDock({
   return (
     <>
       {/* Minimal top bar so singer/musician always knows song title & can exit in one tap */}
-      <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-2.5 pb-1.5">
+      <div data-motion-scheme="standard" className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-2.5 pb-1.5">
         <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 py-2 space-y-1.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
@@ -111,7 +111,9 @@ export function FocusDock({
                 title={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro (palco)'}
                 aria-label={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
               >
-                {isDark ? <SunIcon size={17} /> : <MoonIcon size={17} />}
+                <span key={isDark ? 'sun' : 'moon'} className="gm3-icon-swap inline-flex">
+                  {isDark ? <SunIcon size={17} /> : <MoonIcon size={17} />}
+                </span>
               </button>
               <button
                 type="button"
@@ -136,6 +138,7 @@ export function FocusDock({
 
       {/* Floating bottom dock */}
       <div
+        data-motion-scheme="standard"
         className="fixed bottom-4 inset-x-0 z-30 flex justify-center px-3 pointer-events-none"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
@@ -144,7 +147,7 @@ export function FocusDock({
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           {hasSetlist && !isFollowing && (
-            <>
+            <div className="gm3-btn-group">
               <button
                 type="button"
                 disabled={!prevSongId}
@@ -165,7 +168,7 @@ export function FocusDock({
               >
                 <ChevronRightIcon size={17} />
               </button>
-            </>
+            </div>
           )}
 
           {!isFollowing && (
@@ -206,7 +209,7 @@ export function FocusDock({
             </div>
           )}
 
-          <div className="flex items-center gap-1">
+          <div className="gm3-btn-group">
             <button
               type="button"
               onClick={() => setFontSize(fontSize - 10)}
@@ -234,7 +237,7 @@ export function FocusDock({
               }`}
               title={`Tocar acorde-guia (${pitchTarget})`}
             >
-              <PitchWaveIcon size={14} />
+              <PitchWaveIcon size={14} className={pitchRinging ? 'gm3-wave-ringing' : undefined} />
               {pitchTarget}
             </button>
           )}

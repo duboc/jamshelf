@@ -77,7 +77,8 @@ Substituir todos os cantos de `4px` pela escala de arredondamento GM3:
 |---|---|---|
 | Botões (Filled, Tonal, Outlined, Text) | `22px` (pílula) -> `10px` (press) / `12px` (selecionado) | Raio numérico permite morph fluido; altura `40px` padrão (`36px` compacto, `44px` Modo Show) |
 | Indicador ativo do Navigation Rail / Bar | `16px` (compacto) / `22px` (expandido) -> `10px–12px` (press) | Expande do centro via `scaleX` sem distorcer ícone ou texto |
-| Controles segmentados (`Cifra / Só letra / Acordes`, `Cards / Lista`) | Trilha `22px`, segmento `18px` -> `10px` (press) | Concentricidade exata (`22px - 4px` padding) |
+| Controles conectados (`Cifra / Só letra / Acordes`, `Cards / Lista`) | Cantos externos `20px`, junções internas `6px`, selecionado `20px` (pílula) | Padrão M3 Expressive Connected Button Group (`gap: 2px`, hover interno `10px`, press `8px`) |
+| Grupos de botões padrão (`Tom - / 0 / +`, `A- / A+`, `‹ 7/12 ›`) | Pílulas `22px` acopladas com `gap: 4px` | Ao pressionar um botão, o ativo comprime/expande levemente e os vizinhos recuam `2px` via GPU |
 | Chips e filtros | `8px` ou `22px` | `8px` para Filter Chips; `22px` para status badges (`Tom G`, `Capo 2`) |
 | FAB / Extended FAB (`+ Nova música`) | `16px` (repouso) -> `20px` (hover) -> `28px` (press / ativo) | Altura `56px`, fundo `#D3E3FD`, conteúdo `#0B57D0`, morph para pílula completa ao clicar |
 | Cards de música e setlist | `20px` -> `22px` (hover) -> `26px` (press) | Sem borda `1px` em repouso; contraste dado pelo fundo `#FFFFFF` sobre `#F0F4F9` |
@@ -148,14 +149,16 @@ A top bar fixa estilo Cloud Console sai de cena. O shell se adapta em dois break
 ## 7. Estados, Movimento e Acessibilidade
 
 - **State layers GM3**: hover `8%`, focus `10%` + anel `2px solid` `--secondary` (`#00639B` / `#7FCFFF`) com `outline-offset: 2px`, pressed `10%`, disabled `38%` de opacidade no conteúdo.
-- **Tokens de movimento (sem overshoot `y2 > 1.0`)**:
-  - `--motion-duration-micro: 120ms` (press-in tátil, pontos de batida), `--motion-duration-state: 220ms` (recuperação de morph, toggles, backdrops, entrada de página), `--motion-duration-expressive: 280ms` (drawers, bottom sheets, expansão do Rail), `--motion-duration-none: 0ms`.
-  - Curvas: `--motion-ease-standard: cubic-bezier(0.2, 0, 0, 1)`, `--motion-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1)`, `--motion-ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1)`, `--motion-ease-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15)`.
+- **Tokens de movimento GM3 Expressive (Spatial vs. Effects via CSS `linear()` com fallback `cubic-bezier` em `@supports`)**:
+  - **Spatial Springs** (posição, escala, rotação e `border-radius`): `expressive-fast` (`damping=0.6`, `stiffness=800`, `350ms` para FAB, switches, botões, Connected Button Groups e chevrons), `expressive-default` (`damping=0.8`, `stiffness=380`, `480ms` para popovers ancorados, cards, indicador do rail e troca `Cards/Lista`), `standard-fast` (`damping=0.9`, `stiffness=1400`, `200ms`) e `standard-default` (`damping=0.9`, `stiffness=700`, `300ms` para drawers, dialogs, sheets, largura do rail e controles críticos de palco).
+  - **Effects** (`damping=1.0`, zero overshoot, exclusivos para cor, opacidade, borda e sombra): `fast` (`150ms cubic-bezier(0.31, 0.94, 0.34, 1)`), `default` (`200ms cubic-bezier(0.34, 0.80, 0.34, 1)`), `slow` (`300ms cubic-bezier(0.34, 0.88, 0.34, 1)`).
+  - **Escopo de palco (`data-motion-scheme="standard"`)**: `ShowModeView`, `FocusDock`, `Metronome` e `CountInOverlay` usam automaticamente o esquema Standard (zero oscilação) para toques rápidos durante o ensaio/show.
 - **Shape Morphing GM3 Expressive**:
   - FAB `+ Nova música` (`.gm3-fab`): `16px` repouso -> `20px` hover (+ rotação `90deg` no `+`) -> `28px` pílula completa ao clicar ou na rota `/add-song`.
-  - Botões pílula (`.pill-btn`): `22px` -> `10px` squircle ao clicar; `12px` quando selecionados (`aria-pressed="true"` / `aria-expanded="true"`).
-  - Cards (`.gm3-card-interactive`) e listas segmentadas (`.gm3-list-row`): arredondamento responsivo ao toque sem esmagar o card ao clicar nos ícones internos.
-  - Respeitar `@media (prefers-reduced-motion: reduce)` convertendo slides/scales em fade calmo de `120ms` ou mudança instantânea (`0ms`) mantendo a clareza de estado.
+  - Botões pílula (`.pill-btn`) e ícones (`.gm3-icon-btn`): `22px` -> `10px–12px` squircle ao clicar, selecionar ou abrir popover (`aria-expanded="true"` ganha tint tonal).
+  - Connected Button Groups (`.gm3-connected-group`): `gap: 2px`, extremos `20px`, cantos internos `6px`, opção selecionada transforma os 4 cantos em pílula `20px`.
+  - Cards (`.gm3-card-interactive`) e listas segmentadas (`.gm3-list-row`): arredondamento responsivo ao toque sem esmagar o card ao clicar nos botões ou links internos.
+  - Respeitar `@media (prefers-reduced-motion: reduce)` zerando todas as durações espaciais para `0ms`, convertendo entradas em fade puro de `120ms` e mantendo posições funcionais (switch e chevrons abertos) intactas.
 - **Alvos de toque**: mínimo `40px × 40px` em telas normais e `44px × 44px` no Modo Show (para uso rápido com instrumento na mão).
 
 ## 8. O que não fazer

@@ -319,7 +319,7 @@ export function ShowModeView({
           }`}
           title={`Tocar acorde-guia (${pitchTarget})`}
         >
-          <PitchWaveIcon size={14} />
+          <PitchWaveIcon size={14} className={pitchRinging ? 'gm3-wave-ringing' : undefined} />
           {pitchTarget}
         </button>
       )}
@@ -359,8 +359,8 @@ export function ShowModeView({
       {canNavigate && (
         <div
           className={`${
-            store.isAutoScrolling ? 'flex' : 'flex lg:hidden'
-          } items-center gap-1 flex-wrap`}
+            store.isAutoScrolling ? 'inline-flex' : 'inline-flex lg:hidden'
+          } gm3-btn-group flex-wrap`}
         >
           <button
             type="button"
@@ -444,7 +444,10 @@ export function ShowModeView({
   );
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--ink)]">
+    <div
+      data-motion-scheme="standard"
+      className="h-screen flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--ink)]"
+    >
       <VisualPulse />
 
       {/* Stage header */}
@@ -454,9 +457,11 @@ export function ShowModeView({
             <div className="flex items-center justify-between gap-2 min-w-0 lg:contents">
               <button
                 type="button"
+                aria-expanded={showSetlist}
+                aria-haspopup="dialog"
                 onClick={() => setShowSetlist((v) => !v)}
                 title="Abrir setlist (atalho: S) - toque para pular ou arraste para reordenar"
-                className="min-w-0 text-left rounded-2xl -mx-2 px-3 py-1 hover:bg-[var(--surface-high)] transition-colors cursor-pointer lg:order-1 lg:mr-auto"
+                className="gm3-card-interactive min-w-0 text-left -mx-2 px-3 py-1 hover:bg-[var(--surface-high)] cursor-pointer lg:order-1 lg:mr-auto"
               >
                 <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] truncate">
                   <MenuListIcon size={14} className="flex-shrink-0" />
@@ -485,7 +490,9 @@ export function ShowModeView({
                   title={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro (palco)'}
                   aria-label={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
                 >
-                  {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+                  <span key={isDark ? 'sun' : 'moon'} className="gm3-icon-swap inline-flex">
+                    {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -516,7 +523,7 @@ export function ShowModeView({
                 </button>
               )}
 
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="gm3-btn-group flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setFontSize(fontSize - 10)}
@@ -640,14 +647,16 @@ export function ShowModeView({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <ChordSheet
-          song={song}
-          displayMode={displayMode}
-          onChordTap={onChordTap}
-          onScrollStateChange={onScrollStateChange}
-          syncCorrection={live.syncCorrection}
-          bottomPaddingClass="pb-20"
-        />
+        <div key={song.id} className="gm3-page-enter flex flex-1 min-h-0 min-w-0">
+          <ChordSheet
+            song={song}
+            displayMode={displayMode}
+            onChordTap={onChordTap}
+            onScrollStateChange={onScrollStateChange}
+            syncCorrection={live.syncCorrection}
+            bottomPaddingClass="pb-20"
+          />
+        </div>
 
         {showSetlist && (
           <SetlistDrawer

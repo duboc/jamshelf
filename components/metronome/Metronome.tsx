@@ -216,7 +216,10 @@ export function Metronome({
               />
             ))}
           </div>
-          <span className="font-expressive text-sm text-[var(--accent)] w-4 text-center tabular-nums">
+          <span
+            key={beat}
+            className="gm3-beat-pop font-expressive text-sm text-[var(--accent)] w-4 text-center tabular-nums"
+          >
             {beat + 1}
           </span>
         </>
@@ -226,7 +229,7 @@ export function Metronome({
 
   if (readOnly) {
     return (
-      <div className="flex items-center gap-2">
+      <div data-motion-scheme="standard" className="flex items-center gap-2">
         <span className="studio-chip text-[var(--muted)]">
           {metronomeOn ? `${bpm} BPM · sinc.` : 'Metrônomo sinc.'}
         </span>
@@ -236,7 +239,7 @@ export function Metronome({
   }
 
   return (
-    <div className="flex items-center gap-1.5 flex-shrink-0">
+    <div data-motion-scheme="standard" className="gm3-btn-group flex-shrink-0">
       <button
         type="button"
         aria-pressed={metronomeOn}
