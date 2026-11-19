@@ -172,7 +172,7 @@ export default function AddSongPage() {
     <div className="flex-1 flex flex-col">
       <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Nova música' }]} />
 
-      <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+      <main id="main-content" className="gm3-page-enter flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
         <div className="w-full space-y-5">
           <div className="space-y-1">
             <h1 className="font-display text-3xl font-bold text-[var(--ink)]">Nova música</h1>
@@ -188,7 +188,7 @@ export default function AddSongPage() {
                 <div
                   role="group"
                   aria-label="Como deseja criar a cifra"
-                  className="inline-flex p-1 rounded-full bg-[var(--surface-high)] gap-0.5"
+                  className="gm3-segmented inline-flex p-1 bg-[var(--surface-high)] gap-0.5"
                 >
                   <button
                     type="button"
@@ -197,10 +197,8 @@ export default function AddSongPage() {
                       setInputMode('paste');
                       setError('');
                     }}
-                    className={`px-4 h-9 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
-                      inputMode === 'paste'
-                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                        : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                    className={`gm3-segment px-4 h-9 text-xs font-semibold cursor-pointer ${
+                      inputMode === 'paste' ? '' : 'text-[var(--muted)]'
                     }`}
                   >
                     Colar cifra
@@ -212,10 +210,8 @@ export default function AddSongPage() {
                       setInputMode('search');
                       setError('');
                     }}
-                    className={`px-4 h-9 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
-                      inputMode === 'search'
-                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                        : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                    className={`gm3-segment px-4 h-9 text-xs font-semibold cursor-pointer ${
+                      inputMode === 'search' ? '' : 'text-[var(--muted)]'
                     }`}
                   >
                     Buscar com IA

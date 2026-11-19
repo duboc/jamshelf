@@ -214,7 +214,7 @@ function OverlayInner({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+                  className="gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
                   aria-label="Fechar"
                 >
                   <CloseIcon size={16} />
@@ -338,7 +338,7 @@ function OverlayInner({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+                    className="gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
                     aria-label="Fechar"
                   >
                     <CloseIcon size={16} />

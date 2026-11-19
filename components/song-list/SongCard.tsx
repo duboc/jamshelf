@@ -27,6 +27,7 @@ export function SongCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [addedNotice, setAddedNotice] = useState('');
+  const [favPop, setFavPop] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,7 +56,12 @@ export function SongCard({
 
   const handleFavorite = (e: React.MouseEvent) => {
     e.preventDefault();
-    patchMeta(song.id, 'favorite', song.favorite ? 'false' : 'true');
+    const nextFav = !song.favorite;
+    if (nextFav) {
+      setFavPop(true);
+      setTimeout(() => setFavPop(false), 280);
+    }
+    patchMeta(song.id, 'favorite', nextFav ? 'true' : 'false');
   };
 
   const handleAddToSetlist = (setlistId: string, setlistName: string) => {
@@ -70,7 +76,7 @@ export function SongCard({
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
+        className="gm3-icon-btn w-10 h-10 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
         title="Mais ações"
         aria-label={`Mais ações para ${song.title}`}
         aria-expanded={menuOpen}
@@ -82,7 +88,7 @@ export function SongCard({
         <div
           role="dialog"
           aria-label={`Ações de ${song.title}`}
-          className="gm3-card gm3-dialog-enter absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2"
+          className="gm3-card gm3-popover-enter absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           {/* Rating inside menu (accessible 36px stars with WCAG AA contrast) */}
@@ -94,7 +100,7 @@ export function SongCard({
                   key={star}
                   type="button"
                   onClick={(e) => handleStar(e, star)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--surface-high)] ${
+                  className={`gm3-icon-btn gm3-star-btn w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
                     star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--line)] hover:text-[var(--warn-icon)]'
                   }`}
                   title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
@@ -183,7 +189,7 @@ export function SongCard({
   // GM3 Expressive Tonal Card (single link per card, signature key badge, clean rating chip)
   if (variant === 'card') {
     return (
-      <article className="gm3-card group relative rounded-[20px] bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors px-5 py-4 flex flex-col justify-between gap-3">
+      <article className="gm3-card gm3-card-interactive group relative bg-[var(--surface)] hover:bg-[var(--surface-high)] px-5 py-4 flex flex-col justify-between gap-3">
         <div className="flex items-start justify-between gap-2">
           <Link href={`/song/${song.id}`} className="min-w-0 flex-1 flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -209,13 +215,13 @@ export function SongCard({
             {/* Signature GM3 Expressive Musical Key badge */}
             {song.displayKey ? (
               <span
-                className="min-w-[44px] h-10 px-2.5 rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-[19px] leading-none inline-flex items-center justify-center flex-shrink-0"
+                className="gm3-key-badge min-w-[44px] h-10 px-2.5 bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-[19px] leading-none inline-flex items-center justify-center flex-shrink-0"
                 title={`Tom ${song.displayKey}`}
               >
                 {song.displayKey}
               </span>
             ) : (
-              <span className="min-w-[44px] h-10 px-2.5 rounded-2xl bg-[var(--bg)] text-[var(--muted)] font-expressive text-base leading-none inline-flex items-center justify-center flex-shrink-0">
+              <span className="gm3-key-badge min-w-[44px] h-10 px-2.5 bg-[var(--bg)] text-[var(--muted)] font-expressive text-base leading-none inline-flex items-center justify-center flex-shrink-0">
                 -
               </span>
             )}
@@ -255,7 +261,7 @@ export function SongCard({
             <button
               type="button"
               onClick={handleFavorite}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
+              className={`gm3-icon-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-[var(--surface2)] ${
                 song.favorite ? 'text-[var(--rec)]' : 'text-[var(--muted)] hover:text-[var(--rec)]'
               }`}
               title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
@@ -284,7 +290,7 @@ export function SongCard({
 
   return (
     <div
-      className={`gm3-card group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_76px_92px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors ${segmentedRadius}`}
+      className={`gm3-card gm3-list-row group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_76px_92px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] ${segmentedRadius}`}
     >
       <Link href={`/song/${song.id}`} className="min-w-0 block">
         <div className="flex items-center gap-2 min-w-0">
@@ -354,7 +360,7 @@ export function SongCard({
           <button
             type="button"
             onClick={handleFavorite}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--surface2)] ${
+            className={`gm3-icon-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-[var(--surface2)] ${
               song.favorite ? 'text-[var(--rec)]' : 'text-[var(--muted)] hover:text-[var(--rec)]'
             }`}
             title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}

@@ -67,6 +67,16 @@
   --font-google-text: "Google Sans Text", "Google Sans Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-google-mono: "Google Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
+  /* GM3 Expressive motion tokens (100-400ms scale, zero overshoot) */
+  --motion-duration-none: 0ms;
+  --motion-duration-micro: 120ms;
+  --motion-duration-state: 220ms;
+  --motion-duration-expressive: 280ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --motion-ease-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+
   color-scheme: light;
 }
 
@@ -257,23 +267,26 @@
     color: var(--muted);
   }
 
-  /* GM3 Pill buttons */
+  /* GM3 Expressive Pill buttons (numeric 22px radius enables fluid morph to 10px squircle on press & 12px when toggled) */
   .pill-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.42rem;
-    border-radius: calc(infinity * 1px);
+    border-radius: 22px;
     border: 1px solid transparent;
     background: var(--surface);
     color: var(--ink);
     font-family: var(--font-google-text);
     font-weight: 500;
-    transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1),
-      color 150ms cubic-bezier(0.2, 0, 0, 1),
-      border-color 150ms cubic-bezier(0.2, 0, 0, 1),
-      transform 150ms cubic-bezier(0.2, 0, 0, 1),
-      opacity 150ms ease;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 150ms var(--motion-ease-standard),
+      color 150ms var(--motion-ease-standard),
+      border-color 150ms var(--motion-ease-standard),
+      box-shadow 150ms var(--motion-ease-standard),
+      opacity 150ms var(--motion-ease-standard);
     cursor: pointer;
     white-space: nowrap;
   }
@@ -282,8 +295,24 @@
     background: var(--surface-high);
   }
 
+  .pill-btn[aria-pressed="true"],
+  .pill-btn[aria-expanded="true"],
+  .pill-btn[data-active="true"] {
+    border-radius: 12px;
+  }
+
   .pill-btn:active:not(:disabled) {
-    transform: scale(0.98);
+    border-radius: 10px;
+    transform: scale(0.97);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  .pill-btn[aria-pressed="true"]:active:not(:disabled),
+  .pill-btn[aria-expanded="true"]:active:not(:disabled),
+  .pill-btn[data-active="true"]:active:not(:disabled) {
+    border-radius: 8px;
+    transform: scale(0.97);
   }
 
   .pill-btn:disabled {
@@ -337,7 +366,7 @@
     background: color-mix(in srgb, var(--on-rec-fill) 10%, var(--rec-fill));
   }
 
-  /* GM3 Primary Container FAB */
+  /* GM3 Expressive FAB: 16px squircle at rest -> 20px hover (+ icon turn) -> 28px full rounded pill on press/active */
   .gm3-fab {
     display: inline-flex;
     align-items: center;
@@ -348,20 +377,331 @@
     color: var(--on-primary-container);
     font-family: var(--font-google-text);
     font-weight: 500;
-    transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1),
-      transform 160ms cubic-bezier(0.2, 1.1, 0.3, 1),
-      box-shadow 160ms ease;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 160ms var(--motion-ease-standard),
+      box-shadow 180ms var(--motion-ease-standard);
     cursor: pointer;
     white-space: nowrap;
   }
 
+  .gm3-fab svg {
+    transition: transform var(--motion-duration-state) var(--motion-ease-emphasized-decel);
+  }
+
   .gm3-fab:hover {
+    border-radius: 20px;
     background: color-mix(in srgb, var(--accent) 12%, var(--primary-container));
     box-shadow: var(--shadow-sm);
   }
 
+  .gm3-fab:hover svg {
+    transform: rotate(90deg);
+  }
+
+  .gm3-fab[aria-current="page"] {
+    border-radius: 28px;
+    background: color-mix(in srgb, var(--accent) 18%, var(--primary-container));
+    box-shadow: var(--shadow-sm);
+  }
+
   .gm3-fab:active {
-    transform: scale(0.97);
+    border-radius: 28px;
+    transform: scale(0.96);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  /* GM3 Expressive circular icon button: morphs circle (22px) -> squircle (12px) on press / open */
+  .gm3-icon-btn {
+    border-radius: 22px;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 150ms var(--motion-ease-standard),
+      color 150ms var(--motion-ease-standard);
+  }
+
+  .gm3-icon-btn:active:not(:disabled) {
+    border-radius: 12px;
+    transform: scale(0.93);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  /* GM3 Expressive Segmented Control (concentric 22px track -> 18px segment -> 10px press) */
+  .gm3-segmented {
+    border-radius: 22px;
+  }
+
+  .gm3-segment {
+    border-radius: 18px;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized-decel),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 150ms var(--motion-ease-standard),
+      color 150ms var(--motion-ease-standard);
+  }
+
+  .gm3-segment:hover:not(:disabled):not([aria-pressed="true"]) {
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
+    color: var(--ink);
+  }
+
+  .gm3-segment[aria-pressed="true"] {
+    border-radius: 18px;
+    background: var(--secondary-container);
+    color: var(--on-secondary-container);
+  }
+
+  .gm3-segment:active:not(:disabled) {
+    border-radius: 10px;
+    transform: scale(0.96);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  /* GM3 Navigation Rail & Bottom Bar active indicator (GPU scaleX from center + tactile corner morph) */
+  .gm3-nav-pill {
+    position: relative;
+    isolation: isolate;
+    border-radius: 16px;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      color 150ms var(--motion-ease-standard);
+  }
+
+  .gm3-nav-pill-expanded {
+    border-radius: 22px;
+  }
+
+  .gm3-nav-pill::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    transform: scaleX(0.58);
+    background: var(--surface-high);
+    transition:
+      transform 240ms var(--motion-ease-emphasized-decel),
+      opacity 180ms var(--motion-ease-standard),
+      background-color 150ms var(--motion-ease-standard);
+  }
+
+  .gm3-nav-pill:hover::before,
+  .group:hover .gm3-nav-pill::before {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  .gm3-nav-pill[data-active="true"],
+  .gm3-nav-pill[aria-current="page"] {
+    color: var(--on-secondary-container);
+  }
+
+  .gm3-nav-pill[data-active="true"]::before,
+  .gm3-nav-pill[aria-current="page"]::before {
+    opacity: 1;
+    transform: scaleX(1);
+    background: var(--secondary-container);
+  }
+
+  .gm3-nav-pill:active,
+  .group:active .gm3-nav-pill {
+    border-radius: 10px;
+    transform: scale(0.96);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  .gm3-nav-pill-expanded:active {
+    border-radius: 12px;
+  }
+
+  .gm3-rail-label {
+    animation: gm3-label-in 180ms var(--motion-ease-emphasized-decel) both;
+  }
+
+  /* GM3 Switch (pure GPU transform via --switch-x, zero width/height reflow) */
+  .gm3-switch-track {
+    border-radius: 16px;
+    transition:
+      background-color var(--motion-duration-state) var(--motion-ease-standard),
+      border-color var(--motion-duration-state) var(--motion-ease-standard);
+  }
+
+  .gm3-switch-thumb {
+    --switch-x: 4px;
+    --switch-s: 0.75;
+    width: 20px;
+    height: 20px;
+    border-radius: 12px;
+    transform: translateX(var(--switch-x)) scale(var(--switch-s));
+    transition:
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color var(--motion-duration-state) var(--motion-ease-standard);
+  }
+
+  .gm3-switch-track[aria-checked="true"] .gm3-switch-thumb {
+    --switch-x: 24px;
+    --switch-s: 1;
+  }
+
+  .gm3-switch-track:active .gm3-switch-thumb {
+    --switch-s: 1.12;
+    transition-duration: var(--motion-duration-micro);
+  }
+
+  /* GM3 Expressive Interactive Cards & Segmented List Rows */
+  .gm3-card-interactive {
+    border-radius: 20px;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 160ms var(--motion-ease-standard);
+  }
+
+  .gm3-card-interactive:hover {
+    border-radius: 22px;
+  }
+
+  .gm3-card-interactive:active:not(:has(button:active)) {
+    border-radius: 26px;
+    transform: scale(0.988);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  .gm3-key-badge {
+    border-radius: 16px;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized);
+  }
+
+  .gm3-card-interactive:hover .gm3-key-badge {
+    border-radius: 20px;
+  }
+
+  .gm3-list-row {
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 150ms var(--motion-ease-standard),
+      box-shadow 180ms var(--motion-ease-standard);
+  }
+
+  /* Favorite heart & star tactile micro-interactions */
+  .gm3-fav-btn svg,
+  .gm3-star-btn svg {
+    transition: transform var(--motion-duration-state) var(--motion-ease-emphasized-decel);
+  }
+
+  .gm3-fav-btn:hover svg,
+  .gm3-star-btn:hover svg {
+    transform: scale(1.08);
+  }
+
+  .gm3-fav-btn:active svg,
+  .gm3-star-btn:active svg {
+    transform: scale(0.84);
+    transition-duration: var(--motion-duration-micro);
+  }
+
+  .gm3-pop-once svg {
+    animation: gm3-icon-pop 260ms var(--motion-ease-emphasized-decel);
+  }
+
+  /* Interactive musical surfaces: ChordBadge, SectionNav, Metronome dots, ChordsReference tiles */
+  .gm3-chord-badge {
+    border-radius: 8px;
+    transition:
+      border-radius 180ms var(--motion-ease-emphasized),
+      transform 180ms var(--motion-ease-emphasized),
+      background-color 140ms var(--motion-ease-standard),
+      color 140ms var(--motion-ease-standard);
+  }
+
+  .gm3-chord-badge:hover {
+    border-radius: 10px;
+  }
+
+  .gm3-chord-badge:active {
+    border-radius: 14px;
+    transform: scale(0.94);
+    transition-duration: 100ms;
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  .gm3-chord-badge-lg {
+    border-radius: 20px;
+    transition:
+      border-radius 180ms var(--motion-ease-emphasized),
+      transform 180ms var(--motion-ease-emphasized),
+      background-color 140ms var(--motion-ease-standard),
+      color 140ms var(--motion-ease-standard);
+  }
+
+  .gm3-chord-badge-lg:active {
+    border-radius: 10px;
+    transform: scale(0.95);
+    transition-duration: 100ms;
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  .gm3-section-pill {
+    border-radius: 18px;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized-decel),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 150ms var(--motion-ease-standard),
+      color 150ms var(--motion-ease-standard);
+  }
+
+  .gm3-section-pill[aria-current="true"] {
+    border-radius: 12px;
+  }
+
+  .gm3-section-pill:active {
+    border-radius: 10px;
+    transform: scale(0.96);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
+  }
+
+  .gm3-beat-dot {
+    border-radius: 8px;
+    transition:
+      transform var(--motion-duration-micro) var(--motion-ease-emphasized-decel),
+      background-color var(--motion-duration-micro) var(--motion-ease-standard);
+  }
+
+  .gm3-chord-tile {
+    border-radius: 16px;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 150ms var(--motion-ease-standard);
+  }
+
+  .gm3-chord-tile:hover {
+    border-radius: 18px;
+  }
+
+  .gm3-chord-tile[aria-pressed="true"] {
+    border-radius: 20px;
+  }
+
+  .gm3-chord-tile:active {
+    border-radius: 22px;
+    transform: scale(0.96);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
   }
 
   /* GM3 Text / Tonal toolbar action */
@@ -370,7 +710,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    border-radius: calc(infinity * 1px);
+    border-radius: 22px;
     padding: 0.45rem 0.9rem;
     font-family: var(--font-google-text);
     font-size: 0.8125rem;
@@ -378,7 +718,12 @@
     color: var(--accent-ink);
     background: var(--surface);
     border: 1px solid transparent;
-    transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1), color 150ms ease, opacity 150ms ease;
+    transition:
+      border-radius var(--motion-duration-state) var(--motion-ease-emphasized),
+      transform var(--motion-duration-state) var(--motion-ease-emphasized),
+      background-color 150ms var(--motion-ease-standard),
+      color 150ms var(--motion-ease-standard),
+      opacity 150ms var(--motion-ease-standard);
     cursor: pointer;
     white-space: nowrap;
   }
@@ -386,6 +731,13 @@
   .cloud-action-btn:hover:not(:disabled) {
     background: var(--primary-container);
     color: var(--on-primary-container);
+  }
+
+  .cloud-action-btn:active:not(:disabled) {
+    border-radius: 10px;
+    transform: scale(0.97);
+    transition-duration: var(--motion-duration-micro);
+    transition-timing-function: var(--motion-ease-emphasized-accel);
   }
 
   .cloud-action-btn:disabled {
@@ -402,7 +754,7 @@
     font-size: 0.75rem;
     font-weight: 500;
     padding: 0.22rem 0.65rem;
-    border-radius: calc(infinity * 1px);
+    border-radius: 22px;
     background: var(--surface2);
     color: var(--ink);
     white-space: nowrap;
@@ -417,7 +769,10 @@
     color: var(--ink);
     font-family: var(--font-google-text);
     outline: none;
-    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+    transition:
+      border-color 150ms var(--motion-ease-standard),
+      box-shadow 150ms var(--motion-ease-standard),
+      background-color 150ms var(--motion-ease-standard);
   }
 
   .studio-input:hover:not(:focus) {
@@ -439,25 +794,41 @@
     border: 1px solid transparent;
   }
 
-  /* GM3 Expressive motion utilities */
+  /* GM3 Expressive overlay, panel & route motion utilities */
+  .gm3-backdrop-enter {
+    animation: gm3-fade-in var(--motion-duration-state) var(--motion-ease-standard) both;
+  }
+
   .gm3-dialog-enter {
-    animation: gm3-dialog-in 190ms cubic-bezier(0.2, 0, 0, 1) both;
+    animation: gm3-dialog-in var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
+  }
+
+  .gm3-popover-enter {
+    animation: gm3-popover-in 180ms var(--motion-ease-emphasized-decel) both;
+  }
+
+  .gm3-panel-enter {
+    animation: gm3-panel-in var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
   }
 
   .gm3-sheet-enter {
-    animation: gm3-sheet-in 260ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+    animation: gm3-sheet-in var(--motion-duration-expressive) var(--motion-ease-emphasized-decel) both;
   }
 
   .gm3-drawer-left {
-    animation: gm3-slide-left 240ms cubic-bezier(0.2, 0, 0, 1) both;
+    animation: gm3-slide-left var(--motion-duration-expressive) var(--motion-ease-emphasized-decel) both;
   }
 
   .gm3-drawer-right {
-    animation: gm3-slide-right 240ms cubic-bezier(0.2, 0, 0, 1) both;
+    animation: gm3-slide-right var(--motion-duration-expressive) var(--motion-ease-emphasized-decel) both;
+  }
+
+  .gm3-page-enter {
+    animation: gm3-page-in var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
   }
 
   .gm3-beat-pop {
-    animation: gm3-beat-scale 240ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+    animation: gm3-beat-scale var(--motion-duration-state) var(--motion-ease-emphasized-decel) both;
   }
 
   .no-scrollbar {
@@ -469,29 +840,73 @@
   }
 }
 
+/* Unlayered state overrides so dynamic morph states win cleanly over resting Tailwind utilities */
+.gm3-icon-btn[aria-expanded="true"] {
+  border-radius: 12px;
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.gm3-list-row:active:not(:has(button:active)) {
+  border-radius: 18px;
+  transform: scale(0.992);
+  transition-duration: var(--motion-duration-micro);
+  transition-timing-function: var(--motion-ease-emphasized-accel);
+}
+
+.gm3-list-row[data-dragging="true"] {
+  border-radius: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
 @keyframes metronome-flash {
   0% { opacity: 0.9; }
   100% { opacity: 0; }
 }
 
+@keyframes gm3-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gm3-label-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 @keyframes gm3-dialog-in {
-  from { opacity: 0; transform: scale(0.95) translateY(6px); }
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+@keyframes gm3-popover-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes gm3-panel-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @keyframes gm3-sheet-in {
-  from { opacity: 0; transform: translateY(24px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes gm3-slide-left {
-  from { transform: translateX(-24px); opacity: 0.7; }
+  from { transform: translateX(-28px); opacity: 0.7; }
   to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes gm3-slide-right {
-  from { transform: translateX(24px); opacity: 0.7; }
+  from { transform: translateX(28px); opacity: 0.7; }
   to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes gm3-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes gm3-beat-scale {
@@ -499,9 +914,72 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
+@keyframes gm3-icon-pop {
+  0% { transform: scale(0.84); }
+  55% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes gm3-reduced-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+  :root {
+    --motion-duration-micro: var(--motion-duration-none);
+    --motion-duration-state: var(--motion-duration-none);
+    --motion-duration-expressive: var(--motion-duration-none);
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  .gm3-fab:active,
+  .gm3-fab:hover svg,
+  .pill-btn:active,
+  .cloud-action-btn:active,
+  .gm3-icon-btn:active,
+  .gm3-segment:active,
+  .gm3-nav-pill:active,
+  .gm3-nav-pill::before,
+  .gm3-card-interactive:active,
+  .gm3-list-row:active,
+  .gm3-chord-badge:active,
+  .gm3-chord-badge-lg:active,
+  .gm3-section-pill:active,
+  .gm3-chord-tile:active,
+  .gm3-fav-btn:hover svg,
+  .gm3-fav-btn:active svg,
+  .gm3-star-btn:hover svg,
+  .gm3-star-btn:active svg {
+    transform: none !important;
+    transition-duration: var(--motion-duration-none) !important;
+  }
+
+  /* Preserve Gm3Switch translateX position while disabling slide motion */
+  .gm3-switch-track,
+  .gm3-switch-thumb,
+  .gm3-beat-dot {
+    transition-duration: var(--motion-duration-none) !important;
+  }
+
+  .gm3-backdrop-enter,
+  .gm3-dialog-enter,
+  .gm3-popover-enter,
+  .gm3-sheet-enter,
+  .gm3-drawer-left,
+  .gm3-drawer-right,
+  .gm3-panel-enter,
+  .gm3-page-enter,
+  .gm3-rail-label {
+    animation: gm3-reduced-fade 120ms ease-out both !important;
+  }
+
+  .gm3-beat-pop,
+  .gm3-pop-once,
+  .animate-pulse {
+    animation: none !important;
   }
 }

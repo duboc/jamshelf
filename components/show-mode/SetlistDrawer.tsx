@@ -75,7 +75,7 @@ export function SetlistDrawer({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40"
+        className="gm3-backdrop-enter fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40"
         onClick={onClose}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
@@ -113,7 +113,7 @@ export function SetlistDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="text-[var(--muted)] hover:text-[var(--ink)] w-9 h-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-high)] transition-colors flex-shrink-0 cursor-pointer"
+            className="gm3-icon-btn text-[var(--muted)] hover:text-[var(--ink)] w-9 h-9 flex items-center justify-center hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
             title="Fechar setlist"
             aria-label="Fechar setlist"
           >
@@ -130,7 +130,8 @@ export function SetlistDrawer({
                 key={song.id}
                 data-display-idx={displayIdx}
                 data-current={isCurrent || undefined}
-                className={`flex items-center gap-1 rounded-2xl transition-colors ${
+                data-dragging={isDragged || undefined}
+                className={`gm3-list-row flex items-center gap-1 rounded-2xl ${
                   isDragged
                     ? 'bg-[var(--secondary-container)]/60 ring-2 ring-[var(--accent)]'
                     : isCurrent
@@ -179,7 +180,7 @@ export function SetlistDrawer({
                       type="button"
                       disabled={displayIdx === 0}
                       onClick={() => handleKeyboardReorder(displayIdx, -1)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
+                      className="gm3-icon-btn w-7 h-7 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
                       aria-label={`Mover ${song.title} para cima`}
                       title="Mover para cima"
                     >
@@ -189,7 +190,7 @@ export function SetlistDrawer({
                       type="button"
                       disabled={displayIdx >= displayEntries.length - 1}
                       onClick={() => handleKeyboardReorder(displayIdx, 1)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
+                      className="gm3-icon-btn w-7 h-7 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
                       aria-label={`Mover ${song.title} para baixo`}
                       title="Mover para baixo"
                     >

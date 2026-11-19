@@ -190,7 +190,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
         }
       />
 
-      <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+      <main id="main-content" className="gm3-page-enter flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 space-y-5">
         <div className="sr-only" role="status" aria-live="polite">
           {liveAnnouncement}
         </div>
@@ -272,7 +272,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
           <div
             role="status"
             aria-live="polite"
-            className="gm3-dialog-enter rounded-2xl bg-[var(--surface)] px-4 py-3 flex items-center justify-between gap-3 text-sm"
+            className="gm3-panel-enter rounded-2xl bg-[var(--surface)] px-4 py-3 flex items-center justify-between gap-3 text-sm"
             style={{ boxShadow: 'var(--shadow-sm)' }}
           >
             <span className="text-[var(--ink)]">
@@ -290,7 +290,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                 type="button"
                 onClick={() => setUndoRemoval(null)}
                 aria-label="Dispensar aviso"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
+                className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
               >
                 <CloseIcon size={15} />
               </button>
@@ -300,7 +300,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
 
         {/* Add song picker */}
         {showAddSong && (
-          <section className="gm3-card gm3-dialog-enter rounded-[24px] bg-[var(--surface)] p-5 space-y-3">
+          <section className="gm3-card gm3-panel-enter rounded-[24px] bg-[var(--surface)] p-5 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="field-label">Adicionar do repertório</span>
               <button
@@ -400,7 +400,8 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                     <div
                       key={song.id}
                       data-display-idx={idx}
-                      className={`gm3-card group flex items-center gap-3 py-3.5 px-4 sm:px-5 bg-[var(--surface)] transition-colors ${segRadius} ${
+                      data-dragging={drag !== null && drag.to === idx ? 'true' : undefined}
+                      className={`gm3-card gm3-list-row group flex items-center gap-3 py-3.5 px-4 sm:px-5 bg-[var(--surface)] ${segRadius} ${
                         drag !== null && drag.to === idx
                           ? 'bg-[var(--secondary-container)]/60 ring-2 ring-[var(--accent)]'
                           : 'hover:bg-[var(--surface-high)]'
@@ -445,7 +446,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                           type="button"
                           disabled={idx === 0}
                           onClick={() => handleMoveKeyboard(idx, -1)}
-                          className="w-9 h-9 rounded-full hidden sm:flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          className="gm3-icon-btn w-9 h-9 hidden sm:flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                           title="Mover para cima"
                           aria-label={`Mover ${song.title} para cima`}
                         >
@@ -455,7 +456,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                           type="button"
                           disabled={idx === displayEntries.length - 1}
                           onClick={() => handleMoveKeyboard(idx, 1)}
-                          className="w-9 h-9 rounded-full hidden sm:flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          className="gm3-icon-btn w-9 h-9 hidden sm:flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                           title="Mover para baixo"
                           aria-label={`Mover ${song.title} para baixo`}
                         >
@@ -464,7 +465,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                         <button
                           type="button"
                           onClick={() => handleRemoveWithUndo(song.id, song.title, storeIdx)}
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
+                          className="gm3-icon-btn w-10 h-10 flex items-center justify-center text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] cursor-pointer"
                           title="Remover do setlist"
                           aria-label={`Remover ${song.title} do setlist`}
                         >

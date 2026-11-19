@@ -48,7 +48,7 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
+      className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -68,7 +68,7 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps) {
             type="button"
             onClick={onClose}
             aria-label="Fechar guia de atalhos"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
+            className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
           >
             <CloseIcon size={18} />
           </button>

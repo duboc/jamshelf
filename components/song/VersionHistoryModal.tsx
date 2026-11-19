@@ -114,7 +114,7 @@ export function VersionHistoryModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
+      className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -133,7 +133,7 @@ export function VersionHistoryModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+            className="gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
             aria-label="Fechar"
           >
             <CloseIcon size={16} />

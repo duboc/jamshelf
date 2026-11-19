@@ -1210,7 +1210,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {/* Main chord / lyric sheet */}
-      <main id="main-content" className="flex flex-1 relative min-h-0">
+      <main id="main-content" className="gm3-page-enter flex flex-1 relative min-h-0">
         <ChordSheet
           song={song}
           onChordTap={(chord) => store.setActiveChord(chord)}
@@ -1304,7 +1304,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {/* Edit raw ChordPro source modal with live split preview */}
       {showExport && (
         <div
-          className="fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-3 sm:p-4"
+          className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-3 sm:p-4"
           onClick={closeExportModal}
         >
           <div
@@ -1323,7 +1323,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* View mode switch */}
-                <div role="group" aria-label="Modo do editor ChordPro" className="inline-flex p-1 rounded-full bg-[var(--bg)] gap-0.5">
+                <div role="group" aria-label="Modo do editor ChordPro" className="gm3-segmented inline-flex p-1 bg-[var(--bg)] gap-0.5">
                   {(
                     [
                       { id: 'editor', label: 'Código' },
@@ -1336,10 +1336,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                       type="button"
                       aria-pressed={choView === v.id}
                       onClick={() => setChoView(v.id)}
-                      className={`px-3 py-1 rounded-full font-display text-xs font-medium transition-colors cursor-pointer ${
-                        choView === v.id
-                          ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                          : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                      className={`gm3-segment px-3 py-1 font-display text-xs font-medium cursor-pointer ${
+                        choView === v.id ? '' : 'text-[var(--muted)]'
                       }`}
                     >
                       {v.label}

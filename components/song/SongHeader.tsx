@@ -116,6 +116,7 @@ export function SongHeader({
   const [metaOpen, setMetaOpen] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [pitchRinging, setPitchRinging] = useState(false);
+  const [favPop, setFavPop] = useState(false);
   const [bpmDraft, setBpmDraft] = useState(String(song.tempo));
   const [bpmHint, setBpmHint] = useState('');
   const [durationDraft, setDurationDraft] = useState(
@@ -289,7 +290,7 @@ export function SongHeader({
                       setEditingIdentity(true);
                       requestAnimationFrame(() => titleInputRef.current?.focus());
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] transition-colors flex-shrink-0 cursor-pointer"
+                    className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
                     title="Editar título e artista"
                     aria-label="Editar título e artista"
                   >
@@ -316,8 +317,14 @@ export function SongHeader({
           <button
             type="button"
             aria-pressed={song.favorite}
-            onClick={() => onPatchMeta('favorite', song.favorite ? 'false' : 'true')}
-            className={`pill-btn w-9 h-9 ${
+            onClick={() => {
+              if (!song.favorite) {
+                setFavPop(true);
+                setTimeout(() => setFavPop(false), 280);
+              }
+              onPatchMeta('favorite', song.favorite ? 'false' : 'true');
+            }}
+            className={`pill-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-9 h-9 ${
               song.favorite ? 'text-[var(--rec)] border-[var(--rec)]/40' : 'text-[var(--muted)]'
             }`}
             title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
@@ -342,7 +349,7 @@ export function SongHeader({
               <div
                 role="dialog"
                 aria-label="Mais ações da música"
-                className="gm3-dialog-enter absolute right-0 top-[calc(100%+8px)] z-50 w-[min(280px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] py-2"
+                className="gm3-popover-enter absolute right-0 top-[calc(100%+8px)] z-50 w-[min(280px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] py-2"
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 {/* Rating */}
@@ -356,7 +363,7 @@ export function SongHeader({
                         aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
                         aria-pressed={song.rating === star}
                         onClick={() => onPatchMeta('rating', song.rating === star ? 0 : star)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors hover:bg-[var(--surface-high)] ${
+                        className={`gm3-icon-btn gm3-star-btn w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
                           star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--muted)]'
                         }`}
                       >
@@ -572,7 +579,7 @@ export function SongHeader({
               <div
                 role="dialog"
                 aria-label="Ajustes musicais da faixa"
-                className="gm3-dialog-enter absolute left-0 top-[calc(100%+8px)] z-50 w-[min(296px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3"
+                className="gm3-popover-enter absolute left-0 top-[calc(100%+8px)] z-50 w-[min(296px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3"
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 <div className="field-label">Propriedades da música</div>
@@ -606,15 +613,13 @@ export function SongHeader({
                 {song.capo > 0 && (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-[var(--muted)]">Mostrar acordes como</span>
-                    <div className="inline-flex p-0.5 rounded-full bg-[var(--bg)] gap-0.5">
+                    <div className="gm3-segmented inline-flex p-0.5 bg-[var(--bg)] gap-0.5">
                       <button
                         type="button"
                         aria-pressed={capoDisplay === 'sounding'}
                         onClick={() => setCapoDisplay('sounding')}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer ${
-                          capoDisplay === 'sounding'
-                            ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                            : 'text-[var(--muted)]'
+                        className={`gm3-segment px-2.5 py-1 text-xs font-medium cursor-pointer ${
+                          capoDisplay === 'sounding' ? '' : 'text-[var(--muted)]'
                         }`}
                       >
                         Tom real
@@ -623,10 +628,8 @@ export function SongHeader({
                         type="button"
                         aria-pressed={capoDisplay === 'shapes'}
                         onClick={() => setCapoDisplay('shapes')}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer ${
-                          capoDisplay === 'shapes'
-                            ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                            : 'text-[var(--muted)]'
+                        className={`gm3-segment px-2.5 py-1 text-xs font-medium cursor-pointer ${
+                          capoDisplay === 'shapes' ? '' : 'text-[var(--muted)]'
                         }`}
                       >
                         Formas
@@ -778,7 +781,7 @@ export function SongHeader({
               <div
                 role="group"
                 aria-label="Modo de leitura"
-                className="inline-flex flex-shrink-0 p-0.5 rounded-full bg-[var(--bg)] lg:bg-[var(--surface-high)] gap-0.5"
+                className="gm3-segmented inline-flex flex-shrink-0 p-0.5 bg-[var(--bg)] lg:bg-[var(--surface-high)] gap-0.5"
               >
                 {(
                   [
@@ -802,10 +805,8 @@ export function SongHeader({
                           ? 'Esconde os acordes e melhora a tipografia para cantar (atalho: L)'
                           : undefined
                       }
-                      className={`px-3 h-8 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
-                        active
-                          ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                          : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                      className={`gm3-segment px-3 h-8 text-xs font-medium cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                        active ? '' : 'text-[var(--muted)]'
                       }`}
                     >
                       {label}
@@ -948,7 +949,7 @@ export function SongHeader({
       {/* Centered Go-Live name prompt modal (never clips inside horizontal scroll strip) */}
       {showNamePrompt && (
         <div
-          className="fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
+          className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
           onClick={() => setShowNamePrompt(false)}
         >
           <div

@@ -64,7 +64,7 @@ export function CountInOverlay({
   return (
     <div
       onClick={onCancel}
-      className="fixed inset-0 z-[75] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4"
+      className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4"
     >
       <div
         ref={dialogRef}
@@ -103,12 +103,12 @@ export function CountInOverlay({
             return (
               <span
                 key={beatNum}
-                className={`rounded-full transition-all ${
+                className={`w-4 h-4 gm3-beat-dot ${
                   isNow
-                    ? 'w-4 h-4 bg-[var(--accent)] scale-115'
+                    ? 'bg-[var(--accent)] scale-115'
                     : passed
-                    ? 'w-3.5 h-3.5 bg-[var(--tune-dot)]'
-                    : 'w-3 h-3 bg-[var(--line)]'
+                    ? 'bg-[var(--tune-dot)] scale-90'
+                    : 'bg-[var(--line)] scale-75'
                 }`}
               />
             );

@@ -32,7 +32,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/45 flex items-center justify-center p-4"
+      className="gm3-backdrop-enter fixed inset-0 z-[70] bg-black/45 flex items-center justify-center p-4"
       onClick={onCancel}
     >
       <div

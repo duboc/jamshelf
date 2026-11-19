@@ -60,7 +60,7 @@ function SetlistCardMenu({
         onClick={() => setOpen((v) => !v)}
         aria-label={`Mais ações para ${setlistName}`}
         aria-expanded={open}
-        className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
+        className="gm3-icon-btn w-10 h-10 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
       >
         <MoreVertIcon size={18} />
       </button>
@@ -68,7 +68,7 @@ function SetlistCardMenu({
         <div
           role="dialog"
           aria-label={`Menu do setlist ${setlistName}`}
-          className="gm3-card gm3-dialog-enter absolute right-0 top-[calc(100%+6px)] z-30 w-44 rounded-[20px] bg-[var(--surface)] p-1.5"
+          className="gm3-card gm3-popover-enter absolute right-0 top-[calc(100%+6px)] z-30 w-44 rounded-[20px] bg-[var(--surface)] p-1.5"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           <button
@@ -245,7 +245,11 @@ function HomeContent() {
         };
 
   return (
-    <main id="main-content" className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-6">
+    <main
+      id="main-content"
+      key={tab}
+      className="gm3-page-enter flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-6"
+    >
       {/* Expressive GM3 Page Header directly on the #F0F4F9 canvas */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
@@ -296,14 +300,14 @@ function HomeContent() {
         <div
           role="status"
           aria-live="polite"
-          className="rounded-2xl bg-[var(--tune-dim)] text-[var(--tune)] px-4 py-3 text-sm font-medium flex items-center justify-between gap-3"
+          className="gm3-panel-enter rounded-2xl bg-[var(--tune-dim)] text-[var(--tune)] px-4 py-3 text-sm font-medium flex items-center justify-between gap-3"
         >
           <span>{toastMsg}</span>
           <button
             type="button"
             onClick={() => setToastMsg('')}
             aria-label="Fechar aviso"
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer flex-shrink-0"
+            className="gm3-icon-btn w-8 h-8 flex items-center justify-center hover:bg-black/10 cursor-pointer flex-shrink-0"
           >
             <CloseIcon size={15} />
           </button>
@@ -393,16 +397,14 @@ function HomeContent() {
               <div
                 role="group"
                 aria-label="Modo de visualização"
-                className="inline-flex p-1 rounded-full bg-[var(--surface-high)] h-10 items-center"
+                className="gm3-segmented inline-flex p-1 bg-[var(--surface-high)] h-10 items-center gap-0.5"
               >
                 <button
                   type="button"
                   onClick={() => setViewMode('cards')}
                   aria-pressed={viewMode === 'cards'}
-                  className={`px-3.5 h-8 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                    viewMode === 'cards'
-                      ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                      : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                  className={`gm3-segment px-3.5 h-8 text-xs font-medium cursor-pointer ${
+                    viewMode === 'cards' ? '' : 'text-[var(--muted)]'
                   }`}
                 >
                   Cards
@@ -411,10 +413,8 @@ function HomeContent() {
                   type="button"
                   onClick={() => setViewMode('list')}
                   aria-pressed={viewMode === 'list'}
-                  className={`px-3.5 h-8 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                    viewMode === 'list'
-                      ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                      : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                  className={`gm3-segment px-3.5 h-8 text-xs font-medium cursor-pointer ${
+                    viewMode === 'list' ? '' : 'text-[var(--muted)]'
                   }`}
                 >
                   Lista
@@ -506,7 +506,7 @@ function HomeContent() {
       {tab === 'setlists' && (
         <section className="space-y-4">
           {showNewSetlist && (
-            <div className="gm3-card rounded-[24px] bg-[var(--surface)] p-5 flex flex-wrap gap-3 items-center">
+            <div className="gm3-card gm3-panel-enter rounded-[24px] bg-[var(--surface)] p-5 flex flex-wrap gap-3 items-center">
               <input
                 autoFocus
                 type="text"
@@ -584,7 +584,7 @@ function HomeContent() {
                 return (
                   <article
                     key={sl.id}
-                    className={`gm3-card group rounded-[20px] px-5 py-5 flex flex-col justify-between gap-4 transition-colors ${
+                    className={`gm3-card gm3-card-interactive group px-5 py-5 flex flex-col justify-between gap-4 ${
                       isEmpty
                         ? 'bg-[var(--surface2)] hover:bg-[var(--surface-high)]'
                         : 'bg-[var(--surface)] hover:bg-[var(--surface-high)]'
@@ -644,7 +644,7 @@ function HomeContent() {
       {/* Import .cho modal */}
       {showImport && (
         <div
-          className="fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
+          className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
           onClick={closeImport}
         >
           <div
@@ -666,7 +666,7 @@ function HomeContent() {
               <button
                 type="button"
                 onClick={closeImport}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                className="gm3-icon-btn w-10 h-10 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
                 aria-label="Fechar"
               >
                 <CloseIcon size={18} />

@@ -140,7 +140,7 @@ export function FocusDock({
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div
-          className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center rounded-[24px] sm:rounded-full bg-[var(--surface)] px-3 py-2"
+          className="gm3-sheet-enter pointer-events-auto flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center rounded-[24px] sm:rounded-full bg-[var(--surface)] px-3 py-2"
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           {hasSetlist && !isFollowing && (

@@ -206,12 +206,12 @@ export function Metronome({
             {Array.from({ length: beatsPerBar }, (_, b) => (
               <div
                 key={b}
-                className={`w-3 h-3 rounded-full transition-all ${
+                className={`gm3-beat-dot w-3 h-3 ${
                   beat === b
                     ? b === 0
                       ? 'bg-[var(--accent)] scale-125'
-                      : 'bg-[var(--tune-dot)] scale-120'
-                    : 'bg-[var(--line)]'
+                      : 'bg-[var(--tune-dot)] scale-115'
+                    : 'bg-[var(--line)] scale-100'
                 }`}
               />
             ))}
@@ -257,6 +257,7 @@ export function Metronome({
 
       <button
         type="button"
+        data-active={tapActive || undefined}
         onClick={handleTapTempo}
         className={`pill-btn px-2.5 ${heightClass} text-xs font-mono ${
           tapActive ? 'pill-btn-tonal' : buttonClass

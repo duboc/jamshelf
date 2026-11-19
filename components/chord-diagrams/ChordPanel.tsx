@@ -27,7 +27,7 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/25 sm:bg-transparent"
+        className="gm3-backdrop-enter fixed inset-0 z-40 bg-black/25 sm:bg-transparent"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -60,7 +60,7 @@ function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] transition-colors cursor-pointer"
+            className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
             aria-label="Fechar painel de acorde"
           >
             <CloseIcon size={17} />

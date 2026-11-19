@@ -75,11 +75,12 @@ Substituir todos os cantos de `4px` pela escala de arredondamento GM3:
 
 | Elemento | Raio (`border-radius`) | Observação |
 |---|---|---|
-| Botões (Filled, Tonal, Outlined, Text) | `9999px` (pílula) | Altura `40px` padrão (`36px` compacto em toolbars densas) |
-| Indicador ativo do Navigation Rail / Bar | `9999px` (pílula) | `56px × 32px` no Rail colapsado ou largura fluida no expandido |
-| Chips e filtros | `8px` ou `9999px` | `8px` para Filter Chips; `9999px` para status badges (`Tom G`, `Capo 2`) |
-| FAB / Extended FAB (`+ Nova música`) | `16px` | Altura `56px`, fundo `#D3E3FD`, conteúdo `#0B57D0` |
-| Cards de música e setlist | `20px` | Sem borda `1px` em repouso; contraste dado pelo fundo `#FFFFFF` sobre `#F0F4F9` |
+| Botões (Filled, Tonal, Outlined, Text) | `22px` (pílula) -> `10px` (press) / `12px` (selecionado) | Raio numérico permite morph fluido; altura `40px` padrão (`36px` compacto, `44px` Modo Show) |
+| Indicador ativo do Navigation Rail / Bar | `16px` (compacto) / `22px` (expandido) -> `10px–12px` (press) | Expande do centro via `scaleX` sem distorcer ícone ou texto |
+| Controles segmentados (`Cifra / Só letra / Acordes`, `Cards / Lista`) | Trilha `22px`, segmento `18px` -> `10px` (press) | Concentricidade exata (`22px - 4px` padding) |
+| Chips e filtros | `8px` ou `22px` | `8px` para Filter Chips; `22px` para status badges (`Tom G`, `Capo 2`) |
+| FAB / Extended FAB (`+ Nova música`) | `16px` (repouso) -> `20px` (hover) -> `28px` (press / ativo) | Altura `56px`, fundo `#D3E3FD`, conteúdo `#0B57D0`, morph para pílula completa ao clicar |
+| Cards de música e setlist | `20px` -> `22px` (hover) -> `26px` (press) | Sem borda `1px` em repouso; contraste dado pelo fundo `#FFFFFF` sobre `#F0F4F9` |
 | Folha da cifra / painéis internos | `24px` | Concentricidade: elementos internos respeitam `R_interno = max(8px, R_externo - padding)` |
 | Dialogs, Bottom Sheets e Drawers | `28px` | `28px` em todos os cantos (dialogs) ou nos cantos superiores/laterais (sheets) |
 | Campos de entrada (`studio-input`) | `12px` (form) / `9999px` (busca) | Sem borda na barra de busca (`#FFFFFF` sobre `#F0F4F9`); `1px` `--outline` em formulários |
@@ -147,10 +148,14 @@ A top bar fixa estilo Cloud Console sai de cena. O shell se adapta em dois break
 ## 7. Estados, Movimento e Acessibilidade
 
 - **State layers GM3**: hover `8%`, focus `10%` + anel `2px solid` `--secondary` (`#00639B` / `#7FCFFF`) com `outline-offset: 2px`, pressed `10%`, disabled `38%` de opacidade no conteúdo.
-- **Transições**:
-  - Cores e opacidade: `150ms cubic-bezier(0.2, 0, 0, 1)` (sem overshoot).
-  - Movimento espacial (abertura de drawer, morph de pílula, expansão do Rail): `260ms cubic-bezier(0.2, 1.1, 0.3, 1)`.
-  - Respeitar `@media (prefers-reduced-motion: reduce)`.
+- **Tokens de movimento (sem overshoot `y2 > 1.0`)**:
+  - `--motion-duration-micro: 120ms` (press-in tátil, pontos de batida), `--motion-duration-state: 220ms` (recuperação de morph, toggles, backdrops, entrada de página), `--motion-duration-expressive: 280ms` (drawers, bottom sheets, expansão do Rail), `--motion-duration-none: 0ms`.
+  - Curvas: `--motion-ease-standard: cubic-bezier(0.2, 0, 0, 1)`, `--motion-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1)`, `--motion-ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1)`, `--motion-ease-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15)`.
+- **Shape Morphing GM3 Expressive**:
+  - FAB `+ Nova música` (`.gm3-fab`): `16px` repouso -> `20px` hover (+ rotação `90deg` no `+`) -> `28px` pílula completa ao clicar ou na rota `/add-song`.
+  - Botões pílula (`.pill-btn`): `22px` -> `10px` squircle ao clicar; `12px` quando selecionados (`aria-pressed="true"` / `aria-expanded="true"`).
+  - Cards (`.gm3-card-interactive`) e listas segmentadas (`.gm3-list-row`): arredondamento responsivo ao toque sem esmagar o card ao clicar nos ícones internos.
+  - Respeitar `@media (prefers-reduced-motion: reduce)` convertendo slides/scales em fade calmo de `120ms` ou mudança instantânea (`0ms`) mantendo a clareza de estado.
 - **Alvos de toque**: mínimo `40px × 40px` em telas normais e `44px × 44px` no Modo Show (para uso rápido com instrumento na mão).
 
 ## 8. O que não fazer

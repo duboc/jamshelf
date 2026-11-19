@@ -41,7 +41,7 @@ function StageNotesEditor({
   };
 
   return (
-    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+    <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
       <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 py-3 space-y-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="field-label text-[var(--warn-ink)] flex-shrink-0">Notas de palco</span>
@@ -89,7 +89,7 @@ function StageNotesEditor({
               key={tag}
               type="button"
               onClick={() => appendTag(tag)}
-              className="px-3 py-1 rounded-full bg-[var(--surface-high)] hover:bg-[var(--primary-container)] hover:text-[var(--on-primary-container)] text-xs font-medium text-[var(--ink)] transition-colors cursor-pointer"
+              className="pill-btn h-7 px-3 text-xs bg-[var(--surface-high)] hover:bg-[var(--primary-container)] hover:text-[var(--on-primary-container)]"
             >
               + {tag}
             </button>
@@ -119,7 +119,7 @@ export function StageNotesBar({
   const isLong = notes.trim().length > 88;
 
   return (
-    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+    <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
       <div className="w-full rounded-2xl bg-[var(--warn-dim)] px-4 py-2.5 flex items-start sm:items-center justify-between gap-3">
         <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
           <span className="studio-chip bg-[var(--warn)]/25 text-[var(--warn-ink)] font-semibold flex-shrink-0">

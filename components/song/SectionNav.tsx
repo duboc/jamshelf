@@ -27,14 +27,16 @@ export function SectionNav({ sections, activeIdx, onJump }: SectionNavProps) {
               type="button"
               onClick={() => onJump(idx)}
               aria-current={isActive ? 'true' : undefined}
-              className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+              className={`gm3-section-pill flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 h-9 text-xs font-medium cursor-pointer ${
                 isActive
                   ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
                   : 'bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
               }`}
             >
               <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
+                className={`w-2 h-2 rounded-full flex-shrink-0 transition-transform duration-[220ms] ${
+                  isActive ? 'scale-120' : ''
+                }`}
                 style={{ backgroundColor: colors.bd }}
                 aria-hidden="true"
               />

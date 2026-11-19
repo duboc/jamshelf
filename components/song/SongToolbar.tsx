@@ -252,7 +252,7 @@ export function SongToolbar({
             type="button"
             disabled={store.transpose === 0}
             onClick={() => store.setTranspose(0)}
-            className={`font-mono text-xs min-w-[32px] h-9 px-1.5 rounded-full text-center tabular-nums transition-colors ${
+            className={`gm3-icon-btn font-mono text-xs min-w-[32px] h-9 px-1.5 text-center tabular-nums ${
               store.transpose !== 0
                 ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--on-accent)]'
                 : 'text-[var(--ink)] cursor-default'
@@ -345,7 +345,7 @@ export function SongToolbar({
             <button
               type="button"
               onClick={onClearCalibration}
-              className="w-8 h-8 rounded-full text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] flex items-center justify-center cursor-pointer"
+              className="gm3-icon-btn w-8 h-8 text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] flex items-center justify-center cursor-pointer"
               title="Remover calibração por seção e voltar ao modo linear"
               aria-label="Remover calibração"
             >

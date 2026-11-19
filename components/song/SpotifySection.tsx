@@ -41,7 +41,7 @@ export function SpotifySection({
     <>
       {/* Embedded player */}
       {showPreview && spotifyTrackId && (
-        <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+        <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
           <div className="w-full">
             <iframe
               key={spotifyTrackId}
@@ -103,7 +103,7 @@ export function SpotifySection({
                   onClick={onDismissSuggestion}
                   title="Dispensar"
                   aria-label="Dispensar sugestão do Spotify"
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
+                  className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
                 >
                   <CloseIcon size={15} />
                 </button>
@@ -140,7 +140,7 @@ export function SpotifySection({
       {/* Manual Spotify picker modal */}
       {showPicker && (
         <div
-          className="fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
+          className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
           onClick={onClosePicker}
         >
           <div
@@ -160,7 +160,7 @@ export function SpotifySection({
                 type="button"
                 onClick={onClosePicker}
                 aria-label="Fechar seleção do Spotify"
-                className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
+                className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
               >
                 <CloseIcon size={16} />
               </button>

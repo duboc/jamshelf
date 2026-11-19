@@ -14,7 +14,7 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
   if (!chords || chords.length === 0) return null;
 
   return (
-    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
+    <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
       <div className="w-full rounded-[20px] bg-[var(--surface)] px-3.5 py-3">
         <div className="flex gap-2.5 overflow-x-auto pb-0.5 no-scrollbar">
           {chords.map((chord) => {
@@ -31,7 +31,7 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
                 aria-pressed={isActive}
                 aria-label={`Abrir diagrama ampliado de ${chord}`}
                 onClick={() => store.setActiveChord(chord)}
-                className={`flex-shrink-0 rounded-2xl p-2 flex flex-col items-center justify-center min-w-[86px] transition-colors cursor-pointer ${
+                className={`gm3-chord-tile flex-shrink-0 p-2 flex flex-col items-center justify-center min-w-[86px] cursor-pointer ${
                   isActive
                     ? 'bg-[var(--primary-container)] ring-2 ring-[var(--accent)]'
                     : 'bg-[var(--bg)] hover:bg-[var(--surface-high)]'

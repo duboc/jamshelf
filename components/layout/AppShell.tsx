@@ -76,17 +76,15 @@ function Gm3Switch({
         aria-checked={checked}
         aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex items-center w-[50px] h-[30px] rounded-full transition-colors flex-shrink-0 cursor-pointer border ${
+        className={`gm3-switch-track relative inline-flex items-center w-[50px] h-[30px] flex-shrink-0 cursor-pointer border ${
           checked
             ? 'bg-[var(--accent)] border-[var(--accent)]'
             : 'bg-[var(--surface2)] border-[var(--line)]'
         }`}
       >
         <span
-          className={`inline-block rounded-full transition-transform ${
-            checked
-              ? 'w-5 h-5 translate-x-[24px] bg-[var(--on-accent)]'
-              : 'w-4 h-4 translate-x-[5px] bg-[var(--muted)]'
+          className={`gm3-switch-thumb inline-block ${
+            checked ? 'bg-[var(--on-accent)]' : 'bg-[var(--muted)]'
           }`}
         />
       </button>
@@ -164,7 +162,7 @@ function DeviceSettingsPopover({
         aria-haspopup="dialog"
         aria-label="Preferências do aparelho"
         title="Preferências deste aparelho (tema, leitura, fonte e nome no Ao Vivo)"
-        className={`rounded-full hover:bg-[var(--surface-high)] inline-flex items-center gap-2.5 transition-colors cursor-pointer ${
+        className={`gm3-icon-btn hover:bg-[var(--surface-high)] inline-flex items-center gap-2.5 cursor-pointer ${
           compact ? 'w-11 h-11 justify-center' : 'h-11 px-3 w-full'
         }`}
       >
@@ -183,7 +181,7 @@ function DeviceSettingsPopover({
           )}
         </span>
         {!compact && (
-          <span className="truncate text-[13px] font-medium text-[var(--muted)]">
+          <span className="gm3-rail-label truncate text-[13px] font-medium text-[var(--muted)]">
             {deviceName || 'Ajustes'}
           </span>
         )}
@@ -193,7 +191,7 @@ function DeviceSettingsPopover({
         <div
           role="dialog"
           aria-label="Ajustes deste aparelho"
-          className={`gm3-card gm3-dialog-enter absolute z-50 w-[min(340px,calc(100vw-24px))] max-h-[calc(100vh-110px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-5 flex flex-col gap-4 ${
+          className={`gm3-card gm3-popover-enter absolute z-50 w-[min(340px,calc(100vw-24px))] max-h-[calc(100vh-110px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-5 flex flex-col gap-4 ${
             align === 'rail'
               ? 'left-0 bottom-[calc(100%+10px)]'
               : 'right-0 top-[calc(100%+10px)]'
@@ -208,7 +206,7 @@ function DeviceSettingsPopover({
           {/* Tema */}
           <div className="flex flex-col gap-2">
             <span className="field-label">Tema</span>
-            <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-[var(--bg)]">
+            <div className="gm3-segmented grid grid-cols-3 gap-1 p-1 bg-[var(--bg)]">
               {(
                 [
                   { id: 'system', label: 'Sistema' },
@@ -221,10 +219,8 @@ function DeviceSettingsPopover({
                   type="button"
                   onClick={() => setTheme(opt.id)}
                   aria-pressed={theme === opt.id}
-                  className={`text-xs font-medium py-1.5 rounded-full transition-colors cursor-pointer ${
-                    theme === opt.id
-                      ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                      : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                  className={`gm3-segment text-xs font-medium py-1.5 cursor-pointer ${
+                    theme === opt.id ? '' : 'text-[var(--muted)]'
                   }`}
                 >
                   {opt.label}
@@ -236,7 +232,7 @@ function DeviceSettingsPopover({
           {/* Modo de leitura padrão */}
           <div className="flex flex-col gap-2">
             <span className="field-label">Leitura na música</span>
-            <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-[var(--bg)]">
+            <div className="gm3-segmented grid grid-cols-3 gap-1 p-1 bg-[var(--bg)]">
               {(
                 [
                   { id: 'both', label: 'Cifra' },
@@ -249,10 +245,8 @@ function DeviceSettingsPopover({
                   type="button"
                   onClick={() => setDisplayMode(opt.id)}
                   aria-pressed={displayMode === opt.id}
-                  className={`text-xs font-medium py-1.5 rounded-full transition-colors cursor-pointer ${
-                    displayMode === opt.id
-                      ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                      : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                  className={`gm3-segment text-xs font-medium py-1.5 cursor-pointer ${
+                    displayMode === opt.id ? '' : 'text-[var(--muted)]'
                   }`}
                 >
                   {opt.label}
@@ -293,17 +287,15 @@ function DeviceSettingsPopover({
               <div className="text-[13px] font-medium text-[var(--ink)]">Atraso do auto-scroll</div>
               <div className="text-xs text-[var(--muted)]">Tempo para segurar o instrumento</div>
             </div>
-            <div className="inline-flex gap-1 p-1 rounded-full bg-[var(--bg)]">
+            <div className="gm3-segmented inline-flex gap-1 p-1 bg-[var(--bg)]">
               {([0, 3, 5] as ScrollLeadIn[]).map((sec) => (
                 <button
                   key={sec}
                   type="button"
                   onClick={() => setScrollLeadInSec(sec)}
                   aria-pressed={scrollLeadInSec === sec}
-                  className={`font-mono text-xs px-2.5 py-1 rounded-full transition-colors cursor-pointer ${
-                    scrollLeadInSec === sec
-                      ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)] font-semibold'
-                      : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                  className={`gm3-segment font-mono text-xs px-2.5 py-1 cursor-pointer ${
+                    scrollLeadInSec === sec ? 'font-semibold' : 'text-[var(--muted)]'
                   }`}
                 >
                   {sec === 0 ? '0s' : `${sec}s`}
@@ -612,7 +604,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!hideChrome && (
         <aside
           aria-label="Navegação principal"
-          className={`hidden md:flex flex-col justify-between flex-shrink-0 sticky top-0 h-screen z-40 bg-[var(--bg)] py-5 transition-[width] duration-200 select-none ${
+          className={`hidden md:flex flex-col justify-between flex-shrink-0 sticky top-0 h-screen z-40 bg-[var(--bg)] py-5 transition-[width] duration-[280ms] ease-[cubic-bezier(0.05,0.7,0.1,1)] select-none ${
             isExpandedRail ? 'w-[216px] px-4' : 'w-[88px] px-2 items-center'
           }`}
         >
@@ -624,7 +616,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setRailOverride(!railExpanded)}
                 aria-label={isExpandedRail ? 'Recolher barra lateral' : 'Expandir barra lateral'}
                 title={isExpandedRail ? 'Recolher menu' : 'Expandir menu'}
-                className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] transition-colors cursor-pointer"
+                className="gm3-icon-btn w-11 h-11 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -639,7 +631,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {isExpandedRail && (
                 <Link
                   href="/"
-                  className="inline-flex items-center gap-2 font-expressive text-[19px] text-[var(--ink)] tracking-[-0.02em] pr-1 hover:text-[var(--accent)] transition-colors"
+                  className="gm3-rail-label inline-flex items-center gap-2 font-expressive text-[19px] text-[var(--ink)] tracking-[-0.02em] pr-1 hover:text-[var(--accent)] transition-colors whitespace-nowrap"
                 >
                   <JamshelfMark size={24} />
                   <span>Jamshelf</span>
@@ -650,13 +642,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               href="/add-song"
               aria-label="Nova música"
+              aria-current={activeNav === 'add' ? 'page' : undefined}
               title="Adicionar nova música"
               className={`gm3-fab h-14 ${
                 isExpandedRail ? 'px-5 w-full justify-start text-[14px]' : 'w-14'
               }`}
             >
               <PlusIcon size={20} className="flex-shrink-0" />
-              {isExpandedRail && <span>Nova música</span>}
+              {isExpandedRail && <span className="gm3-rail-label whitespace-nowrap">Nova música</span>}
             </Link>
           </div>
 
@@ -669,19 +662,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     key={item.key}
                     href={item.href}
                     aria-current={item.active ? 'page' : undefined}
-                    className={`h-11 px-4 rounded-full flex items-center justify-between gap-2 text-[14px] font-medium transition-colors ${
+                    data-active={item.active || undefined}
+                    className={`gm3-nav-pill gm3-nav-pill-expanded h-11 px-4 flex items-center justify-between gap-2 text-[14px] font-medium ${
                       item.active
-                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                        ? 'text-[var(--on-secondary-container)]'
                         : item.softActive
-                        ? 'text-[var(--ink)] font-semibold hover:bg-[var(--surface-high)]'
-                        : 'text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
+                        ? 'text-[var(--ink)] font-semibold'
+                        : 'text-[var(--muted)] hover:text-[var(--ink)]'
                     }`}
                   >
                     <span className="flex items-center gap-3 min-w-0">
                       <span className="flex-shrink-0">{item.icon(item.active || item.softActive)}</span>
-                      <span className="truncate">{item.label}</span>
+                      <span className="gm3-rail-label truncate whitespace-nowrap">{item.label}</span>
                     </span>
-                    <span className="font-mono text-xs tabular-nums">{item.count}</span>
+                    <span className="gm3-rail-label font-mono text-xs tabular-nums">{item.count}</span>
                   </Link>
                 ) : (
                   <Link
@@ -691,10 +685,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     className="group flex flex-col items-center gap-1 w-full"
                   >
                     <span
-                      className={`w-14 h-8 rounded-full flex items-center justify-center transition-colors ${
+                      data-active={item.active || undefined}
+                      className={`gm3-nav-pill w-14 h-8 flex items-center justify-center ${
                         item.active
-                          ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                          : 'text-[var(--muted)] group-hover:bg-[var(--surface-high)] group-hover:text-[var(--ink)]'
+                          ? 'text-[var(--on-secondary-container)]'
+                          : 'text-[var(--muted)] group-hover:text-[var(--ink)]'
                       }`}
                     >
                       {item.icon(item.active)}
@@ -713,7 +708,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Quick setlists list when rail is expanded */}
             {isExpandedRail && setlists.length > 0 && (
-              <div className="space-y-1.5 pt-2">
+              <div className="gm3-rail-label space-y-1.5 pt-2">
                 <div className="px-4 text-xs font-medium text-[var(--muted)]">Setlists</div>
                 <nav aria-label="Setlists fixados" className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar">
                   {setlists.slice(0, 6).map((sl) => {
@@ -724,10 +719,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         key={sl.id}
                         href={`/setlists/${sl.id}`}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`h-9 px-4 rounded-full flex items-center justify-between gap-2 text-[13px] transition-colors ${
+                        data-active={isActive || undefined}
+                        className={`gm3-nav-pill gm3-nav-pill-expanded h-9 px-4 flex items-center justify-between gap-2 text-[13px] ${
                           isActive
-                            ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)] font-medium'
-                            : 'text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
+                            ? 'text-[var(--on-secondary-container)] font-medium'
+                            : 'text-[var(--muted)] hover:text-[var(--ink)]'
                         }`}
                       >
                         <span className="flex items-center gap-2.5 min-w-0">
@@ -758,7 +754,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setSearchOpen(true)}
               aria-label="Busca rápida"
               title="Busca rápida (/ ou Ctrl+K)"
-              className={`rounded-full hover:bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] inline-flex items-center gap-2.5 transition-colors cursor-pointer ${
+              className={`gm3-icon-btn hover:bg-[var(--surface-high)] text-[var(--muted)] hover:text-[var(--ink)] inline-flex items-center gap-2.5 cursor-pointer ${
                 isExpandedRail ? 'h-11 px-4 justify-between w-full' : 'w-11 h-11 justify-center'
               }`}
             >
@@ -767,10 +763,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.9" />
                   <path d="m16 16 4.2 4.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
                 </svg>
-                {isExpandedRail && <span className="text-[13px] font-medium">Buscar</span>}
+                {isExpandedRail && <span className="gm3-rail-label text-[13px] font-medium whitespace-nowrap">Buscar</span>}
               </span>
               {isExpandedRail && (
-                <kbd className="font-mono text-xs px-1.5 py-0.5 rounded-md bg-[var(--surface)] text-[var(--muted)]">
+                <kbd className="gm3-rail-label font-mono text-xs px-1.5 py-0.5 rounded-md bg-[var(--surface)] text-[var(--muted)]">
                   /
                 </kbd>
               )}
@@ -800,7 +796,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   type="button"
                   onClick={() => setSearchOpen(true)}
                   aria-label="Busca rápida"
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
+                  className="gm3-icon-btn w-10 h-10 flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
                 >
                   <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.9" />
@@ -893,19 +889,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.key}
                   href={item.href}
                   aria-current={item.active ? 'page' : undefined}
-                  className="flex flex-col items-center justify-center gap-1"
+                  className="group flex flex-col items-center justify-center gap-1"
                 >
                   <span
-                    className={`w-16 h-8 rounded-full flex items-center justify-center transition-colors ${
+                    data-active={item.active || undefined}
+                    className={`gm3-nav-pill w-16 h-8 flex items-center justify-center ${
                       item.active
-                        ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
+                        ? 'text-[var(--on-secondary-container)]'
                         : 'text-[var(--muted)]'
                     }`}
                   >
                     {item.icon(item.active)}
                   </span>
                   <span
-                    className={`text-xs font-medium ${
+                    className={`text-xs font-medium transition-colors ${
                       item.active ? 'text-[var(--ink)]' : 'text-[var(--muted)]'
                     }`}
                   >

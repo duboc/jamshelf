@@ -569,7 +569,7 @@ export function ShowModeView({
 
           {/* Mobile / Tablet collapsible stage controls tray */}
           {mobileToolsOpen && (
-            <div className="lg:hidden pt-2.5 border-t border-[var(--line-subtle)]/40 flex flex-wrap items-center gap-2">
+            <div className="gm3-panel-enter lg:hidden pt-2.5 border-t border-[var(--line-subtle)]/40 flex flex-wrap items-center gap-2">
               {secondaryStageControls}
             </div>
           )}
@@ -579,7 +579,7 @@ export function ShowModeView({
       {/* Go-live name modal */}
       {showNamePrompt && (
         <div
-          className="fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
+          className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
           onClick={() => setShowNamePrompt(false)}
         >
           <div

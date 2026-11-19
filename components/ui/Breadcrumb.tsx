@@ -41,7 +41,7 @@ export function Breadcrumb({ items, onBack, rightSlot }: BreadcrumbProps) {
             <button
               type="button"
               onClick={handleBack}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--ink)] bg-[var(--surface)] hover:bg-[var(--surface-high)] transition-colors flex-shrink-0 cursor-pointer"
+              className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--surface)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
               title={`Voltar para ${parentItem.label}`}
               aria-label={`Voltar para ${parentItem.label}`}
             >

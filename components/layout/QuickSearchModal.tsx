@@ -104,7 +104,7 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/45 flex items-start justify-center pt-[10vh] px-4"
+      className="gm3-backdrop-enter fixed inset-0 z-[70] bg-black/45 flex items-start justify-center pt-[10vh] px-4"
       onClick={onClose}
     >
       <div
