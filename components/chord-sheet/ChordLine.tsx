@@ -1,6 +1,6 @@
 'use client';
 
-import { parseLine } from '@/lib/utils/music';
+import { parseLine, extractLyricText, lineHasLyrics } from '@/lib/utils/music';
 import { ChordBadge } from './ChordBadge';
 
 interface ChordLineProps {
@@ -28,18 +28,25 @@ export function ChordLine({
 
   if (!editMode) {
     if (displayMode === 'lyrics-only') {
-      const text = segments.map((s) => s.text).join('');
+      // Skip chord-only or bar-grid lines (e.g. "| [C] | [Am] |") when singing
+      if (!line.trim()) {
+        return <div className="h-3" aria-hidden="true" />;
+      }
+      if (!lineHasLyrics(line)) {
+        return null;
+      }
+      const text = extractLyricText(line).replace(/\s{2,}/g, ' ').trim();
       return (
-        <div className="min-h-[1.8em] whitespace-pre-wrap leading-relaxed text-[1.35em]">
-          {text || '\u00A0'}
-        </div>
+        <p className="text-[1.3em] leading-[1.7] tracking-[-0.01em] text-[var(--ink)] font-normal whitespace-pre-wrap">
+          {text}
+        </p>
       );
     }
 
     if (displayMode === 'chords-only') {
       if (!hasChords) return null;
       return (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-1">
           {segments
             .filter((seg) => seg.chord)
             .map((seg, i) => (
@@ -51,13 +58,14 @@ export function ChordLine({
 
     if (!hasChords) {
       return (
-        <div className="min-h-[1.4em] whitespace-pre-wrap leading-relaxed">
+        <div className="min-h-[1.45em] whitespace-pre-wrap leading-relaxed text-[var(--ink)]">
           {line || '\u00A0'}
         </div>
       );
     }
+
     return (
-      <div className="flex flex-wrap items-end leading-relaxed">
+      <div className="flex flex-wrap items-end leading-relaxed text-[var(--ink)]">
         {segments.map((seg, i) => (
           <span key={i} className="inline-flex flex-col">
             <span className="min-h-[1.4em]">
@@ -71,7 +79,6 @@ export function ChordLine({
   }
 
   // ── Edit mode ────────────────────────────────────────────────────────────────
-  // Calculate char positions of each segment's text start for insert targets
   let charCursor = 0;
   const segCharPositions: number[] = [];
   for (const seg of segments) {
@@ -80,14 +87,14 @@ export function ChordLine({
   }
 
   if (!hasChords) {
-    // No chords yet — show a single add button for the line
     return (
       <div className="flex items-center gap-1 min-h-[2.4em]">
-        <span className="whitespace-pre-wrap text-zinc-300">{line || '\u00A0'}</span>
+        <span className="whitespace-pre-wrap text-[var(--ink)]">{line || '\u00A0'}</span>
         <button
+          type="button"
           onClick={() => onAddChord?.(0)}
-          className="ml-1 w-7 h-7 rounded-full bg-zinc-700 hover:bg-violet-600 text-zinc-400 hover:text-white text-base flex items-center justify-center transition-colors flex-shrink-0"
-          title="Add chord here"
+          className="ml-1 w-7 h-7 rounded-full bg-[var(--surface2)] hover:bg-[var(--accent)] text-[var(--muted)] hover:text-[var(--on-accent)] text-base flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
+          title="Adicionar acorde aqui"
         >
           +
         </button>
@@ -103,15 +110,15 @@ export function ChordLine({
 
         return (
           <span key={i} className="inline-flex flex-col">
-            {/* Chord chip */}
             <span className="min-h-[2em] flex items-center">
               {seg.chord ? (
                 <button
+                  type="button"
                   onClick={() => onChordSelect?.(i)}
-                  className={`px-2 py-1 rounded-lg text-[0.85em] font-bold font-mono transition-all select-none ${
+                  className={`px-2 py-1 rounded-lg text-[0.85em] font-bold font-mono transition-all select-none cursor-pointer ${
                     isSelected
-                      ? 'bg-violet-600 text-white ring-2 ring-violet-300 scale-110'
-                      : 'bg-zinc-800 text-violet-400 hover:bg-violet-700/40 hover:text-violet-200'
+                      ? 'bg-[var(--accent)] text-[var(--on-accent)] ring-2 ring-[var(--accent-ink)] scale-105'
+                      : 'bg-[var(--surface2)] text-[var(--accent-ink)] hover:bg-[var(--accent-dim)]'
                   }`}
                 >
                   {seg.chord}
@@ -119,16 +126,15 @@ export function ChordLine({
               ) : null}
             </span>
 
-            {/* Lyric text + add button after it */}
             <span className="flex items-center gap-0.5">
-              <span className="whitespace-pre-wrap text-zinc-300">
+              <span className="whitespace-pre-wrap text-[var(--ink)]">
                 {seg.text || '\u00A0'}
               </span>
-              {/* Show + after the text of each segment */}
               <button
+                type="button"
                 onClick={() => onAddChord?.(textCharPos)}
-                className="w-5 h-5 rounded-full bg-zinc-800 hover:bg-violet-600 text-zinc-500 hover:text-white text-xs flex items-center justify-center transition-colors flex-shrink-0 leading-none"
-                title="Add chord here"
+                className="w-5 h-5 rounded-full bg-[var(--surface2)] hover:bg-[var(--accent)] text-[var(--muted)] hover:text-[var(--on-accent)] text-xs flex items-center justify-center transition-colors flex-shrink-0 leading-none cursor-pointer"
+                title="Adicionar acorde aqui"
               >
                 +
               </button>

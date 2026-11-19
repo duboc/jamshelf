@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
@@ -12,14 +12,21 @@ import { moveChord, renameChord, deleteChord, insertChord } from '@/lib/utils/ed
 import { songToChordPro, removeChordProMeta } from '@/lib/utils/chordpro-parser';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
-import { Metronome } from '@/components/metronome/Metronome';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
+import { VisualPulse } from '@/components/metronome/VisualPulse';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { ChordProEditor } from '@/components/ui/ChordProEditor';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ShowModeView } from '@/components/show-mode/ShowModeView';
+import { SetlistDrawer } from '@/components/show-mode/SetlistDrawer';
 import { EnhanceModal } from '@/components/song/EnhanceModal';
 import { VersionHistoryModal } from '@/components/song/VersionHistoryModal';
 import { ChordsReference } from '@/components/chord-diagrams/ChordsReference';
+import { SongHeader } from '@/components/song/SongHeader';
+import { SongToolbar } from '@/components/song/SongToolbar';
+import { SectionNav } from '@/components/song/SectionNav';
+import { FocusDock } from '@/components/song/FocusDock';
+import { SpotifySection } from '@/components/song/SpotifySection';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -29,25 +36,34 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const entries = useSongStore((s) => s.entries);
   const { getSong, patchMeta, exportEntry, updateEntry } = useSongStore();
   const { setlists, addSongToSetlist } = useSetlistStore();
   const store = usePlayerStore();
-  const { displayMode, setDisplayMode } = useDisplayStore();
+  const {
+    displayMode,
+    setDisplayMode,
+    chordsRefOpen,
+    focusMode,
+    setFocusMode,
+  } = useDisplayStore();
+
   const [showExport, setShowExport] = useState(false);
   const [choDraft, setChoDraft] = useState('');
+  const [discardArmed, setDiscardArmed] = useState(false);
   const [showEnhance, setShowEnhance] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSetlistDrawer, setShowSetlistDrawer] = useState(false);
   const [showSpotifyPreview, setShowSpotifyPreview] = useState(false);
   const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
   const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
-  const [autoSearchLoading, setAutoSearchLoading] = useState(false);
   const [spotifySuggestionDismissed, setSpotifySuggestionDismissed] = useState(false);
   const [showMoreSuggestions, setShowMoreSuggestions] = useState(false);
-  const [showSetlistMenu, setShowSetlistMenu] = useState(false);
-  const [setlistMsg, setSetlistMsg] = useState('');
-  const [savedMsg, setSavedMsg] = useState('');
+  const [statusMsg, setStatusMsg] = useState('');
   const [showTransposeConfirm, setShowTransposeConfirm] = useState(false);
+  const [activeSectionIdx, setActiveSectionIdx] = useState(0);
 
   // Edit mode state
   const [selectedCoord, setSelectedCoord] = useState<SelectedCoord | null>(null);
@@ -55,56 +71,79 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   // Live session (cross-device sync while playing a setlist)
   const setlistIdParam = searchParams.get('setlist');
+  const showMode = searchParams.get('show') === '1';
   const activeSetlist = setlistIdParam
     ? setlists.find((sl) => sl.id === setlistIdParam) ?? null
     : null;
   const scrollTopRef = useRef(0);
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
   const live = useLiveSession(activeSetlist ? activeSetlist.id : null, id, scrollTopRef);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [nameInput, setNameInput] = useState('');
 
-  const song = getSong(id);
+  const song = useMemo(() => {
+    void entries;
+    return getSong(id);
+  }, [entries, getSong, id]);
 
   const [titleInput, setTitleInput] = useState(song?.title || '');
   const [artistInput, setArtistInput] = useState(song?.artist || '');
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  const flashStatus = useCallback((msg: string) => {
+    setStatusMsg(msg);
+    setTimeout(() => setStatusMsg(''), 2200);
+  }, []);
+
   useEffect(() => {
     if (song) {
       setTitleInput(song.title);
       setArtistInput(song.artist);
     }
   }, [song]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
+  // Reset transient player state cleanly when switching to a different song
+  const songIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!song) return;
+    if (songIdRef.current !== song.id) {
+      songIdRef.current = song.id;
+      store.resetForSong(song.tempo, song.capo);
+      setActiveSectionIdx(0);
+      setSelectedCoord(null);
+      setAddTarget(null);
+      setShowSpotifyPreview(false);
+      setSpotifySuggestionDismissed(false);
+    }
+  }, [song, store]);
+
+  // Keep BPM and Capo synced if edited in place on the current song
   useEffect(() => {
     if (song) store.setBpm(song.tempo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song?.tempo]);
 
   useEffect(() => {
     if (song) store.setCapo(song.capo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song?.capo]);
 
-  // Follow the leader to whatever song they're on
+  // Follow the leader to whatever song they're on, preserving &show=1 if in Show Mode!
   useEffect(() => {
     if (!activeSetlist) return;
     if (live.isFollowing && live.session.currentSongId && live.session.currentSongId !== id) {
-      router.push(`/song/${live.session.currentSongId}?setlist=${activeSetlist.id}`);
+      const showSuffix = showMode ? '&show=1' : '';
+      router.push(`/song/${live.session.currentSongId}?setlist=${activeSetlist.id}${showSuffix}`);
     }
-  }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, router]);
+  }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, showMode, router]);
 
-  // Auto-search Spotify for songs that don't have a match yet, so a
-  // suggestion card can show up without the user having to search manually.
+  // Auto-search Spotify for unmatched songs
+  const spotifySongId = song?.spotifyTrackId ?? null;
+  const spotifySongTitle = song?.title ?? '';
+  const spotifySongArtist = song?.artist ?? '';
   useEffect(() => {
-    if (!song) return;
-    if (song.spotifyTrackId) return;
+    if (!spotifySongTitle || spotifySongId) return;
     let cancelled = false;
-    // Standard cancelable fetch-on-mount pattern (identical to the one in
-    // app/add-song/page.tsx, which lints clean) — the loading flag just
-    // gates the fallback "Find on Spotify" button below.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAutoSearchLoading(true);
-    const query = `${song.title} ${song.artist}`.trim();
+    const query = `${spotifySongTitle} ${spotifySongArtist}`.trim();
     fetch(`/api/spotify/search?q=${encodeURIComponent(query)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -112,12 +151,41 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       })
       .catch(() => {
         if (!cancelled) setSpotifyResults([]);
-      })
-      .finally(() => {
-        if (!cancelled) setAutoSearchLoading(false);
       });
-    return () => { cancelled = true; };
-  }, [song?.spotifyTrackId, song?.title, song?.artist]);
+    return () => {
+      cancelled = true;
+    };
+  }, [spotifySongId, spotifySongTitle, spotifySongArtist]);
+
+  // Keyboard shortcuts outside Show Mode (Space = auto-scroll, Esc = exit focus mode)
+  useEffect(() => {
+    if (showMode) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (e.key === 'Escape' && focusMode) {
+        setFocusMode(false);
+      } else if (e.key === ' ' && !store.editMode && !live.isFollowing && !showExport && !showEnhance && !showHistory) {
+        e.preventDefault();
+        store.toggleAutoScroll();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showMode, focusMode, setFocusMode, store, live.isFollowing, showExport, showEnhance, showHistory]);
+
+  // Clear edit selection when leaving edit mode
+  useEffect(() => {
+    if (!store.editMode) {
+      const timer = setTimeout(() => {
+        setSelectedCoord(null);
+        setAddTarget(null);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [store.editMode]);
 
   const handleGoLive = () => {
     if (!live.deviceName) {
@@ -134,24 +202,20 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setShowNamePrompt(false);
   };
 
-  // Clear selection when leaving edit mode
-  useEffect(() => {
-    if (!store.editMode) {
-      const timer = setTimeout(() => {
-        setSelectedCoord(null);
-        setAddTarget(null);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [store.editMode]);
-
   if (!song) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-zinc-500">
-        Song not found.{' '}
-        <button onClick={() => router.push('/')} className="text-violet-400 underline ml-2">
-          Go back
-        </button>
+      <div className="flex-1 flex flex-col">
+        <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Não encontrada' }]} />
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
+          <p className="text-sm text-[var(--muted)]">Essa música não foi encontrada no repertório.</p>
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            className="pill-btn px-4 py-2 text-xs"
+          >
+            Voltar para Músicas
+          </button>
+        </div>
       </div>
     );
   }
@@ -163,10 +227,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     ? transposeChord(song.displayKey, totalShift, store.useFlats)
     : song.displayKey;
 
-  // A setlist can reference a song that's since been deleted (belt-and-
-  // suspenders on top of the cascade delete in song-store.ts) — filter those
-  // out before computing adjacency, so prev/next/swipe can never land on a
-  // "Song not found" page, and this numbering always matches the setlist page.
   const existingSetlistSongIds = activeSetlist
     ? activeSetlist.songIds.filter((sid) => getSong(sid) !== null)
     : [];
@@ -176,8 +236,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setlistSongIdx >= 0 && setlistSongIdx < existingSetlistSongIds.length - 1
       ? existingSetlistSongIds[setlistSongIdx + 1]
       : null;
+  const nextSongObj = nextSongId ? getSong(nextSongId) : null;
 
-  const showMode = searchParams.get('show') === '1';
   if (activeSetlist && showMode) {
     return (
       <ShowModeView
@@ -187,12 +247,17 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         totalSongs={existingSetlistSongIds.length}
         prevSongId={prevSongId}
         nextSongId={nextSongId}
+        nextSongMeta={
+          nextSongObj ? { title: nextSongObj.title, displayKey: nextSongObj.displayKey } : null
+        }
         beatsPerBar={beatsPerBar}
         live={live}
         onNavigate={(songId) => router.push(`/song/${songId}?setlist=${activeSetlist.id}&show=1`)}
         onExit={() => router.replace(`/song/${id}?setlist=${activeSetlist.id}`)}
         onChordTap={(chord) => store.setActiveChord(chord)}
-        onScrollTopChange={(v) => { scrollTopRef.current = v; }}
+        onScrollTopChange={(v) => {
+          scrollTopRef.current = v;
+        }}
         handleGoLive={handleGoLive}
         confirmGoLive={confirmGoLive}
         showNamePrompt={showNamePrompt}
@@ -204,7 +269,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   }
 
   // ── Edit helpers ────────────────────────────────────────────────────────────
-  // Capture the narrowed song in a const so nested functions can access it
   const currentSong = song;
 
   function applyLineEdit(sectionIdx: number, lineIdx: number, newLine: string) {
@@ -215,16 +279,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         lines: sec.lines.map((l, li) => (li === lineIdx ? newLine : l)),
       };
     });
-    const updatedSong = { ...currentSong, sections: updatedSections };
-    updateEntry(id, songToChordPro(updatedSong));
+    updateEntry(id, songToChordPro({ ...currentSong, sections: updatedSections }));
   }
 
   function applySectionEdit(sectionIdx: number, lines: string[]) {
     const updatedSections = currentSong.sections.map((sec, si) =>
       si === sectionIdx ? { ...sec, lines } : sec
     );
-    const updatedSong = { ...currentSong, sections: updatedSections };
-    updateEntry(id, songToChordPro(updatedSong));
+    updateEntry(id, songToChordPro({ ...currentSong, sections: updatedSections }));
   }
 
   function handleChordSelect(sectionIdx: number, lineIdx: number, segIdx: number) {
@@ -248,26 +310,22 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   function handleMove(sectionIdx: number, lineIdx: number, segIdx: number, dir: 'left' | 'right') {
     const line = currentSong.sections[sectionIdx].lines[lineIdx];
-    const newLine = moveChord(line, segIdx, dir);
-    applyLineEdit(sectionIdx, lineIdx, newLine);
+    applyLineEdit(sectionIdx, lineIdx, moveChord(line, segIdx, dir));
   }
 
   function handleRename(sectionIdx: number, lineIdx: number, segIdx: number, newChord: string) {
     const line = currentSong.sections[sectionIdx].lines[lineIdx];
-    const newLine = renameChord(line, segIdx, newChord);
-    applyLineEdit(sectionIdx, lineIdx, newLine);
+    applyLineEdit(sectionIdx, lineIdx, renameChord(line, segIdx, newChord));
   }
 
   function handleDelete(sectionIdx: number, lineIdx: number, segIdx: number) {
     const line = currentSong.sections[sectionIdx].lines[lineIdx];
-    const newLine = deleteChord(line, segIdx);
-    applyLineEdit(sectionIdx, lineIdx, newLine);
+    applyLineEdit(sectionIdx, lineIdx, deleteChord(line, segIdx));
   }
 
   function handleInsert(sectionIdx: number, lineIdx: number, charPos: number, chord: string) {
     const line = currentSong.sections[sectionIdx].lines[lineIdx];
-    const newLine = insertChord(line, charPos, chord);
-    applyLineEdit(sectionIdx, lineIdx, newLine);
+    applyLineEdit(sectionIdx, lineIdx, insertChord(line, charPos, chord));
   }
 
   function closeOverlay() {
@@ -276,44 +334,28 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   }
 
   const overlayChordName = selectedCoord
-    ? parseLine(currentSong.sections[selectedCoord.sectionIdx].lines[selectedCoord.lineIdx])[selectedCoord.segIdx]?.chord ?? ''
+    ? parseLine(currentSong.sections[selectedCoord.sectionIdx].lines[selectedCoord.lineIdx])[
+        selectedCoord.segIdx
+      ]?.chord ?? ''
     : '';
 
-  const overlaySelected = selectedCoord && overlayChordName
-    ? { ...selectedCoord, chord: overlayChordName }
-    : null;
+  const overlaySelected =
+    selectedCoord && overlayChordName ? { ...selectedCoord, chord: overlayChordName } : null;
 
-  // ── Rating / Favorite / Setlist ────────────────────────────────────────────
-
+  // ── Song metadata & actions ─────────────────────────────────────────────────
   const saveTitle = () => {
     const trimmed = titleInput.trim();
-    if (trimmed && song && trimmed !== song.title) {
-      patchMeta(id, 'title', trimmed);
-    }
+    if (trimmed && trimmed !== song.title) patchMeta(id, 'title', trimmed);
   };
 
   const saveArtist = () => {
-    if (song) {
-      const trimmed = artistInput.trim();
-      if (trimmed !== song.artist) {
-        patchMeta(id, 'artist', trimmed);
-      }
-    }
-  };
-
-  const handleStar = (star: number) => {
-    patchMeta(id, 'rating', song.rating === star ? 0 : star);
-  };
-
-  const handleFavorite = () => {
-    patchMeta(id, 'favorite', song.favorite ? 'false' : 'true');
+    const trimmed = artistInput.trim();
+    if (trimmed !== song.artist) patchMeta(id, 'artist', trimmed);
   };
 
   const handleAddToSetlist = (setlistId: string, setlistName: string) => {
     addSongToSetlist(setlistId, id);
-    setSetlistMsg(`Added to "${setlistName}"`);
-    setShowSetlistMenu(false);
-    setTimeout(() => setSetlistMsg(''), 2000);
+    flashStatus(`Adicionada em "${setlistName}"`);
   };
 
   const openSpotifyPicker = () => {
@@ -331,6 +373,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     patchMeta(id, 'spotify', trackId);
     setShowSpotifyPicker(false);
     setShowMoreSuggestions(false);
+    flashStatus('Spotify vinculado');
   };
 
   const handleClearSpotify = () => {
@@ -339,6 +382,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setShowSpotifyPicker(false);
     setShowSpotifyPreview(false);
     setSpotifySuggestionDismissed(false);
+    flashStatus('Vínculo removido');
   };
 
   const handleSaveAsKey = () => {
@@ -346,625 +390,181 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     updateEntry(id, songToChordPro(transposed));
     store.setTranspose(0);
     setShowTransposeConfirm(false);
-    setSavedMsg('✓ Saved as new key');
-    setTimeout(() => setSavedMsg(''), 2000);
+    flashStatus('✓ Salvo no novo tom');
   };
 
   const choIsDirty = choDraft !== (exportEntry(id) ?? '');
   const choIsValid = /^\{title:/im.test(choDraft.trim());
 
   const closeExportModal = () => {
-    if (choIsDirty && !window.confirm('Discard unsaved changes?')) return;
+    if (choIsDirty && !discardArmed) {
+      setDiscardArmed(true);
+      setTimeout(() => setDiscardArmed(false), 6000);
+      return;
+    }
+    setDiscardArmed(false);
     setShowExport(false);
   };
 
   const handleSaveCho = () => {
     if (!choIsValid) return;
     updateEntry(id, choDraft);
+    setDiscardArmed(false);
     setShowExport(false);
-    setSavedMsg('✓ Saved');
-    setTimeout(() => setSavedMsg(''), 2000);
+    flashStatus('✓ Salvo');
+  };
+
+  const handleJumpToSection = (sectionIdx: number) => {
+    setActiveSectionIdx(sectionIdx);
+    const container = sheetScrollRef.current;
+    if (!container) return;
+    const target = container.querySelector<HTMLElement>(`#section-${sectionIdx}`);
+    if (target) {
+      container.scrollTo({
+        top: Math.max(0, target.offsetTop - 16),
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const navigateInSetlist = (songId: string) => {
+    if (!activeSetlist) return;
+    router.push(`/song/${songId}?setlist=${activeSetlist.id}`);
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      {/* Top bar */}
-      <header className="border-b border-zinc-800 px-4 py-3">
-        <div className="max-w-5xl mx-auto space-y-1.5">
-        <Breadcrumb
-          items={
-            activeSetlist
-              ? [
-                  { label: 'Home', href: '/' },
-                  { label: 'Setlists', href: '/?tab=setlists' },
-                  { label: activeSetlist.name, href: `/setlists/${activeSetlist.id}` },
-                  { label: song.title },
-                ]
-              : [{ label: 'Home', href: '/' }, { label: song.title }]
-          }
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <VisualPulse />
+
+      {focusMode ? (
+        <FocusDock
+          songTitle={song.title}
+          displayedKey={displayedKey}
+          isFollowing={live.isFollowing}
+          hasSetlist={!!activeSetlist}
+          prevSongId={prevSongId}
+          nextSongId={nextSongId}
+          onNavigateSong={navigateInSetlist}
+          onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
+          onExit={() => setFocusMode(false)}
         />
-        <div className="flex items-center justify-between flex-wrap gap-y-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {activeSetlist && (
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                <button
-                  onClick={() => prevSongId && router.push(`/song/${prevSongId}?setlist=${activeSetlist.id}`)}
-                  disabled={!prevSongId}
-                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-xl w-7 h-7 flex items-center justify-center"
-                  title="Previous song in setlist"
-                >
-                  &#8249;
-                </button>
-                <button
-                  onClick={() => nextSongId && router.push(`/song/${nextSongId}?setlist=${activeSetlist.id}`)}
-                  disabled={!nextSongId}
-                  className="text-zinc-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors text-xl w-7 h-7 flex items-center justify-center"
-                  title="Next song in setlist"
-                >
-                  &#8250;
-                </button>
-              </div>
-            )}
-            <div className="min-w-0 flex flex-col">
-              <input
-                type="text"
-                value={titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-                onBlur={saveTitle}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                className="text-lg font-bold font-display text-zinc-100 bg-transparent border-b border-transparent hover:border-zinc-700 focus:border-violet-500 outline-none min-w-0 transition-colors"
-                title="Click to edit song title"
-              />
-              <input
-                type="text"
-                value={artistInput}
-                onChange={(e) => setArtistInput(e.target.value)}
-                onBlur={saveArtist}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                className="text-xs text-zinc-400 bg-transparent border-b border-transparent hover:border-zinc-800 focus:border-violet-500/60 outline-none min-w-0 transition-colors"
-                placeholder="Unknown Artist"
-                title="Click to edit artist name"
-              />
-            </div>
-          </div>
+      ) : (
+        <>
+          <Breadcrumb
+            items={
+              activeSetlist
+                ? [
+                    { label: 'Início', href: '/' },
+                    { label: 'Setlists', href: '/?tab=setlists' },
+                    { label: activeSetlist.name, href: `/setlists/${activeSetlist.id}` },
+                    { label: song.title },
+                  ]
+                : [{ label: 'Início', href: '/' }, { label: song.title }]
+            }
+          />
 
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Live session status */}
-            {activeSetlist && (
-              <div className="relative flex items-center gap-1.5">
-                {live.isLeading ? (
-                  <>
-                    <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-600/20 text-red-400 font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> Leading
-                    </span>
-                    <button
-                      onClick={live.stopLeading}
-                      className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-                    >
-                      Stop
-                    </button>
-                  </>
-                ) : live.isFollowing ? (
-                  <>
-                    <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-violet-400 font-semibold">
-                      &#128279; {live.isLeaderStale ? `${live.session.leaderName} inactive` : `Following ${live.session.leaderName}`}
-                    </span>
-                    <button
-                      onClick={handleGoLive}
-                      className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-                    >
-                      Take over
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleGoLive}
-                    className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-                  >
-                    &#128308; Go Live
-                  </button>
-                )}
-                {showNamePrompt && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 p-3 space-y-2">
-                    <div className="text-xs text-zinc-400">Your name, so the band knows who&rsquo;s leading:</div>
-                    <input
-                      autoFocus
-                      value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') confirmGoLive(); if (e.key === 'Escape') setShowNamePrompt(false); }}
-                      placeholder="e.g. Alex - Guitar"
-                      className="w-full px-2 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 outline-none focus:border-violet-500"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => setShowNamePrompt(false)} className="text-xs text-zinc-500 hover:text-zinc-300">Cancel</button>
-                      <button onClick={confirmGoLive} className="text-xs px-2 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white font-semibold">Go Live</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+          <SongHeader
+            song={song}
+            displayedKey={displayedKey}
+            titleInput={titleInput}
+            artistInput={artistInput}
+            onTitleChange={setTitleInput}
+            onArtistChange={setArtistInput}
+            onSaveTitle={saveTitle}
+            onSaveArtist={saveArtist}
+            onPatchMeta={(key, val) => patchMeta(id, key, val)}
+            displayMode={displayMode}
+            onSetDisplayMode={setDisplayMode}
+            editMode={store.editMode}
+            onEnterFocusMode={() => setFocusMode(true)}
+            activeSetlist={activeSetlist}
+            setlistSongIdx={setlistSongIdx}
+            totalSetlistSongs={existingSetlistSongIds.length}
+            prevSongId={prevSongId}
+            nextSongId={nextSongId}
+            onNavigateSong={navigateInSetlist}
+            onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
+            onEnterShowMode={() =>
+              activeSetlist && router.push(`/song/${id}?setlist=${activeSetlist.id}&show=1`)
+            }
+            live={live}
+            handleGoLive={handleGoLive}
+            confirmGoLive={confirmGoLive}
+            showNamePrompt={showNamePrompt}
+            nameInput={nameInput}
+            setNameInput={setNameInput}
+            setShowNamePrompt={setShowNamePrompt}
+            setlists={setlists}
+            onAddToSetlist={handleAddToSetlist}
+            onGoToCreateSetlist={() => router.push('/?tab=setlists')}
+            showSpotifyPreview={showSpotifyPreview}
+            onToggleSpotifyPreview={() => setShowSpotifyPreview((v) => !v)}
+            onOpenSpotifyPicker={openSpotifyPicker}
+            onOpenEnhance={() => setShowEnhance(true)}
+            onOpenHistory={() => setShowHistory(true)}
+            onOpenChordPro={() => {
+              setChoDraft(exportEntry(id) ?? '');
+              setDiscardArmed(false);
+              setShowExport(true);
+            }}
+            statusMsg={statusMsg}
+          />
 
-            {/* Star rating */}
-            <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => handleStar(star)}
-                  className={`text-lg transition-colors ${
-                    star <= song.rating ? 'text-amber-400' : 'text-zinc-700 hover:text-amber-400/60'
-                  }`}
-                >★</button>
-              ))}
-            </div>
+          <SpotifySection
+            spotifyTrackId={song.spotifyTrackId}
+            showPreview={showSpotifyPreview}
+            showPicker={showSpotifyPicker}
+            results={spotifyResults}
+            loading={spotifyLoading}
+            suggestionDismissed={spotifySuggestionDismissed}
+            showMoreSuggestions={showMoreSuggestions}
+            onSelect={handleSelectSpotify}
+            onClear={handleClearSpotify}
+            onDismissSuggestion={() => setSpotifySuggestionDismissed(true)}
+            onToggleMoreSuggestions={() => setShowMoreSuggestions((v) => !v)}
+            onClosePicker={() => setShowSpotifyPicker(false)}
+          />
 
-            {/* Favorite */}
-            <button
-              onClick={handleFavorite}
-              className={`text-xl transition-colors ${
-                song.favorite ? 'text-red-400' : 'text-zinc-600 hover:text-red-400/60'
-              }`}
-            >
-              {song.favorite ? '♥' : '♡'}
-            </button>
+          <SongToolbar
+            beatsPerBar={beatsPerBar}
+            chordCount={allChords.length}
+            isFollowing={live.isFollowing}
+            onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
+            onToggleEditMode={() => {
+              if (store.editMode) flashStatus('✓ Alterações salvas');
+              store.toggleEditMode();
+              closeOverlay();
+            }}
+          />
 
-            {/* Add to setlist */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSetlistMenu(!showSetlistMenu)}
-                className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-              >
-                + Setlist
-              </button>
-              {showSetlistMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 overflow-hidden">
-                  {setlists.length === 0 ? (
-                    <div className="px-4 py-3 text-xs text-zinc-500">
-                      No setlists yet.{' '}
-                      <button
-                        onClick={() => { setShowSetlistMenu(false); router.push('/'); }}
-                        className="text-violet-400 underline"
-                      >
-                        Create one
-                      </button>
-                    </div>
-                  ) : (
-                    setlists.map((sl) => {
-                      const already = sl.songIds.includes(id);
-                      return (
-                        <button
-                          key={sl.id}
-                          onClick={() => !already && handleAddToSetlist(sl.id, sl.name)}
-                          disabled={already}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                            already ? 'text-zinc-600 cursor-default' : 'text-zinc-200 hover:bg-zinc-800'
-                          }`}
-                        >
-                          {sl.name}
-                          {already && <span className="ml-2 text-xs text-zinc-600">✓</span>}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-
-            {setlistMsg && (
-              <span className="text-xs text-green-400 font-medium">{setlistMsg}</span>
-            )}
-
-            {/* Key */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-zinc-500">Key:</span>
-              <span className="text-sm font-mono font-bold text-violet-400">{displayedKey}</span>
-            </div>
-
-            {/* Capo */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-zinc-500">Capo:</span>
-              <button onClick={() => patchMeta(id, 'capo', Math.max(0, song.capo - 1))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">-</button>
-              <span className="text-sm font-mono text-amber-400 w-4 text-center">{song.capo}</span>
-              <button onClick={() => patchMeta(id, 'capo', Math.min(12, song.capo + 1))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">+</button>
-            </div>
-
-            {/* BPM */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-zinc-500">BPM:</span>
-              <button onClick={() => patchMeta(id, 'tempo', Math.max(20, song.tempo - 1))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">-</button>
-              <input
-                type="number"
-                value={song.tempo}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value);
-                  if (!isNaN(v) && v >= 20 && v <= 300) patchMeta(id, 'tempo', v);
-                }}
-                className="w-10 text-center text-sm font-mono text-zinc-300 bg-transparent border-b border-zinc-700 outline-none focus:border-violet-500"
-              />
-              <button onClick={() => patchMeta(id, 'tempo', Math.min(300, song.tempo + 1))} className="w-5 h-5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-[10px] transition-colors">+</button>
-            </div>
-
-            {/* Time Signature */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-zinc-500">Time:</span>
-              <select
-                value={song.timeSignature}
-                onChange={(e) => patchMeta(id, 'time', e.target.value)}
-                className="text-sm font-mono text-zinc-300 bg-zinc-800 border border-zinc-700 rounded px-1 py-0.5 outline-none focus:border-violet-500"
-              >
-                <option value="4/4">4/4</option>
-                <option value="3/4">3/4</option>
-                <option value="6/8">6/8</option>
-                <option value="2/4">2/4</option>
-                <option value="5/4">5/4</option>
-                <option value="7/8">7/8</option>
-              </select>
-            </div>
-
-            {/* Spotify match */}
-            <div className="relative flex items-center gap-1">
-              {song.spotifyTrackId && (
-                <>
-                  <button
-                    onClick={() => setShowSpotifyPreview(!showSpotifyPreview)}
-                    className={`text-xs px-2 py-1 rounded transition-colors ${
-                      showSpotifyPreview ? 'bg-green-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
-                    }`}
-                  >
-                    &#127925; Preview
-                  </button>
-                  <button
-                    onClick={openSpotifyPicker}
-                    title="Change Spotify match"
-                    className="text-xs px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-500 transition-colors"
-                  >
-                    &#8635;
-                  </button>
-                </>
-              )}
-              {!song.spotifyTrackId && !autoSearchLoading && (spotifyResults.length === 0 || spotifySuggestionDismissed) && (
-                <button
-                  onClick={openSpotifyPicker}
-                  className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-                >
-                  &#127925; Find on Spotify
-                </button>
-              )}
-
-              {showSpotifyPicker && (
-                <div className="absolute right-0 top-full mt-1 w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 p-3 space-y-2">
-                  {spotifyLoading ? (
-                    <div className="text-xs text-zinc-500 py-2 text-center">Searching Spotify...</div>
-                  ) : spotifyResults.length === 0 ? (
-                    <div className="text-xs text-zinc-500 py-2 text-center">No matches found.</div>
-                  ) : (
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                      {spotifyResults.map((track) => (
-                        <button
-                          key={track.id}
-                          onClick={() => handleSelectSpotify(track.id)}
-                          className={`w-full flex items-center gap-2 p-1.5 rounded-lg border text-left transition-colors ${
-                            song.spotifyTrackId === track.id
-                              ? 'border-violet-500 bg-violet-500/10'
-                              : 'border-zinc-800 hover:border-zinc-700'
-                          }`}
-                        >
-                          {track.albumArt ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={track.albumArt} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                          ) : (
-                            <div className="w-8 h-8 rounded bg-zinc-800 flex-shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <div className="text-xs text-zinc-100 truncate">{track.name}</div>
-                            <div className="text-[10px] text-zinc-500 truncate">{track.artist}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-1">
-                    {song.spotifyTrackId && (
-                      <button onClick={handleClearSpotify} className="text-xs text-red-400 hover:text-red-300">
-                        Clear match
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowSpotifyPicker(false)}
-                      className="text-xs text-zinc-500 hover:text-zinc-300 ml-auto"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* AI enhance (web-grounded lyrics/chord check) */}
-            <button
-              onClick={() => setShowEnhance(true)}
-              className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-            >
-              &#10024; Enhance
-            </button>
-
-            {/* Version history */}
-            <button
-              onClick={() => setShowHistory(true)}
-              className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-            >
-              &#128337; History
-            </button>
-
-            {/* Edit ChordPro source */}
-            <button
-              onClick={() => { setChoDraft(exportEntry(id) ?? ''); setShowExport(true); }}
-              className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-            >
-              ChordPro
-            </button>
-          </div>
-        </div>
-        </div>
-      </header>
-
-      {/* Spotify preview */}
-      {showSpotifyPreview && song.spotifyTrackId && (
-        <div className="border-b border-zinc-800 px-4 py-2">
-          <div className="max-w-5xl mx-auto">
-            <iframe
-              key={song.spotifyTrackId}
-              src={`https://open.spotify.com/embed/track/${song.spotifyTrackId}?utm_source=generator`}
-              width="100%"
-              height="152"
-              style={{ border: 0 }}
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
+          {/* Collapsible Chords Reference Strip */}
+          {!store.editMode && displayMode !== 'lyrics-only' && chordsRefOpen && (
+            <ChordsReference
+              chords={allChords.map((c) => transposeChord(c, totalShift, store.useFlats))}
             />
-          </div>
-        </div>
-      )}
-
-      {/* Spotify suggested match — shown automatically, no click required */}
-      {!song.spotifyTrackId && !spotifySuggestionDismissed && spotifyResults.length > 0 && (
-        <div className="border-b border-violet-900/40 bg-violet-950/10 px-4 py-3">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex items-center gap-3">
-              {spotifyResults[0].albumArt ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={spotifyResults[0].albumArt} alt="" className="w-12 h-12 rounded object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-12 h-12 rounded bg-zinc-800 flex-shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="text-xs text-violet-400 font-semibold mb-0.5">Suggested match on Spotify</div>
-                <div className="text-sm text-zinc-100 truncate">{spotifyResults[0].name}</div>
-                <div className="text-xs text-zinc-500 truncate">{spotifyResults[0].artist}</div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => handleSelectSpotify(spotifyResults[0].id)}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
-                >
-                  Use this
-                </button>
-                {spotifyResults.length > 1 && (
-                  <button
-                    onClick={() => setShowMoreSuggestions(!showMoreSuggestions)}
-                    className="text-xs px-2 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
-                  >
-                    {showMoreSuggestions ? 'Hide' : `${spotifyResults.length - 1} more`}
-                  </button>
-                )}
-                <button
-                  onClick={() => setSpotifySuggestionDismissed(true)}
-                  title="Dismiss"
-                  className="text-zinc-500 hover:text-zinc-300 text-lg w-7 h-7 flex items-center justify-center rounded hover:bg-zinc-800 transition-colors"
-                >
-                  &times;
-                </button>
-              </div>
-            </div>
-
-            {showMoreSuggestions && (
-              <div className="mt-2 space-y-1.5 pl-[60px]">
-                {spotifyResults.slice(1).map((track) => (
-                  <button
-                    key={track.id}
-                    onClick={() => handleSelectSpotify(track.id)}
-                    className="w-full flex items-center gap-2 p-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 text-left transition-colors"
-                  >
-                    {track.albumArt ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={track.albumArt} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-zinc-800 flex-shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="text-xs text-zinc-100 truncate">{track.name}</div>
-                      <div className="text-[10px] text-zinc-500 truncate">{track.artist}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Toolbar */}
-      <div className="border-b border-zinc-800 px-4 py-2">
-        <div className="flex items-center justify-between max-w-5xl mx-auto flex-wrap gap-2">
-          {/* Transpose */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">Transpose:</span>
-            <button onClick={store.transposeDown} className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center text-sm transition-colors">-</button>
-            <span className="text-xs font-mono text-zinc-300 w-6 text-center">
-              {store.transpose > 0 ? `+${store.transpose}` : store.transpose || '0'}
-            </span>
-            <button onClick={store.transposeUp} className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center text-sm transition-colors">+</button>
-            <button
-              onClick={store.toggleFlats}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
-                store.useFlats ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-              }`}
-            >
-              {store.useFlats ? 'b' : '#'}
-            </button>
-            {store.transpose !== 0 && (
-              <button
-                onClick={() => setShowTransposeConfirm(true)}
-                title="Permanently rewrite the chords in this key"
-                className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-violet-400 transition-colors"
-              >
-                &#128190; Save as Key
-              </button>
-            )}
-          </div>
-
-          {/* Font size */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">Size:</span>
-            <button onClick={() => store.setFontSize(store.fontSize - 10)} className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center text-xs transition-colors">A-</button>
-            <button onClick={() => store.setFontSize(store.fontSize + 10)} className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center text-xs transition-colors">A+</button>
-          </div>
-
-          {/* Display mode: per-device, never synced */}
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-zinc-500">View:</span>
-            {(
-              [
-                { mode: 'both' as const, label: 'Both' },
-                { mode: 'lyrics-only' as const, label: 'Lyrics' },
-                { mode: 'chords-only' as const, label: 'Chords' },
-              ]
-            ).map(({ mode, label }) => (
-              <button
-                key={mode}
-                onClick={() => setDisplayMode(mode)}
-                disabled={store.editMode}
-                title={store.editMode ? 'Not available while editing' : undefined}
-                className={`text-xs px-2 py-1 rounded font-semibold transition-colors ${
-                  displayMode === mode
-                    ? 'bg-violet-600 text-white'
-                    : store.editMode
-                    ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Auto scroll */}
-          {live.isFollowing ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-3 py-1.5 rounded font-bold bg-zinc-800 text-violet-400">
-                {store.isAutoScrolling ? 'Scrolling (synced)' : 'Auto Scroll (synced)'}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={store.toggleAutoScroll}
-                disabled={store.editMode}
-                className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
-                  store.isAutoScrolling
-                    ? 'bg-green-600 text-white'
-                    : store.editMode
-                    ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                }`}
-              >
-                {store.isAutoScrolling ? 'Scrolling...' : 'Auto Scroll'}
-              </button>
-              {store.isAutoScrolling && (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => store.setAutoScrollSpeed(+(store.autoScrollSpeed / 1.15).toFixed(2))}
-                    className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-sm transition-colors"
-                  >-</button>
-                  {[
-                    { label: 'Slow', value: 0.3 },
-                    { label: 'Med', value: 0.7 },
-                    { label: 'Fast', value: 1.5 },
-                  ].map((preset) => (
-                    <button
-                      key={preset.label}
-                      onClick={() => store.setAutoScrollSpeed(preset.value)}
-                      className={`text-[10px] px-2 py-1 rounded font-semibold transition-colors ${
-                        Math.abs(store.autoScrollSpeed - preset.value) < 0.03
-                          ? 'bg-green-600 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => store.setAutoScrollSpeed(+(store.autoScrollSpeed * 1.15).toFixed(2))}
-                    className="w-7 h-7 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 flex items-center justify-center text-sm transition-colors"
-                  >+</button>
-                  <div className="w-16 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                    <div
-                      className="h-full bg-green-500 rounded-full transition-all duration-200"
-                      style={{
-                        width: `${((Math.log(store.autoScrollSpeed) - Math.log(0.05)) / (Math.log(3) - Math.log(0.05))) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs font-mono text-zinc-300 w-9 text-center">{store.autoScrollSpeed.toFixed(2)}</span>
-                </div>
-              )}
-            </div>
           )}
 
-          {/* Metronome */}
-          <Metronome readOnly={live.isFollowing} beatsPerBar={beatsPerBar} />
+          {/* Edit mode banner */}
+          {store.editMode && (
+            <div className="flex-shrink-0 border-b border-[var(--accent)]/40 bg-[var(--accent-dim)] px-4 py-2">
+              <p className="max-w-5xl mx-auto text-xs text-[var(--accent-ink)] text-center font-medium">
+                Toque na letra para digitar · toque em um acorde para mover, trocar ou remover · use o <b>+</b> no cursor para inserir acorde · toque em <b>✓ Concluir</b> ao terminar
+              </p>
+            </div>
+          )}
+        </>
+      )}
 
-          {/* Edit toggle */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (store.editMode) {
-                  setSavedMsg('✓ Saved');
-                  setTimeout(() => setSavedMsg(''), 2000);
-                }
-                store.toggleEditMode();
-                closeOverlay();
-              }}
-              className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
-                store.editMode
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              {store.editMode ? '✓ Done' : '✎ Edit'}
-            </button>
-            {savedMsg && (
-              <span className="text-xs text-green-400 font-medium">{savedMsg}</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Chords Reference Grid — hidden in edit mode or when lyrics-only mode is active */}
-      {!store.editMode && displayMode !== 'lyrics-only' && (
-        <ChordsReference
-          chords={allChords.map((c) => transposeChord(c, totalShift, store.useFlats))}
+      {/* Section jump navigation bar (available in both normal and focus mode!) */}
+      {!store.editMode && (
+        <SectionNav
+          sections={song.sections}
+          activeIdx={activeSectionIdx}
+          onJump={handleJumpToSection}
         />
       )}
 
-      {/* Edit mode hint */}
-      {store.editMode && (
-        <div className="border-b border-violet-900/40 bg-violet-950/20 px-4 py-2">
-          <p className="max-w-5xl mx-auto text-xs text-violet-400 text-center">
-            Tap in the lyrics to type · tap a chord to move/rename/delete it · tap the <span className="font-bold">+</span> at your cursor to add one · tap <span className="font-bold">✓ Done</span> to exit
-          </p>
-        </div>
-      )}
-
-      {/* Main content */}
+      {/* Main chord / lyric sheet */}
       <div className="flex flex-1 relative min-h-0">
         <ChordSheet
           song={song}
@@ -975,9 +575,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           onChordSelect={handleChordSelect}
           onAddChord={handleAddChord}
           onLinesChange={applySectionEdit}
-          onScrollTopChange={(v) => { scrollTopRef.current = v; }}
+          onScrollTopChange={(v) => {
+            scrollTopRef.current = v;
+          }}
           syncCorrection={live.syncCorrection}
+          scrollContainerRef={sheetScrollRef}
+          onActiveSectionChange={setActiveSectionIdx}
+          bottomPaddingClass={focusMode ? 'pb-28' : 'pb-16'}
         />
+
         {!store.editMode && (
           <ChordPanel
             chord={store.activeChord}
@@ -985,6 +591,17 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           />
         )}
       </div>
+
+      {/* Setlist Drawer — now available in normal rehearsal mode AND focus mode */}
+      {activeSetlist && showSetlistDrawer && (
+        <SetlistDrawer
+          setlist={activeSetlist}
+          currentSongId={song.id}
+          canReorder={!live.isFollowing}
+          onNavigate={navigateInSetlist}
+          onClose={() => setShowSetlistDrawer(false)}
+        />
+      )}
 
       {/* Edit chord overlay */}
       {store.editMode && (overlaySelected || addTarget) && (
@@ -999,91 +616,84 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         />
       )}
 
-      {/* Setlist dropdown backdrop */}
-      {showSetlistMenu && (
-        <div className="fixed inset-0 z-40" onClick={() => setShowSetlistMenu(false)} />
-      )}
+      {/* Save transposed key confirmation */}
+      <ConfirmDialog
+        open={showTransposeConfirm}
+        title="Salvar neste novo tom?"
+        description={
+          <>
+            <span className="font-mono text-[var(--ink)]">{song.displayKey || 'Tom atual'}</span>
+            {' → '}
+            <span className="font-mono font-semibold text-[var(--accent-ink)]">
+              {transposeChord(song.displayKey, store.transpose, store.useFlats)}
+            </span>
+            . Todos os acordes da música serão reescritos permanentemente e a transposição volta para 0.
+          </>
+        }
+        confirmLabel="Salvar tom"
+        onConfirm={handleSaveAsKey}
+        onCancel={() => setShowTransposeConfirm(false)}
+      />
 
-      {/* Spotify picker backdrop */}
-      {showSpotifyPicker && (
-        <div className="fixed inset-0 z-40" onClick={() => setShowSpotifyPicker(false)} />
-      )}
-
-      {/* Save as Key confirmation */}
-      {showTransposeConfirm && (
+      {/* Edit raw ChordPro source modal */}
+      {showExport && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-          onClick={() => setShowTransposeConfirm(false)}
+          className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={closeExportModal}
         >
           <div
-            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-sm p-5"
+            role="dialog"
+            aria-modal="true"
+            className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden"
+            style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-bold text-zinc-100 mb-1">Save as new key?</h3>
-            <p className="text-sm text-zinc-400 mb-4">
-              <span className="font-mono text-zinc-300">{song.displayKey}</span>
-              {' → '}
-              <span className="font-mono text-violet-400">
-                {transposeChord(song.displayKey, store.transpose, store.useFlats)}
-              </span>
-              . This permanently rewrites every chord in the song. The transpose control resets to 0 afterward.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowTransposeConfirm(false)}
-                className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveAsKey}
-                className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
-              >
-                Save as Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit ChordPro source modal */}
-      {showExport && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={closeExportModal}>
-          <div
-            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-4xl h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-zinc-700 flex-shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-b border-[var(--line)] flex-shrink-0">
               <div>
-                <h3 className="font-bold text-zinc-100">Edit Song Source</h3>
-                <p className="text-xs text-zinc-500">Direct ChordPro editing — delete lines, add sections, anything text can do.</p>
+                <div className="eyebrow">ChordPro (.cho)</div>
+                <h3 className="font-display text-xl text-[var(--ink)]">Editar fonte da música</h3>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => navigator.clipboard.writeText(choDraft)}
-                  className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(choDraft);
+                    flashStatus('Copiado');
+                  }}
+                  className="pill-btn px-3 py-1.5 text-xs"
                 >
-                  Copy
+                  Copiar
                 </button>
                 <button
+                  type="button"
                   onClick={handleSaveCho}
                   disabled={!choIsValid || !choIsDirty}
-                  className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white transition-colors"
+                  className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
                 >
-                  Save
+                  Salvar
                 </button>
                 <button
+                  type="button"
                   onClick={closeExportModal}
-                  className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
+                  className={`pill-btn px-3 py-1.5 text-xs ${
+                    discardArmed ? 'pill-btn-rec' : ''
+                  }`}
                 >
-                  &times;
+                  {discardArmed ? 'Sair sem salvar' : 'Fechar'}
                 </button>
               </div>
             </div>
-            <ChordProEditor value={choDraft} onChange={setChoDraft} className="flex-1 min-h-0 rounded-b-xl" />
+            <ChordProEditor
+              value={choDraft}
+              onChange={(val) => {
+                setChoDraft(val);
+                if (discardArmed) setDiscardArmed(false);
+              }}
+              className="flex-1 min-h-0"
+            />
             {!choIsValid && (
-              <div className="px-4 py-2 text-xs text-red-400 border-t border-zinc-800 flex-shrink-0">
-                Must include a {'{title: ...}'} directive before saving.
+              <div className="px-5 py-2 text-xs text-[var(--rec)] border-t border-[var(--line)] flex-shrink-0">
+                Inclua a diretiva {'{title: ...}'} antes de salvar.
               </div>
             )}
           </div>
@@ -1094,10 +704,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         <EnhanceModal
           songId={id}
           onClose={() => setShowEnhance(false)}
-          onApplied={() => {
-            setSavedMsg('✓ Enhanced');
-            setTimeout(() => setSavedMsg(''), 2000);
-          }}
+          onApplied={() => flashStatus('✓ Revisão aplicada')}
         />
       )}
 
@@ -1106,10 +713,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           songId={id}
           currentText={exportEntry(id) ?? ''}
           onClose={() => setShowHistory(false)}
-          onRestored={() => {
-            setSavedMsg('✓ Restored');
-            setTimeout(() => setSavedMsg(''), 2000);
-          }}
+          onRestored={() => flashStatus('✓ Versão restaurada')}
         />
       )}
     </div>

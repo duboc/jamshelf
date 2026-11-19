@@ -1,6 +1,6 @@
 'use client';
 
-import { SECTION_COLORS } from '@/lib/utils/music';
+import { SECTION_COLORS, isInstrumentalSection } from '@/lib/utils/music';
 import type { Section } from '@/lib/types/song';
 import { ChordLine } from './ChordLine';
 import { SectionEditor } from './SectionEditor';
@@ -35,16 +35,44 @@ export function SectionBlock({
       ? { lineIdx: selectedCoord.lineIdx, segIdx: selectedCoord.segIdx }
       : null;
 
+  const isSingerMode = !editMode && displayMode === 'lyrics-only';
+  const instrumentalOnly = isSingerMode && isInstrumentalSection(section.lines);
+
+  if (instrumentalOnly) {
+    return (
+      <div
+        id={`section-${sectionIdx}`}
+        data-section-idx={sectionIdx}
+        className="scroll-mt-4 mb-3 flex items-center gap-2.5 rounded-xl border border-[var(--line)] border-l-[3px] px-4 py-2.5"
+        style={{
+          background: colors.bg,
+          borderLeftColor: colors.bd,
+        }}
+      >
+        <span className="font-mono text-[11px] uppercase tracking-wider font-semibold" style={{ color: colors.lb }}>
+          ♪ {section.label}
+        </span>
+        <span className="font-mono text-[11px] text-[var(--muted)]">
+          trecho instrumental
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="relative rounded-lg p-4 mb-3 border-l-4"
+    <section
+      id={`section-${sectionIdx}`}
+      data-section-idx={sectionIdx}
+      className={`scroll-mt-4 relative rounded-2xl border border-[var(--line)] border-l-4 ${
+        isSingerMode ? 'px-5 sm:px-7 py-5 mb-4' : 'p-4 sm:p-5 mb-3.5'
+      }`}
       style={{
         background: colors.bg,
         borderLeftColor: colors.bd,
       }}
     >
       <div
-        className="text-xs font-bold uppercase tracking-widest mb-2"
+        className="font-mono text-[11px] font-semibold uppercase tracking-[0.09em] mb-2.5"
         style={{ color: colors.lb }}
       >
         {section.label}
@@ -58,12 +86,17 @@ export function SectionBlock({
           onLinesChange={(lines) => onLinesChange?.(sectionIdx, lines)}
         />
       ) : (
-        <div className="space-y-0.5">
+        <div className={isSingerMode ? 'space-y-2' : 'space-y-1'}>
           {section.lines.map((line, lineIdx) => (
-            <ChordLine key={lineIdx} line={line} onChordTap={onChordTap} displayMode={displayMode} />
+            <ChordLine
+              key={lineIdx}
+              line={line}
+              onChordTap={onChordTap}
+              displayMode={displayMode}
+            />
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

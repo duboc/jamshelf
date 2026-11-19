@@ -22,15 +22,34 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[140px]">
-      <text x={W / 2} y={12} textAnchor="middle" className="fill-violet-400 text-[10px] font-bold">
+      <text
+        x={W / 2}
+        y={12}
+        textAnchor="middle"
+        fill="var(--accent-ink)"
+        className="text-[10px] font-bold font-mono"
+      >
         {label}
       </text>
 
       {/* Nut or fret number */}
       {minFret === 1 ? (
-        <rect x={PAD_LEFT - 2} y={PAD_TOP - 2} width={STR_GAP * 5 + 4} height={3} rx={1} fill="#d4d4d8" />
+        <rect
+          x={PAD_LEFT - 2}
+          y={PAD_TOP - 2}
+          width={STR_GAP * 5 + 4}
+          height={3}
+          rx={1}
+          fill="var(--ink)"
+        />
       ) : (
-        <text x={PAD_LEFT - 12} y={PAD_TOP + FRET_H / 2 + 4} className="fill-zinc-400 text-[9px]" textAnchor="middle">
+        <text
+          x={PAD_LEFT - 12}
+          y={PAD_TOP + FRET_H / 2 + 4}
+          fill="var(--muted)"
+          className="text-[9px] font-mono"
+          textAnchor="middle"
+        >
           {minFret}
         </text>
       )}
@@ -43,8 +62,8 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
           y1={PAD_TOP + i * FRET_H}
           x2={PAD_LEFT + STR_GAP * 5}
           y2={PAD_TOP + i * FRET_H}
-          stroke="#52525b"
-          strokeWidth={0.5}
+          stroke="var(--line)"
+          strokeWidth={0.9}
         />
       ))}
 
@@ -56,8 +75,8 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
           y1={PAD_TOP}
           x2={PAD_LEFT + i * STR_GAP}
           y2={PAD_TOP + FRET_COUNT * FRET_H}
-          stroke="#52525b"
-          strokeWidth={0.5}
+          stroke="var(--line)"
+          strokeWidth={0.9}
         />
       ))}
 
@@ -76,7 +95,7 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
             width={(endStr - startStr) * STR_GAP + 6}
             height={10}
             rx={5}
-            fill="#d4d4d8"
+            fill="var(--accent)"
           />
         );
       })}
@@ -86,20 +105,35 @@ export function GuitarChordDiagram({ voicing, label }: GuitarChordDiagramProps) 
         const x = PAD_LEFT + i * STR_GAP;
         if (fret === -1) {
           return (
-            <text key={`m-${i}`} x={x} y={PAD_TOP - 6} textAnchor="middle" fill="#71717a" className="text-[9px] font-bold">
+            <text
+              key={`m-${i}`}
+              x={x}
+              y={PAD_TOP - 6}
+              textAnchor="middle"
+              fill="var(--muted)"
+              className="text-[9px] font-bold font-mono"
+            >
               x
             </text>
           );
         }
         if (fret === 0) {
           return (
-            <circle key={`o-${i}`} cx={x} cy={PAD_TOP - 6} r={3} fill="none" stroke="#a1a1aa" strokeWidth={1} />
+            <circle
+              key={`o-${i}`}
+              cx={x}
+              cy={PAD_TOP - 6}
+              r={3}
+              fill="none"
+              stroke="var(--tune)"
+              strokeWidth={1.2}
+            />
           );
         }
         const fretRel = fret - minFret;
         const y = PAD_TOP + fretRel * FRET_H + FRET_H / 2;
         return (
-          <circle key={`d-${i}`} cx={x} cy={y} r={5} fill="#e4e4e7" />
+          <circle key={`d-${i}`} cx={x} cy={y} r={5} fill="var(--ink)" />
         );
       })}
     </svg>

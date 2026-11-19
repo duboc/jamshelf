@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
@@ -13,6 +13,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const router = useRouter();
   const { setlists, renameSetlist, removeSongFromSetlist, reorderSong, addSongToSetlist } = useSetlistStore();
+  const entries = useSongStore((s) => s.entries);
   const { getSongs } = useSongStore();
   const liveStatus = useLiveSessionStatus(id);
 
@@ -23,14 +24,22 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
 
   const setlist = setlists.find((sl) => sl.id === id);
 
-  const allSongs = getSongs();
-  // Keep the index into songIds alongside each song, so a reorder still
-  // targets the right store slot if songIds contains ids of deleted songs.
-  const baseEntries = (setlist?.songIds ?? [])
-    .map((sid, storeIdx) => ({ song: allSongs.find((s) => s.id === sid), storeIdx }))
-    .filter((e): e is { song: ReturnType<typeof getSongs>[number]; storeIdx: number } =>
-      e.song !== undefined
-    );
+  const allSongs = useMemo(() => {
+    void entries;
+    return getSongs();
+  }, [entries, getSongs]);
+
+  // Keep the index into songIds alongside each song so reordering still
+  // targets the right store slot if songIds contains deleted song IDs.
+  const baseEntries = useMemo(
+    () =>
+      (setlist?.songIds ?? [])
+        .map((sid, storeIdx) => ({ song: allSongs.find((s) => s.id === sid), storeIdx }))
+        .filter(
+          (e): e is { song: (typeof allSongs)[number]; storeIdx: number } => e.song !== undefined
+        ),
+    [setlist?.songIds, allSongs]
+  );
 
   const { drag, getHandleProps } = usePointerReorder({
     onReorder: (from, to) =>
@@ -39,11 +48,18 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
 
   if (!setlist) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-zinc-500">
-        Setlist not found.{' '}
-        <button onClick={() => router.push('/')} className="text-violet-400 underline ml-2">
-          Go back
-        </button>
+      <div className="flex-1 flex flex-col">
+        <Breadcrumb items={[{ label: 'Início', href: '/' }, { label: 'Setlists', href: '/?tab=setlists' }, { label: 'Não encontrado' }]} />
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
+          <p className="text-sm text-[var(--muted)]">Esse setlist não foi encontrado.</p>
+          <button
+            type="button"
+            onClick={() => router.push('/?tab=setlists')}
+            className="pill-btn px-4 py-2 text-xs"
+          >
+            Voltar para Setlists
+          </button>
+        </div>
       </div>
     );
   }
@@ -56,11 +72,15 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     (liveStatus.leaderId && liveStatus.currentSongId) || setlistSongs[0]?.id || null;
 
   const notInSetlist = allSongs.filter((s) => !setlist.songIds.includes(s.id));
-  const filtered = notInSetlist.filter(
-    (s) =>
-      s.title.toLowerCase().includes(search.toLowerCase()) ||
-      s.artist.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = notInSetlist.filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.title.toLowerCase().includes(q) ||
+      s.artist.toLowerCase().includes(q) ||
+      s.displayKey.toLowerCase().includes(q)
+    );
+  });
 
   const startRename = () => {
     setNameInput(setlist.name);
@@ -73,179 +93,208 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-zinc-800 px-4 py-3">
-        <div className="max-w-3xl mx-auto space-y-1.5">
-        <Breadcrumb
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'Setlists', href: '/?tab=setlists' },
-            { label: setlist.name },
-          ]}
-        />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {editingName ? (
-              <input
-                autoFocus
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                onBlur={commitRename}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitRename();
-                  if (e.key === 'Escape') setEditingName(false);
-                }}
-                className="text-lg font-bold font-display bg-transparent border-b border-violet-500 outline-none text-zinc-100 min-w-[160px]"
-              />
-            ) : (
-              <h1
-                className="text-lg font-bold font-display text-zinc-100 cursor-pointer hover:text-violet-300 transition-colors"
-                title="Click to rename"
-                onClick={startRename}
-              >
-                {setlist.name}
-              </h1>
-            )}
-            <span className="text-xs text-zinc-500">{setlistSongs.length} songs</span>
-            {liveStatus.leaderId && (
-              <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-600/20 text-red-400 font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                {liveStatus.leaderName} is leading
+    <div className="flex-1 flex flex-col">
+      <Breadcrumb
+        items={[
+          { label: 'Início', href: '/' },
+          { label: 'Setlists', href: '/?tab=setlists' },
+          { label: setlist.name },
+        ]}
+        rightSlot={
+          liveStatus.leaderId ? (
+            <span className="studio-chip text-[var(--rec)] border border-[var(--rec)]/40 bg-[var(--rec)]/10">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--rec)] animate-pulse" />
+              {liveStatus.leaderName} ao vivo
+            </span>
+          ) : undefined
+        }
+      />
+
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        {/* Header */}
+        <section className="flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="eyebrow">Setlist · toque no nome para renomear</div>
+            <div className="flex items-baseline gap-3 flex-wrap">
+              {editingName ? (
+                <input
+                  autoFocus
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename();
+                    if (e.key === 'Escape') setEditingName(false);
+                  }}
+                  className="font-display text-3xl bg-transparent border-b-2 border-[var(--accent)] outline-none text-[var(--ink)] min-w-[200px]"
+                />
+              ) : (
+                <h1
+                  className="font-display text-3xl sm:text-4xl text-[var(--ink)] cursor-pointer hover:text-[var(--accent-ink)] transition-colors leading-tight"
+                  title="Clique para renomear"
+                  onClick={startRename}
+                >
+                  {setlist.name}
+                </h1>
+              )}
+              <span className="font-mono text-xs text-[var(--muted)]">
+                {setlistSongs.length} {setlistSongs.length === 1 ? 'música' : 'músicas'}
               </span>
-            )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
+              type="button"
               onClick={() => startSongId && router.push(`/song/${startSongId}?setlist=${id}&show=1`)}
               disabled={!startSongId}
-              title={!startSongId ? 'Add a song first' : 'Enter a focused, swipe-through performance view'}
-              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
+              title={
+                !startSongId
+                  ? 'Adicione uma música primeiro'
+                  : 'Abrir visão de palco focada com deslize entre músicas'
+              }
+              className="pill-btn pill-btn-rec px-4 py-2 text-xs"
             >
-              &#9654; Show Mode
+              ▶ Modo Show
             </button>
             <button
-              onClick={() => setShowAddSong(!showAddSong)}
-              className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+              type="button"
+              onClick={() => setShowAddSong((v) => !v)}
+              className="pill-btn pill-btn-primary px-4 py-2 text-xs"
             >
-              + Add Song
+              {showAddSong ? 'Fechar lista' : '+ Adicionar música'}
             </button>
           </div>
-        </div>
-        </div>
-      </header>
+        </section>
 
-      {/* Add song picker */}
-      {showAddSong && (
-        <div className="border-b border-zinc-800 px-4 py-3 bg-zinc-950">
-          <div className="max-w-3xl mx-auto space-y-2">
+        {/* Add song picker */}
+        {showAddSong && (
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="eyebrow">Adicionar do repertório</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddSong(false);
+                  setSearch('');
+                }}
+                className="text-xs text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+              >
+                Concluir
+              </button>
+            </div>
             <input
               autoFocus
               type="text"
-              placeholder="Search songs to add..."
+              placeholder="Buscar música ou artista para incluir..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500 transition-colors text-sm"
+              className="studio-input w-full px-3.5 py-2 text-sm"
             />
-            <div className="max-h-56 overflow-y-auto space-y-1">
-              {filtered.length === 0 && (
-                <div className="text-center py-6 text-zinc-500 text-sm">
-                  {notInSetlist.length === 0 ? 'All songs are in this setlist.' : 'No songs match.'}
+            <div className="max-h-60 overflow-y-auto divide-y divide-[var(--line)] border-t border-[var(--line)]">
+              {filtered.length === 0 ? (
+                <div className="text-center py-6 text-[var(--muted)] text-sm">
+                  {notInSetlist.length === 0
+                    ? 'Todas as músicas do repertório já estão neste setlist.'
+                    : 'Nenhuma música encontrada.'}
                 </div>
+              ) : (
+                filtered.map((song) => (
+                  <button
+                    key={song.id}
+                    type="button"
+                    onClick={() => {
+                      addSongToSetlist(id, song.id);
+                      setSearch('');
+                    }}
+                    className="w-full flex items-center justify-between gap-3 px-2 py-2.5 hover:bg-[var(--surface2)]/60 transition-colors text-left cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-[var(--ink)] truncate">{song.title}</div>
+                      <div className="text-xs text-[var(--muted)] truncate">
+                        {song.artist || 'Artista não informado'}
+                        {song.displayKey ? ` · ${song.displayKey}` : ''}
+                      </div>
+                    </div>
+                    <span className="pill-btn px-2.5 py-1 text-xs text-[var(--accent-ink)]">+ Incluir</span>
+                  </button>
+                ))
               )}
-              {filtered.map((song) => (
-                <button
-                  key={song.id}
-                  onClick={() => {
-                    addSongToSetlist(id, song.id);
-                    setSearch('');
-                  }}
-                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 transition-all text-left"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-zinc-100">{song.title}</div>
-                    <div className="text-xs text-zinc-500">{song.artist}</div>
-                  </div>
-                  <span className="text-violet-400 text-lg">+</span>
-                </button>
-              ))}
             </div>
-            <button
-              onClick={() => { setShowAddSong(false); setSearch(''); }}
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
+          </section>
+        )}
 
-      {/* Song list */}
-      <main className="flex-1 px-4 py-4">
-        <div className="max-w-3xl mx-auto space-y-2">
+        {/* Ordered song list */}
+        <section>
           {setlistSongs.length === 0 ? (
-            <div className="text-center py-16 text-zinc-500">
-              No songs yet. Tap &ldquo;+ Add Song&rdquo; to build your setlist.
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-6 py-14 text-center space-y-3">
+              <p className="text-sm text-[var(--muted)]">
+                Nenhuma música neste setlist ainda. Toque em &ldquo;+ Adicionar música&rdquo; para montar a sequência.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAddSong(true)}
+                className="pill-btn pill-btn-primary px-4 py-2 text-xs"
+              >
+                + Adicionar música
+              </button>
             </div>
           ) : (
-            setlistSongs.map((song, idx) => (
-              <div
-                key={song.id}
-                data-display-idx={idx}
-                className={`group flex items-center gap-3 p-4 rounded-xl bg-zinc-900 border transition-all ${
-                  drag !== null && drag.to === idx
-                    ? 'border-violet-500 bg-zinc-800 opacity-70'
-                    : 'border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                {/* Drag handle + number — pointer-based so it works on touch */}
-                <div
-                  {...getHandleProps(idx)}
-                  title="Drag to reorder"
-                  className="flex flex-col items-center gap-0.5 text-zinc-600 select-none touch-none cursor-grab active:cursor-grabbing min-w-[32px] -m-2 p-2"
-                >
-                  <span className="text-[10px] font-mono text-zinc-500">{idx + 1}</span>
-                  <span className="text-xs leading-none">⠿</span>
-                </div>
-
-                <Link href={`/song/${song.id}?setlist=${id}`} className="flex-1 min-w-0">
-                  <div className="font-semibold text-zinc-100 truncate">{song.title}</div>
-                  <div className="text-sm text-zinc-400 truncate">{song.artist}</div>
-                  <div className="flex gap-2 mt-1">
-                    {song.displayKey && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-violet-400 font-mono">
-                        {song.displayKey}
-                      </span>
-                    )}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">
-                      {song.tempo} BPM
-                    </span>
-                  </div>
-                </Link>
-
-                {/* Next song hint */}
-                {idx < setlistSongs.length - 1 && (
-                  <Link
-                    href={`/song/${setlistSongs[idx + 1].id}?setlist=${id}`}
-                    className="text-[10px] text-zinc-500 hover:text-violet-400 transition-colors text-center px-2"
-                    title={`Next: ${setlistSongs[idx + 1].title}`}
+            <div className="space-y-1">
+              <p className="font-mono text-[11px] text-[var(--muted)] pb-2">
+                Arraste pelo ícone ⠿ para mudar a ordem · toque em uma música para abrir no contexto do setlist.
+              </p>
+              <div className="border-t border-[var(--line)]">
+                {setlistSongs.map((song, idx) => (
+                  <div
+                    key={song.id}
+                    data-display-idx={idx}
+                    className={`group flex items-center gap-3 py-3 px-2 sm:px-3 border-b border-[var(--line)] transition-colors ${
+                      drag !== null && drag.to === idx
+                        ? 'bg-[var(--surface2)] ring-1 ring-[var(--accent)] rounded-xl'
+                        : 'hover:bg-[var(--surface2)]/45'
+                    }`}
                   >
-                    Next &rarr;
-                  </Link>
-                )}
+                    {/* Drag handle + order index */}
+                    <div
+                      {...getHandleProps(idx)}
+                      title="Arrastar para reordenar"
+                      className="flex items-center gap-2 text-[var(--muted)] select-none touch-none cursor-grab active:cursor-grabbing py-2 px-1 -ml-1 flex-shrink-0"
+                    >
+                      <span className="text-sm leading-none opacity-70">⠿</span>
+                      <span className="font-mono text-xs w-5 text-right tabular-nums">
+                        {idx + 1}
+                      </span>
+                    </div>
 
-                <button
-                  onClick={() => removeSongFromSetlist(id, song.id)}
-                  className="text-zinc-500 hover:text-red-400 transition-colors text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
-                  title="Remove from setlist"
-                >
-                  &times;
-                </button>
+                    <Link href={`/song/${song.id}?setlist=${id}`} className="flex-1 min-w-0">
+                      <div className="font-display text-[19px] leading-snug text-[var(--ink)] group-hover:underline underline-offset-4 truncate">
+                        {song.title}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-[var(--muted)]">
+                        <span className="truncate">{song.artist || 'Artista não informado'}</span>
+                        {song.displayKey && (
+                          <span className="studio-chip text-[var(--accent-ink)]">{song.displayKey}</span>
+                        )}
+                        <span className="studio-chip text-[var(--muted)]">{song.tempo} BPM</span>
+                      </div>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => removeSongFromSetlist(id, song.id)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] transition-colors cursor-pointer flex-shrink-0"
+                      title="Remover do setlist"
+                      aria-label={`Remover ${song.title} do setlist`}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))
+            </div>
           )}
-        </div>
+        </section>
       </main>
     </div>
   );

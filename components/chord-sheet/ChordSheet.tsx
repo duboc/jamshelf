@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react';
 import type { Song } from '@/lib/types/song';
 import { usePlayerStore } from '@/lib/stores/player-store';
+import { useDisplayStore } from '@/lib/stores/display-store';
 import { SectionBlock } from './SectionBlock';
 
 interface ChordSheetProps {
@@ -15,9 +16,12 @@ interface ChordSheetProps {
   onChordSelect?: (sectionIdx: number, lineIdx: number, segIdx: number) => void;
   onAddChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
   onLinesChange?: (sectionIdx: number, lines: string[]) => void;
-  // Live-session sync props
+  // Live-session & navigation props
   onScrollTopChange?: (scrollTop: number) => void;
   syncCorrection?: { scrollTop: number; nonce: number };
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  onActiveSectionChange?: (sectionIdx: number) => void;
+  bottomPaddingClass?: string;
 }
 
 export function ChordSheet({
@@ -31,12 +35,27 @@ export function ChordSheet({
   onLinesChange,
   onScrollTopChange,
   syncCorrection,
+  scrollContainerRef,
+  onActiveSectionChange,
+  bottomPaddingClass = 'pb-20',
 }: ChordSheetProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { fontSize, isAutoScrolling, autoScrollSpeed } = usePlayerStore();
+  const internalRef = useRef<HTMLDivElement>(null);
+  const scrollRef = scrollContainerRef ?? internalRef;
+  const { isAutoScrolling, autoScrollSpeed } = usePlayerStore();
+  const fontSize = useDisplayStore((s) => s.fontSize);
 
   const speedRef = useRef(autoScrollSpeed);
-  useEffect(() => { speedRef.current = autoScrollSpeed; }, [autoScrollSpeed]);
+  useEffect(() => {
+    speedRef.current = autoScrollSpeed;
+  }, [autoScrollSpeed]);
+
+  // Reset scroll to top when switching songs
+  useEffect(() => {
+    if (scrollRef.current && !syncCorrection) {
+      scrollRef.current.scrollTop = 0;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.id]);
 
   useEffect(() => {
     if (!isAutoScrolling) return;
@@ -44,55 +63,66 @@ export function ChordSheet({
     if (!el) return;
     let frameId: number;
     let last = performance.now();
-    // Track the intended position in a plain JS float, separate from the DOM.
-    // Browsers round/truncate `scrollTop` to an integer on every write, so
-    // reading it back each frame (the old `el.scrollTop += delta` pattern)
-    // silently drops any sub-1px-per-frame delta — which is most of the
-    // usable speed range at 60fps, making slow/medium speeds do nothing at
-    // all. Accumulating here instead preserves full precision across frames.
+    // Track intended position in a JS float because DOM scrollTop truncates sub-1px increments.
     let position = el.scrollTop;
     const step = (now: number) => {
       const dt = now - last;
       last = now;
-      // Speed value maps to pixels per second:
-      // 0.1 = 2px/s, 0.3 = 6px/s (slow), 0.7 = 14px/s (med), 1.5 = 30px/s (fast)
       position += speedRef.current * 20 * (dt / 1000);
       el.scrollTop = position;
       frameId = requestAnimationFrame(step);
     };
     frameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frameId);
-  }, [isAutoScrolling]);
+  }, [isAutoScrolling, scrollRef]);
 
-  // Report scroll position for a live-session leader to broadcast.
+  // Report scroll position for live-session sync + track active visible section
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !onScrollTopChange) return;
-    const handler = () => onScrollTopChange(el.scrollTop);
+    if (!el) return;
+    const handler = () => {
+      onScrollTopChange?.(el.scrollTop);
+      if (onActiveSectionChange) {
+        const nodes = el.querySelectorAll<HTMLElement>('[data-section-idx]');
+        let currentIdx = 0;
+        const topThreshold = el.scrollTop + 96;
+        for (const node of nodes) {
+          if (node.offsetTop <= topThreshold) {
+            currentIdx = Number(node.dataset.sectionIdx || 0);
+          } else {
+            break;
+          }
+        }
+        onActiveSectionChange(currentIdx);
+      }
+    };
     el.addEventListener('scroll', handler, { passive: true });
     return () => el.removeEventListener('scroll', handler);
-  }, [onScrollTopChange]);
+  }, [onScrollTopChange, onActiveSectionChange, scrollRef]);
 
   // Snap to the latest synced position when following a live session leader.
   useEffect(() => {
     if (!syncCorrection) return;
     const el = scrollRef.current;
     if (el) el.scrollTop = syncCorrection.scrollTop;
-    // Only re-run when a new correction arrives (nonce), not on every scrollTop read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncCorrection?.nonce]);
 
-  // Never let a hidden-lyrics/hidden-chords preference interfere with
-  // editing — force "both" while the WYSIWYG editor is active.
+  // Always show both chords and lyrics while editing
   const effectiveDisplayMode = editMode ? 'both' : displayMode;
+  const isSingerMode = effectiveDisplayMode === 'lyrics-only';
 
   return (
     <div
       ref={scrollRef}
-      className="flex-1 overflow-y-auto px-4 py-4"
+      className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-5 ${bottomPaddingClass}`}
       style={{ fontSize: `${fontSize}%` }}
     >
-      <div className="max-w-3xl mx-auto font-mono">
+      <div
+        className={`mx-auto ${
+          isSingerMode ? 'max-w-2xl font-sans' : 'max-w-3xl font-mono'
+        }`}
+      >
         {song.sections.map((section, i) => (
           <SectionBlock
             key={i}

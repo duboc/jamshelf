@@ -32,15 +32,48 @@ export const PIANO_INTERVALS: Record<string, number[]> = {
   mmaj7: [0, 3, 7, 11],
 };
 
+// Theme-aware studio console section tints (readable in both dark and light mode)
 export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string }> = {
-  intro: { bg: 'rgba(139,92,246,0.06)', bd: '#7c3aed', lb: '#a78bfa' },
-  verse: { bg: 'rgba(56,189,248,0.06)', bd: '#0ea5e9', lb: '#38bdf8' },
-  'pre-chorus': { bg: 'rgba(251,191,36,0.06)', bd: '#d97706', lb: '#fbbf24' },
-  chorus: { bg: 'rgba(244,63,94,0.06)', bd: '#e11d48', lb: '#fb7185' },
-  bridge: { bg: 'rgba(34,197,94,0.06)', bd: '#16a34a', lb: '#4ade80' },
-  outro: { bg: 'rgba(139,92,246,0.06)', bd: '#7c3aed', lb: '#a78bfa' },
-  solo: { bg: 'rgba(236,72,153,0.06)', bd: '#db2777', lb: '#f472b6' },
-  interlude: { bg: 'rgba(20,184,166,0.06)', bd: '#0d9488', lb: '#2dd4bf' },
+  intro: {
+    bg: 'color-mix(in srgb, var(--flat) 7%, var(--surface))',
+    bd: 'var(--flat)',
+    lb: 'var(--flat)',
+  },
+  verse: {
+    bg: 'var(--surface)',
+    bd: 'var(--line)',
+    lb: 'var(--muted)',
+  },
+  'pre-chorus': {
+    bg: 'color-mix(in srgb, var(--accent) 9%, var(--surface))',
+    bd: 'var(--accent)',
+    lb: 'var(--accent-ink)',
+  },
+  chorus: {
+    bg: 'color-mix(in srgb, var(--sharp) 9%, var(--surface))',
+    bd: 'var(--sharp)',
+    lb: 'var(--sharp)',
+  },
+  bridge: {
+    bg: 'color-mix(in srgb, var(--tune) 9%, var(--surface))',
+    bd: 'var(--tune)',
+    lb: 'var(--tune)',
+  },
+  outro: {
+    bg: 'color-mix(in srgb, var(--flat) 7%, var(--surface))',
+    bd: 'var(--flat)',
+    lb: 'var(--flat)',
+  },
+  solo: {
+    bg: 'color-mix(in srgb, var(--accent) 11%, var(--surface))',
+    bd: 'var(--accent-ink)',
+    lb: 'var(--accent-ink)',
+  },
+  interlude: {
+    bg: 'color-mix(in srgb, var(--tune) 7%, var(--surface))',
+    bd: 'var(--tune)',
+    lb: 'var(--tune)',
+  },
 };
 
 export function normalizeNote(n: string): string {
@@ -79,6 +112,24 @@ export function parseLine(line: string): { chord: string | null; text: string }[
   }
   if (!parts.length) parts.push({ chord: null, text: '' });
   return parts;
+}
+
+/** Extracts plain lyric text from a ChordPro line, ignoring chords and bar-grid punctuation. */
+export function extractLyricText(line: string): string {
+  return parseLine(line)
+    .map((seg) => seg.text)
+    .join('');
+}
+
+/** True when a ChordPro line contains real sung words (not just chords, spaces, pipes or repeat marks). */
+export function lineHasLyrics(line: string): boolean {
+  const stripped = extractLyricText(line).replace(/[\s|/:.,\-–—()x×0-9]+/gi, '');
+  return stripped.length > 0;
+}
+
+/** True when a whole section is instrumental (no sung lyrics on any line). */
+export function isInstrumentalSection(lines: string[]): boolean {
+  return lines.every((l) => !lineHasLyrics(l));
 }
 
 export function extractChords(sections: { lines: string[] }[]): string[] {

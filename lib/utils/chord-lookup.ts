@@ -1,5 +1,5 @@
 import { GUITAR_DB } from '@/lib/data/guitar-db';
-import { CHORD_SUFFIX_MAP, NOTE_TO_DB_KEY, PIANO_INTERVALS, NOTES, normalizeNote, noteIndex } from './music';
+import { CHORD_SUFFIX_MAP, NOTE_TO_DB_KEY, PIANO_INTERVALS, NOTES, noteIndex } from './music';
 import type { GuitarVoicing, GuitarDBKey } from '@/lib/types/chord';
 
 export function resolveChord(name: string): { dbKey: GuitarDBKey; suffix: string; bassNote?: string } | null {

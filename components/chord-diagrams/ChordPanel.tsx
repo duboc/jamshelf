@@ -10,72 +10,91 @@ interface ChordPanelProps {
   onClose: () => void;
 }
 
-export function ChordPanel({ chord, onClose }: ChordPanelProps) {
+function ChordPanelBody({ chord, onClose }: { chord: string; onClose: () => void }) {
   const [voicingIdx, setVoicingIdx] = useState(0);
-
-  if (!chord) return null;
 
   const positions = getGuitarPositions(chord);
   const pianoNotes = getPianoNotes(chord);
-  const currentVoicing = positions[voicingIdx] || positions[0];
+  const safeIdx = positions.length ? voicingIdx % positions.length : 0;
+  const currentVoicing = positions[safeIdx] || positions[0];
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-72 bg-zinc-900/95 backdrop-blur-sm border-l border-zinc-700 z-50 flex flex-col shadow-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-        <h3 className="text-lg font-bold text-violet-400 font-display">{chord}</h3>
+    <aside
+      aria-label={`Diagramas do acorde ${chord}`}
+      className="fixed right-0 top-0 bottom-0 w-72 max-w-[85vw] bg-[var(--surface)]/95 backdrop-blur-md border-l border-[var(--line)] z-50 flex flex-col"
+      style={{ boxShadow: 'var(--shadow-md)' }}
+    >
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)]">
+        <div>
+          <div className="eyebrow">Acorde</div>
+          <h3 className="text-2xl font-display text-[var(--accent-ink)] leading-tight">{chord}</h3>
+        </div>
         <button
+          type="button"
           onClick={onClose}
-          className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] transition-colors cursor-pointer text-lg"
+          aria-label="Fechar painel de acorde"
         >
           &times;
         </button>
       </div>
 
-      {/* Guitar diagram */}
-      <div className="p-4 border-b border-zinc-800">
-        <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Guitar</div>
-        {currentVoicing ? (
-          <>
-            <div className="flex justify-center">
-              <GuitarChordDiagram voicing={currentVoicing} label={chord} />
-            </div>
-            {positions.length > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <button
-                  onClick={() => setVoicingIdx((v) => (v - 1 + positions.length) % positions.length)}
-                  className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-                >
-                  Prev
-                </button>
-                <span className="text-xs text-zinc-500">
-                  {voicingIdx + 1}/{positions.length}
-                </span>
-                <button
-                  onClick={() => setVoicingIdx((v) => (v + 1) % positions.length)}
-                  className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-                >
-                  Next
-                </button>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 border-b border-[var(--line)]">
+          <div className="eyebrow mb-3">Violão / Guitarra</div>
+          {currentVoicing ? (
+            <>
+              <div className="flex justify-center">
+                <GuitarChordDiagram voicing={currentVoicing} label={chord} />
               </div>
-            )}
-          </>
-        ) : (
-          <div className="text-xs text-zinc-500 text-center py-4">No voicing found</div>
-        )}
-      </div>
+              {positions.length > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setVoicingIdx((v) => (v - 1 + positions.length) % positions.length)}
+                    className="pill-btn px-2.5 py-1 text-xs"
+                  >
+                    Anterior
+                  </button>
+                  <span className="font-mono text-xs text-[var(--muted)] tabular-nums">
+                    {safeIdx + 1}/{positions.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setVoicingIdx((v) => (v + 1) % positions.length)}
+                    className="pill-btn px-2.5 py-1 text-xs"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-xs text-[var(--muted)] text-center py-4">
+              Sem diagrama disponível
+            </div>
+          )}
+        </div>
 
-      {/* Piano diagram */}
-      <div className="p-4">
-        <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Piano</div>
-        {pianoNotes.length > 0 ? (
-          <div className="flex justify-center">
-            <PianoChordDiagram notes={pianoNotes} label={chord} />
-          </div>
-        ) : (
-          <div className="text-xs text-zinc-500 text-center py-4">No voicing found</div>
-        )}
+        <div className="p-4">
+          <div className="eyebrow mb-3">Teclado / Piano</div>
+          {pianoNotes.length > 0 ? (
+            <div className="flex justify-center">
+              <PianoChordDiagram notes={pianoNotes} label={chord} />
+            </div>
+          ) : (
+            <div className="text-xs text-[var(--muted)] text-center py-4">
+              Sem diagrama disponível
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </aside>
   );
+}
+
+export function ChordPanel({ chord, onClose }: ChordPanelProps) {
+  if (!chord) return null;
+  // Keying by chord automatically resets voicingIdx whenever a different chord is tapped.
+  return <ChordPanelBody key={chord} chord={chord} onClose={onClose} />;
 }

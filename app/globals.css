@@ -1,38 +1,249 @@
 @import "tailwindcss";
 
+/*
+ * Jamshelf Design System — Studio Console (aligned with Raio-X Vocal)
+ * Deep petroleum slate + warm amber accent + mint tuning signal + coral alert
+ */
+:root {
+  --bg: #edf2f3;
+  --surface: #fbfdfd;
+  --surface2: #e1eaec;
+  --ink: #0f2129;
+  --muted: #53707a;
+  --line: #cbd9dc;
+  --accent: #b8741a;
+  --accent-ink: #875210;
+  --on-accent: #fffaf2;
+  --accent-dim: rgba(184, 116, 26, 0.14);
+  --tune: #14917a;
+  --tune-dim: rgba(20, 145, 122, 0.14);
+  --flat: #2c67cf;
+  --sharp: #d9502f;
+  --rec: #cf3838;
+  --on-rec: #fff7f5;
+  --key-white: #fbfdfd;
+  --key-black: #22343d;
+  --shadow-sm: 0 1px 2px rgba(15, 33, 41, 0.08);
+  --shadow-md: 0 10px 28px rgba(15, 33, 41, 0.14);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a161d;
+    --surface: #10212b;
+    --surface2: #163040;
+    --ink: #e5efef;
+    --muted: #8ba4ac;
+    --line: #21394a;
+    --accent: #e8a64a;
+    --accent-ink: #f0b968;
+    --on-accent: #1a1205;
+    --accent-dim: rgba(232, 166, 74, 0.16);
+    --tune: #4dd0ae;
+    --tune-dim: rgba(77, 208, 174, 0.16);
+    --flat: #6c9fff;
+    --sharp: #ff7b5e;
+    --rec: #ff5a52;
+    --on-rec: #1b0605;
+    --key-white: #d9e4e6;
+    --key-black: #0b171d;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0a161d;
+  --surface: #10212b;
+  --surface2: #163040;
+  --ink: #e5efef;
+  --muted: #8ba4ac;
+  --line: #21394a;
+  --accent: #e8a64a;
+  --accent-ink: #f0b968;
+  --on-accent: #1a1205;
+  --accent-dim: rgba(232, 166, 74, 0.16);
+  --tune: #4dd0ae;
+  --tune-dim: rgba(77, 208, 174, 0.16);
+  --flat: #6c9fff;
+  --sharp: #ff7b5e;
+  --rec: #ff5a52;
+  --on-rec: #1b0605;
+  --key-white: #d9e4e6;
+  --key-black: #0b171d;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
 @theme inline {
-  --color-background: #0a0a0a;
-  --color-foreground: #ededed;
-  --color-muted: #a1a1aa;
-  --color-card: #18181b;
-  --color-card-hover: #27272a;
-  --color-border: #27272a;
-  --color-accent: #a78bfa;
-  --color-accent-dim: rgba(167, 139, 250, 0.15);
-  --font-sans: var(--font-dm-sans);
-  --font-mono: var(--font-jetbrains-mono);
-  --font-display: var(--font-syne);
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface2);
+  --color-muted: var(--muted);
+  --color-border: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-tune: var(--tune);
+  --color-flat: var(--flat);
+  --color-sharp: var(--sharp);
+  --color-rec: var(--rec);
+  --color-on-rec: var(--on-rec);
+  --font-sans: var(--font-hanken);
+  --font-mono: var(--font-martian);
+  --font-display: var(--font-gloock);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3f3f46 transparent;
+  scrollbar-color: var(--line) transparent;
 }
 
 html,
 body {
   height: 100%;
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-hanken), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 ::selection {
-  background: rgba(167, 139, 250, 0.3);
+  background: var(--accent-dim);
+}
+
+.font-display {
+  font-family: var(--font-gloock), Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.font-mono {
+  font-family: var(--font-martian), ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+.eyebrow {
+  font-family: var(--font-martian), ui-monospace, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Studio pill buttons & controls */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, opacity 150ms ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pill-btn:hover:not(:disabled) {
+  border-color: var(--muted);
+  background: var(--surface2);
+}
+
+.pill-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.pill-btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.pill-btn-primary:hover:not(:disabled) {
+  border-color: var(--accent-ink);
+  background: var(--accent-ink);
+  color: var(--on-accent);
+}
+
+.pill-btn-tune {
+  border-color: var(--tune);
+  background: var(--tune);
+  color: var(--on-accent);
+}
+
+.pill-btn-tune:hover:not(:disabled) {
+  opacity: 0.9;
+  border-color: var(--tune);
+  background: var(--tune);
+  color: var(--on-accent);
+}
+
+.pill-btn-rec {
+  border-color: var(--rec);
+  background: var(--rec);
+  color: var(--on-rec);
+}
+
+.pill-btn-rec:hover:not(:disabled) {
+  opacity: 0.9;
+  border-color: var(--rec);
+  background: var(--rec);
+  color: var(--on-rec);
+}
+
+.studio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-martian), ui-monospace, monospace;
+  font-size: 0.68rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 9999px;
+  background: var(--surface2);
+  color: var(--ink);
+  white-space: nowrap;
+  line-height: 1.45;
+}
+
+.studio-input {
+  border-radius: 0.625rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.studio-input:focus {
+  border-color: var(--accent);
+}
+
+.studio-input::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes metronome-flash {
   0% { opacity: 0; }
-  20% { opacity: 0.5; }
+  20% { opacity: 0.45; }
   100% { opacity: 0; }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
@@ -22,6 +22,7 @@ interface ShowModeViewProps {
   totalSongs: number;
   prevSongId: string | null;
   nextSongId: string | null;
+  nextSongMeta?: { title: string; displayKey: string } | null;
   beatsPerBar: number;
   live: ReturnType<typeof useLiveSession>;
   onNavigate: (songId: string) => void;
@@ -43,6 +44,7 @@ export function ShowModeView({
   totalSongs,
   prevSongId,
   nextSongId,
+  nextSongMeta,
   beatsPerBar,
   live,
   onNavigate,
@@ -57,20 +59,55 @@ export function ShowModeView({
   setShowNamePrompt,
 }: ShowModeViewProps) {
   const store = usePlayerStore();
-  const { visualPulseEnabled, setVisualPulseEnabled } = useDisplayStore();
+  const {
+    displayMode,
+    toggleHideChords,
+    fontSize,
+    setFontSize,
+    visualPulseEnabled,
+    setVisualPulseEnabled,
+  } = useDisplayStore();
+
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const [showSetlist, setShowSetlist] = useState(false);
 
-  // Followers mirror the leader's state — they get no navigation control at
-  // all here, matching how Metronome/Auto Scroll already degrade for them
-  // elsewhere in the app (a status label, not a disabled button).
   const canNavigate = !live.isFollowing;
+  const chordsHidden = displayMode === 'lyrics-only';
+
+  // Keyboard shortcuts for stage pedals / laptops
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (showSetlist) setShowSetlist(false);
+        else onExit();
+      } else if (e.key === 'ArrowRight' && canNavigate && nextSongId) {
+        e.preventDefault();
+        onNavigate(nextSongId);
+      } else if (e.key === 'ArrowLeft' && canNavigate && prevSongId) {
+        e.preventDefault();
+        onNavigate(prevSongId);
+      } else if (e.key === ' ' && canNavigate) {
+        e.preventDefault();
+        store.toggleAutoScroll();
+      } else if (e.key.toLowerCase() === 'l') {
+        toggleHideChords();
+      } else if (e.key.toLowerCase() === 's') {
+        setShowSetlist((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canNavigate, nextSongId, prevSongId, onNavigate, onExit, showSetlist, store, toggleHideChords]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!canNavigate) return;
     const t = e.touches[0];
     if (t.clientX < EDGE_GUARD_PX || t.clientX > window.innerWidth - EDGE_GUARD_PX) {
-      touchRef.current = null; // avoid fighting the OS edge-swipe-back gesture
+      touchRef.current = null;
       return;
     }
     touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
@@ -84,7 +121,11 @@ export function ShowModeView({
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
     const dt = Date.now() - start.t;
-    if (Math.abs(dx) < SWIPE_MIN_DX || Math.abs(dx) < Math.abs(dy) * SWIPE_DX_DY_RATIO || dt > SWIPE_MAX_DT) {
+    if (
+      Math.abs(dx) < SWIPE_MIN_DX ||
+      Math.abs(dx) < Math.abs(dy) * SWIPE_DX_DY_RATIO ||
+      dt > SWIPE_MAX_DT
+    ) {
       return;
     }
     if (dx < 0 && nextSongId) onNavigate(nextSongId);
@@ -92,57 +133,77 @@ export function ShowModeView({
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-black">
+    <div className="h-screen flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--ink)]">
       <VisualPulse />
-      <header className="border-b border-zinc-800 px-4 py-3">
-        <div className="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-y-2">
+
+      {/* Stage header */}
+      <header className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur-md px-4 sm:px-6 py-2.5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
           <button
+            type="button"
             onClick={() => setShowSetlist((v) => !v)}
-            title="Open the setlist — tap a song to jump, drag to reorder"
-            className="min-w-0 text-left rounded-lg -mx-2 px-2 py-0.5 hover:bg-zinc-900 transition-colors"
+            title="Abrir setlist (atalho: S) — toque para pular ou arraste para reordenar"
+            className="min-w-0 text-left rounded-xl -mx-2 px-2.5 py-1 hover:bg-[var(--surface2)] transition-colors cursor-pointer"
           >
-            <div className="text-xs text-zinc-500">
-              <span className="text-zinc-400 mr-1">&#9776;</span>
-              {activeSetlist.name} &middot; Song {setlistSongIdx + 1} of {totalSongs}
+            <div className="font-mono text-[10.5px] uppercase tracking-wider text-[var(--muted)]">
+              <span className="mr-1.5">☰</span>
+              {activeSetlist.name} · {setlistSongIdx + 1} de {totalSongs}
             </div>
-            <h1 className="text-lg font-bold font-display text-zinc-100 truncate">{song.title}</h1>
-            <div className="text-xs text-zinc-400 truncate">
-              {song.artist} &middot; <span className="font-mono text-violet-400">{song.displayKey}</span>
+            <div className="flex items-baseline gap-2 min-w-0">
+              <h1 className="font-display text-xl sm:text-2xl text-[var(--ink)] truncate leading-tight">
+                {song.title}
+              </h1>
+              {song.displayKey && !chordsHidden && (
+                <span className="font-mono text-xs font-semibold text-[var(--accent-ink)] flex-shrink-0">
+                  {song.displayKey}
+                </span>
+              )}
             </div>
           </button>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Live session controls */}
             <div className="relative flex items-center gap-1.5">
               {live.isLeading ? (
                 <>
-                  <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-600/20 text-red-400 font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> Leading
+                  <span className="studio-chip text-[var(--rec)] border border-[var(--rec)]/40 bg-[var(--rec)]/10">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--rec)] animate-pulse" />
+                    Liderando
                   </span>
                   <button
+                    type="button"
                     onClick={live.stopLeading}
-                    className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
+                    className="pill-btn px-2.5 py-1 text-xs"
                   >
-                    Stop
+                    Parar
                   </button>
                 </>
               ) : live.isFollowing ? (
-                <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-violet-400 font-semibold">
-                  &#128279;{' '}
+                <span className="studio-chip text-[var(--tune)] border border-[var(--tune)]/40 bg-[var(--tune-dim)]">
                   {live.isLeaderStale
-                    ? `${live.session.leaderName} inactive`
-                    : `Following ${live.session.leaderName}`}
+                    ? `${live.session.leaderName} inativo`
+                    : `Seguindo ${live.session.leaderName}`}
                 </span>
               ) : (
                 <button
+                  type="button"
                   onClick={handleGoLive}
-                  className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors"
+                  className="pill-btn pill-btn-rec px-3 py-1.5 text-xs"
                 >
-                  &#128308; Start the Show
+                  <span className="w-2 h-2 rounded-full bg-current" />
+                  Iniciar Ao Vivo
                 </button>
               )}
+
               {showNamePrompt && (
-                <div className="absolute right-0 top-full mt-1 w-56 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 p-3 space-y-2">
-                  <div className="text-xs text-zinc-400">Your name, so the band knows who&rsquo;s leading:</div>
+                <div
+                  role="dialog"
+                  className="absolute right-0 top-[calc(100%+8px)] w-60 bg-[var(--surface)] border border-[var(--line)] rounded-2xl z-50 p-3.5 space-y-2.5"
+                  style={{ boxShadow: 'var(--shadow-md)' }}
+                >
+                  <div className="text-xs text-[var(--muted)]">
+                    Seu nome, para a banda saber quem está puxando o show:
+                  </div>
                   <input
                     autoFocus
                     value={nameInput}
@@ -151,69 +212,110 @@ export function ShowModeView({
                       if (e.key === 'Enter') confirmGoLive();
                       if (e.key === 'Escape') setShowNamePrompt(false);
                     }}
-                    placeholder="e.g. Alex - Guitar"
-                    className="w-full px-2 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 outline-none focus:border-violet-500"
+                    placeholder="Ex.: Alex - Violão"
+                    className="studio-input w-full px-2.5 py-1.5 text-sm"
                   />
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => setShowNamePrompt(false)} className="text-xs text-zinc-500 hover:text-zinc-300">
-                      Cancel
+                    <button
+                      type="button"
+                      onClick={() => setShowNamePrompt(false)}
+                      className="pill-btn px-3 py-1 text-xs"
+                    >
+                      Cancelar
                     </button>
                     <button
+                      type="button"
                       onClick={confirmGoLive}
-                      className="text-xs px-2 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white font-semibold"
+                      className="pill-btn pill-btn-primary px-3 py-1 text-xs"
                     >
-                      Go Live
+                      Iniciar
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
+            {/* Per-device singer toggle (hides/shows chords without affecting anyone else) */}
+            <button
+              type="button"
+              onClick={toggleHideChords}
+              className={`pill-btn px-3 py-1.5 text-xs ${chordsHidden ? 'pill-btn-primary' : ''}`}
+              title="Esconder ou mostrar acordes só neste aparelho (atalho: L)"
+            >
+              {chordsHidden ? 'Só letra' : 'Com acordes'}
+            </button>
+
+            {/* Font size */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setFontSize(fontSize - 10)}
+                className="pill-btn w-7 h-7 font-mono text-[11px]"
+                aria-label="Diminuir fonte"
+              >
+                A-
+              </button>
+              <button
+                type="button"
+                onClick={() => setFontSize(fontSize + 10)}
+                className="pill-btn w-7 h-7 font-mono text-[11px]"
+                aria-label="Aumentar fonte"
+              >
+                A+
+              </button>
+            </div>
+
             {canNavigate && (
               <button
+                type="button"
                 onClick={store.toggleAutoScroll}
-                className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
-                  store.isAutoScrolling
-                    ? 'bg-green-600 text-white'
-                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                className={`pill-btn px-3 py-1.5 text-xs ${
+                  store.isAutoScrolling ? 'pill-btn-tune' : ''
                 }`}
+                title="Atalho: Espaço"
               >
-                {store.isAutoScrolling ? 'Scrolling...' : 'Auto Scroll'}
+                {store.isAutoScrolling ? '⏸ Pausar' : '▶ Auto-scroll'}
               </button>
             )}
 
             <Metronome readOnly={!canNavigate} beatsPerBar={beatsPerBar} />
 
-            {/* Local per-device preference — every device decides this for
-                itself, regardless of who's leading. */}
             <button
+              type="button"
               onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
-              title="Flash the screen border on each beat (just for you, on this device)"
-              className={`text-xs px-3 py-1.5 rounded font-bold transition-colors ${
-                visualPulseEnabled
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              title="Piscar a borda da tela no tempo (só neste aparelho)"
+              className={`pill-btn px-2.5 py-1.5 text-xs ${
+                visualPulseEnabled ? 'border-[var(--accent)] text-[var(--accent-ink)]' : ''
               }`}
             >
-              &#128161; Flash
+              Pulso
             </button>
 
             <button
+              type="button"
               onClick={onExit}
-              className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+              className="pill-btn px-3 py-1.5 text-xs"
+              title="Sair do Modo Show (Esc)"
             >
-              Exit Show Mode
+              Sair
             </button>
           </div>
         </div>
       </header>
 
-      <div className="flex flex-1 relative min-h-0" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {/* Main sheet */}
+      <div
+        className="flex flex-1 relative min-h-0"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <ChordSheet
           song={song}
+          displayMode={displayMode}
           onChordTap={onChordTap}
           onScrollTopChange={onScrollTopChange}
           syncCorrection={live.syncCorrection}
+          bottomPaddingClass="pb-20"
         />
 
         {showSetlist && (
@@ -225,28 +327,62 @@ export function ShowModeView({
             onClose={() => setShowSetlist(false)}
           />
         )}
+      </div>
 
-        {canNavigate && (
-          <>
+      {/* Bottom stage bar: clean Prev / Next preview without overlapping lyrics */}
+      <footer
+        className="flex-shrink-0 border-t border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-md px-4 sm:px-6 py-2"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
+      >
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+          {canNavigate ? (
             <button
+              type="button"
               onClick={() => prevSongId && onNavigate(prevSongId)}
               disabled={!prevSongId}
-              className="absolute left-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-900/70 backdrop-blur text-zinc-300 disabled:text-zinc-700 disabled:cursor-not-allowed hover:bg-zinc-800 flex items-center justify-center text-2xl transition-colors z-10"
-              title="Previous song"
+              className="pill-btn px-3.5 py-1.5 text-xs"
+              title="Música anterior (←)"
             >
-              &#8249;
+              ‹ Anterior
             </button>
+          ) : (
+            <span className="font-mono text-[11px] text-[var(--muted)]">
+              Seguindo {live.session.leaderName}
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowSetlist(true)}
+            className="font-mono text-[11px] text-[var(--muted)] hover:text-[var(--ink)] transition-colors cursor-pointer hidden sm:inline"
+          >
+            {setlistSongIdx + 1} / {totalSongs} · Setlist (S)
+          </button>
+
+          {canNavigate ? (
             <button
+              type="button"
               onClick={() => nextSongId && onNavigate(nextSongId)}
               disabled={!nextSongId}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-900/70 backdrop-blur text-zinc-300 disabled:text-zinc-700 disabled:cursor-not-allowed hover:bg-zinc-800 flex items-center justify-center text-2xl transition-colors z-10"
-              title="Next song"
+              className="pill-btn pill-btn-primary px-3.5 py-1.5 text-xs max-w-[60vw]"
+              title="Próxima música (→)"
             >
-              &#8250;
+              <span className="truncate">
+                {nextSongMeta
+                  ? `Próxima: ${nextSongMeta.title}${
+                      nextSongMeta.displayKey && !chordsHidden ? ` (${nextSongMeta.displayKey})` : ''
+                    }`
+                  : 'Fim do setlist'}
+              </span>
+              {nextSongId && <span>›</span>}
             </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <span className="font-mono text-[11px] text-[var(--muted)] truncate">
+              {nextSongMeta ? `Próxima: ${nextSongMeta.title}` : 'Última música'}
+            </span>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }

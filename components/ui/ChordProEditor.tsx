@@ -31,15 +31,12 @@ export function ChordProEditor({ value, onChange, className = '' }: ChordProEdit
     if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
   };
 
-  // Lines never wrap (whitespace: pre + horizontal scroll) so 1 logical
-  // line always equals 1 visual row — otherwise the gutter's line numbers
-  // would drift out of sync with wrapped long lines.
   return (
-    <div className={`relative flex bg-zinc-950/40 ${className}`}>
+    <div className={`relative flex bg-[var(--bg)]/60 ${className}`}>
       <div
         ref={gutterRef}
         aria-hidden
-        className="overflow-hidden select-none text-right py-4 pl-3 pr-2 text-xs font-mono text-zinc-600 border-r border-zinc-800 flex-shrink-0"
+        className="overflow-hidden select-none text-right py-4 pl-3 pr-2 text-xs font-mono text-[var(--muted)] border-r border-[var(--line)] flex-shrink-0 opacity-65"
         style={SHARED_TEXT_STYLE}
       >
         {Array.from({ length: lineCount }, (_, i) => (
@@ -62,7 +59,7 @@ export function ChordProEditor({ value, onChange, className = '' }: ChordProEdit
           onChange={(e) => onChange(e.target.value)}
           onScroll={syncScroll}
           spellCheck={false}
-          className="absolute inset-0 w-full h-full overflow-auto p-4 text-xs font-mono whitespace-pre bg-transparent text-transparent caret-white outline-none resize-none"
+          className="absolute inset-0 w-full h-full overflow-auto p-4 text-xs font-mono whitespace-pre bg-transparent text-transparent caret-[var(--accent)] outline-none resize-none"
           style={SHARED_TEXT_STYLE}
         />
       </div>

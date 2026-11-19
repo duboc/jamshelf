@@ -18,7 +18,7 @@ interface SectionEditorProps {
 }
 
 const FLUSH_DEBOUNCE_MS = 500;
-const SELECTED_CLASSES = ['ring-2', 'ring-violet-300', 'scale-110', 'bg-violet-600/40'];
+const SELECTED_CLASSES = ['ring-2', 'ring-[var(--accent)]', 'scale-110', 'bg-[var(--accent-dim)]'];
 
 function isChordEl(node: Node): node is HTMLElement {
   return node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).dataset.chord !== undefined;
@@ -296,8 +296,8 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleAddChordClick}
           style={{ top: caretMarker.top, left: caretMarker.left }}
-          className="absolute z-20 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-black/40 transition-colors"
-          title="Add a chord here"
+          className="absolute z-20 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] text-sm font-bold flex items-center justify-center shadow-lg transition-colors cursor-pointer"
+          title="Adicionar acorde aqui"
         >
           +
         </button>

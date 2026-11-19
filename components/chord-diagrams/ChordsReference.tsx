@@ -14,10 +14,9 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
   if (!chords || chords.length === 0) return null;
 
   return (
-    <div className="border-b border-zinc-800 bg-zinc-900/20 px-6 py-4">
-      <div className="max-w-5xl mx-auto">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Chords Reference</h3>
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+    <div className="flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/70 px-4 sm:px-6 py-3">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
           {chords.map((chord) => {
             const positions = getGuitarPositions(chord);
             const currentVoicing = positions[0];
@@ -28,14 +27,15 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
             return (
               <button
                 key={chord}
+                type="button"
                 onClick={() => store.setActiveChord(chord)}
-                className={`flex-shrink-0 rounded-xl border p-2.5 flex flex-col items-center justify-center min-w-[96px] shadow-sm transition-all cursor-pointer ${
+                className={`flex-shrink-0 rounded-xl border p-2 flex flex-col items-center justify-center min-w-[86px] transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-violet-600/20 border-violet-500 ring-2 ring-violet-500/10 scale-105'
-                    : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
+                    ? 'bg-[var(--accent-dim)] border-[var(--accent)] scale-[1.03]'
+                    : 'bg-[var(--surface)] border-[var(--line)] hover:border-[var(--muted)]'
                 }`}
               >
-                <div className="w-16 h-20 flex items-center justify-center">
+                <div className="w-16 h-[74px] flex items-center justify-center">
                   <GuitarChordDiagram voicing={currentVoicing} label={chord} />
                 </div>
               </button>

@@ -14,19 +14,19 @@ function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
   const changes = useMemo(() => diffLines(oldText, newText), [oldText, newText]);
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto rounded-lg bg-zinc-950 border border-zinc-800 p-3 font-mono text-xs whitespace-pre-wrap">
+    <div className="flex-1 min-h-0 overflow-auto rounded-xl bg-[var(--bg)] border border-[var(--line)] p-3 font-mono text-xs whitespace-pre-wrap">
       {changes.map((part, i) => {
         const lines = part.value.replace(/\n$/, '').split('\n');
         const cls = part.added
-          ? 'bg-green-900/30 text-green-300'
+          ? 'bg-[var(--tune-dim)] text-[var(--tune)]'
           : part.removed
-          ? 'bg-red-900/30 text-red-400 line-through decoration-red-500/50'
-          : 'text-zinc-500';
+          ? 'bg-[var(--rec)]/15 text-[var(--rec)] line-through'
+          : 'text-[var(--muted)]';
         const marker = part.added ? '+' : part.removed ? '-' : ' ';
         return lines.map((line, j) => (
           <div key={`${i}-${j}`} className={cls}>
             <span className="select-none opacity-60 mr-2">{marker}</span>
-            {line || ' '}
+            {line || '\u00A0'}
           </div>
         ));
       })}
@@ -47,7 +47,7 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
     fetch(`/api/songs/${songId}/enhance`, { method: 'POST' })
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Enhance request failed');
+        if (!res.ok) throw new Error(data.error || 'Falha na revisão com IA');
         return data;
       })
       .then((data) => {
@@ -56,7 +56,7 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
         setEditedText(data.enhancedText);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Something went wrong');
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Algo deu errado');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -80,19 +80,33 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
       onApplied();
       onClose();
     } catch {
-      setError('Failed to save the snapshot before applying — nothing was changed. Please try again.');
+      setError('Não foi possível salvar a versão anterior antes de aplicar. Nada foi alterado.');
       setApplying(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-4xl h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-          <h2 className="font-bold text-zinc-100">&#10024; Enhance with AI</h2>
+    <div
+      className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden"
+        style={{ boxShadow: 'var(--shadow-md)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line)]">
+          <div>
+            <div className="eyebrow">Revisão com IA</div>
+            <h2 className="font-display text-xl text-[var(--ink)]">Revisar letra e acordes</h2>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-800 text-zinc-400 hover:text-white text-lg"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] text-lg cursor-pointer"
+            aria-label="Fechar"
           >
             &times;
           </button>
@@ -100,34 +114,34 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
 
         <div className="flex-1 min-h-0 p-5 flex flex-col gap-3">
           {loading && (
-            <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">
-              <span className="animate-pulse">&#128269; Searching the web and checking lyrics &amp; chords&hellip;</span>
+            <div className="flex-1 flex items-center justify-center text-[var(--muted)] text-sm">
+              <span className="animate-pulse">Pesquisando na web e conferindo letra e acordes…</span>
             </div>
           )}
 
           {!loading && error && (
-            <div className="flex-1 flex items-center justify-center text-red-400 text-sm text-center px-4">
+            <div className="flex-1 flex items-center justify-center text-[var(--rec)] text-sm text-center px-4">
               {error}
             </div>
           )}
 
           {!loading && !error && (
             <>
-              <p className="text-xs text-zinc-500">
-                Review the suggested changes below. You can edit the proposed text directly before applying — the diff updates as you type.
+              <p className="text-xs text-[var(--muted)]">
+                Revise as alterações sugeridas. Você pode ajustar o texto proposto antes de aplicar, e uma cópia da versão atual fica salva no histórico.
               </p>
-              <div className="flex-1 min-h-0 grid grid-cols-2 gap-3">
+              <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex flex-col min-h-0">
-                  <div className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Diff (vs. current)</div>
+                  <div className="eyebrow mb-1.5">Comparação</div>
                   <DiffView oldText={originalText} newText={editedText} />
                 </div>
                 <div className="flex flex-col min-h-0">
-                  <div className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Proposed text (editable)</div>
+                  <div className="eyebrow mb-1.5">Texto proposto (editável)</div>
                   <textarea
                     value={editedText}
                     onChange={(e) => setEditedText(e.target.value)}
                     spellCheck={false}
-                    className="flex-1 min-h-0 font-mono text-xs bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-zinc-200 outline-none focus:border-violet-500 resize-none"
+                    className="studio-input flex-1 min-h-0 font-mono text-xs p-3 resize-none"
                   />
                 </div>
               </div>
@@ -135,19 +149,17 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-800">
-          <button
-            onClick={onClose}
-            className="text-sm px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-          >
-            Cancel
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--line)]">
+          <button type="button" onClick={onClose} className="pill-btn px-4 py-1.5 text-xs">
+            Cancelar
           </button>
           <button
+            type="button"
             onClick={handleApply}
             disabled={loading || !!error || applying || !hasChanges}
-            className="text-sm px-4 py-1.5 rounded bg-violet-600 hover:bg-violet-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white font-semibold transition-colors"
+            className="pill-btn pill-btn-primary px-5 py-1.5 text-xs"
           >
-            {applying ? 'Applying…' : 'Apply changes'}
+            {applying ? 'Aplicando…' : 'Aplicar alterações'}
           </button>
         </div>
       </div>

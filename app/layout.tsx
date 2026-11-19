@@ -1,51 +1,57 @@
-'use client';
-
-import { DM_Sans, JetBrains_Mono, Syne } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { Gloock, Hanken_Grotesk, Martian_Mono } from 'next/font/google';
+import { Suspense } from 'react';
+import { AppShell } from '@/components/layout/AppShell';
 import './globals.css';
 
-import { useEffect } from 'react';
-import { useSongStore } from '@/lib/stores/song-store';
-import { useSetlistStore } from '@/lib/stores/setlist-store';
-
-const dmSans = DM_Sans({
-  variable: '--font-dm-sans',
+const gloock = Gloock({
+  weight: '400',
+  variable: '--font-gloock',
   subsets: ['latin'],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: '--font-jetbrains-mono',
+const hankenGrotesk = Hanken_Grotesk({
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-hanken',
   subsets: ['latin'],
 });
 
-const syne = Syne({
-  variable: '--font-syne',
+const martianMono = Martian_Mono({
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-martian',
   subsets: ['latin'],
 });
+
+export const metadata: Metadata = {
+  title: 'Jamshelf',
+  description: 'Cifras, letras e setlists para ensaio de banda',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
+// Apply saved theme before hydration to avoid light/dark flash on load.
+const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem('jamshelf-display-mode');if(!raw)return;var t=JSON.parse(raw).state&&JSON.parse(raw).state.theme;if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const fetchEntries = useSongStore((s) => s.fetchEntries);
-  const fetchSetlists = useSetlistStore((s) => s.fetchSetlists);
-
-  useEffect(() => {
-    fetchEntries();
-    fetchSetlists();
-  }, [fetchEntries, fetchSetlists]);
-
   return (
-    <html lang="en" className="dark">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <title>Jamshelf</title>
-        <meta name="description" content="Band rehearsal chord sheet app" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body
-        className={`${dmSans.variable} ${jetbrainsMono.variable} ${syne.variable} antialiased`}
+        className={`${gloock.variable} ${hankenGrotesk.variable} ${martianMono.variable} antialiased`}
       >
-        {children}
+        <Suspense fallback={null}>
+          <AppShell>{children}</AppShell>
+        </Suspense>
       </body>
     </html>
   );

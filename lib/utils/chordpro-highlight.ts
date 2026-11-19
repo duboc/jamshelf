@@ -4,8 +4,7 @@ function escapeHtml(s: string): string {
 
 /**
  * Renders ChordPro text as HTML with directives/section-headers/chords each
- * wrapped in a colored span. All text content is HTML-escaped before being
- * placed in a span — never trust/render raw user text as markup.
+ * wrapped in a colored span using the design system's CSS custom properties.
  */
 export function highlightChordPro(text: string): string {
   return text
@@ -13,20 +12,20 @@ export function highlightChordPro(text: string): string {
     .map((line) => {
       const directiveM = line.match(/^\{([a-z_]+):(.*)\}$/i);
       if (directiveM) {
-        return `<span class="text-amber-400">${escapeHtml(line)}</span>`;
+        return `<span style="color:var(--accent-ink)">${escapeHtml(line)}</span>`;
       }
 
       const sectionM = line.match(/^\[([^\]]+)\]$/);
       if (sectionM) {
-        return `<span class="text-cyan-400 font-bold">${escapeHtml(line)}</span>`;
+        return `<span style="color:var(--tune);font-weight:700">${escapeHtml(line)}</span>`;
       }
 
       return line
         .split(/(\[[^\]]*\])/g)
         .map((part) =>
           part.startsWith('[') && part.endsWith(']')
-            ? `<span class="text-violet-400 font-bold">${escapeHtml(part)}</span>`
-            : `<span class="text-zinc-300">${escapeHtml(part)}</span>`
+            ? `<span style="color:var(--accent-ink);font-weight:700">${escapeHtml(part)}</span>`
+            : `<span style="color:var(--ink)">${escapeHtml(part)}</span>`
         )
         .join('');
     })

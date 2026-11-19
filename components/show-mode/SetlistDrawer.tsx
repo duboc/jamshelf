@@ -17,7 +17,6 @@ interface SetlistDrawerProps {
 
 interface Entry {
   song: ParsedSong;
-  /** Index into setlist.songIds, which may contain ids of deleted songs. */
   storeIdx: number;
 }
 
@@ -53,31 +52,34 @@ export function SetlistDrawer({
   return (
     <>
       <div
-        className="absolute inset-0 bg-black/50 z-20"
+        className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40"
         onClick={onClose}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
       />
-      {/* stopPropagation so drags in here never trigger the swipe-to-navigate
-          gesture on the sheet behind us. */}
       <aside
-        className="absolute inset-y-0 left-0 w-80 max-w-[85vw] z-30 flex flex-col bg-zinc-950/95 backdrop-blur border-r border-zinc-800"
+        aria-label={`Setlist ${setlist.name}`}
+        className="fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col bg-[var(--surface)]/98 backdrop-blur-md border-r border-[var(--line)]"
+        style={{ boxShadow: 'var(--shadow-md)' }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)] flex-shrink-0">
           <div className="min-w-0">
-            <div className="text-sm font-bold font-display text-zinc-100 truncate">{setlist.name}</div>
-            <div className="text-[11px] text-zinc-500">
+            <div className="eyebrow">Setlist</div>
+            <div className="text-lg font-display text-[var(--ink)] truncate">{setlist.name}</div>
+            <div className="font-mono text-[10.5px] text-[var(--muted)] mt-0.5">
               {canReorder
-                ? 'Tap a song to jump · drag ⣿ to reorder'
-                : 'Following — the leader controls the set'}
+                ? 'Toque para pular · arraste ⣿ para ordenar'
+                : 'Seguindo o líder da sessão'}
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-800 transition-colors flex-shrink-0"
-            title="Close setlist"
+            className="text-[var(--muted)] hover:text-[var(--ink)] text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] transition-colors flex-shrink-0 cursor-pointer"
+            title="Fechar setlist"
+            aria-label="Fechar setlist"
           >
             &times;
           </button>
@@ -92,49 +94,50 @@ export function SetlistDrawer({
                 key={song.id}
                 data-display-idx={displayIdx}
                 data-current={isCurrent || undefined}
-                className={`flex items-center gap-1 rounded-lg border transition-colors ${
+                className={`flex items-center gap-1 rounded-xl border transition-colors ${
                   isDragged
-                    ? 'border-violet-500 bg-zinc-800'
+                    ? 'border-[var(--accent)] bg-[var(--surface2)]'
                     : isCurrent
-                    ? 'border-violet-500/60 bg-violet-500/10'
-                    : 'border-transparent hover:bg-zinc-900'
+                    ? 'border-[var(--accent)]/60 bg-[var(--accent-dim)]'
+                    : 'border-transparent hover:bg-[var(--surface2)]/60'
                 }`}
               >
                 <span
-                  className={`text-[10px] font-mono w-6 text-center flex-shrink-0 ${
-                    isCurrent ? 'text-violet-400' : 'text-zinc-600'
+                  className={`text-[10.5px] font-mono w-7 text-center flex-shrink-0 tabular-nums ${
+                    isCurrent ? 'text-[var(--accent-ink)] font-semibold' : 'text-[var(--muted)]'
                   }`}
                 >
                   {displayIdx + 1}
                 </span>
                 <button
+                  type="button"
                   onClick={() => {
                     if (!canReorder) return;
                     if (!isCurrent) onNavigate(song.id);
                     onClose();
                   }}
                   disabled={!canReorder}
-                  className="flex-1 min-w-0 py-2.5 text-left disabled:cursor-default"
+                  className="flex-1 min-w-0 py-2.5 text-left disabled:cursor-default cursor-pointer"
                 >
                   <div
                     className={`text-sm truncate ${
-                      isCurrent ? 'font-bold text-violet-300' : 'font-medium text-zinc-200'
+                      isCurrent ? 'font-bold text-[var(--accent-ink)]' : 'font-medium text-[var(--ink)]'
                     }`}
                   >
                     {song.title}
                   </div>
-                  <div className="text-[11px] text-zinc-500 truncate">
-                    {song.artist}
+                  <div className="text-[11px] text-[var(--muted)] truncate">
+                    {song.artist || 'Artista não informado'}
                     {song.displayKey && (
-                      <span className="font-mono text-zinc-400"> &middot; {song.displayKey}</span>
+                      <span className="font-mono text-[var(--accent-ink)]"> · {song.displayKey}</span>
                     )}
                   </div>
                 </button>
                 {canReorder && (
                   <div
                     {...getHandleProps(displayIdx)}
-                    title="Drag to reorder"
-                    className="touch-none select-none cursor-grab active:cursor-grabbing text-zinc-500 hover:text-zinc-300 px-3 py-3 flex-shrink-0 text-base leading-none"
+                    title="Arrastar para reordenar"
+                    className="touch-none select-none cursor-grab active:cursor-grabbing text-[var(--muted)] hover:text-[var(--ink)] px-3 py-3 flex-shrink-0 text-base leading-none"
                   >
                     &#10495;
                   </div>

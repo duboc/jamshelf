@@ -51,17 +51,17 @@ export function Metronome({
 
   const beatIndicator = metronomeOn && (
     <div className="flex items-center gap-2">
-      <div className="flex gap-1.5">
+      <div className="flex gap-1">
         {Array.from({ length: beatsPerBar }, (_, b) => (
           <div
             key={b}
-            className={`w-3.5 h-3.5 rounded-full transition-colors ${
-              b === 0 ? 'ring-2 ring-amber-400/70' : ''
-            } ${beat === b ? 'bg-violet-400 scale-125' : 'bg-zinc-700'}`}
+            className={`w-3 h-3 rounded-full transition-all ${
+              b === 0 ? 'ring-2 ring-[var(--accent)]/70' : ''
+            } ${beat === b ? 'bg-[var(--tune)] scale-125' : 'bg-[var(--surface2)]'}`}
           />
         ))}
       </div>
-      <span className="text-base font-bold font-mono text-violet-300 tabular-nums w-5 text-center">
+      <span className="text-xs font-bold font-mono text-[var(--tune)] tabular-nums w-4 text-center">
         {beat + 1}
       </span>
     </div>
@@ -70,8 +70,8 @@ export function Metronome({
   if (readOnly) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-500 font-mono">
-          {metronomeOn ? `${bpm} BPM · synced` : 'Metronome synced'}
+        <span className="studio-chip text-[var(--muted)]">
+          {metronomeOn ? `${bpm} BPM · sinc.` : 'Metrônomo sinc.'}
         </span>
         {beatIndicator}
       </div>
@@ -79,16 +79,15 @@ export function Metronome({
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <button
+        type="button"
         onClick={() => setMetronomeOn(!metronomeOn)}
-        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${
-          metronomeOn
-            ? 'bg-violet-600 text-white'
-            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+        className={`pill-btn px-3 py-1.5 text-xs ${
+          metronomeOn ? 'pill-btn-primary' : ''
         }`}
       >
-        {metronomeOn ? 'Stop' : 'Metronome'}
+        {metronomeOn ? `Parar (${bpm})` : 'Metrônomo'}
       </button>
       {beatIndicator}
     </div>

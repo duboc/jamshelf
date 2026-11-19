@@ -5,7 +5,6 @@ import { create } from 'zustand';
 interface PlayerStore {
   transpose: number;
   useFlats: boolean;
-  fontSize: number;
   autoScrollSpeed: number;
   isAutoScrolling: boolean;
   activeChord: string | null;
@@ -19,7 +18,6 @@ interface PlayerStore {
   transposeUp: () => void;
   transposeDown: () => void;
   toggleFlats: () => void;
-  setFontSize: (s: number) => void;
   setAutoScrollSpeed: (s: number) => void;
   toggleAutoScroll: () => void;
   setAutoScrolling: (on: boolean) => void;
@@ -29,13 +27,14 @@ interface PlayerStore {
   setBeat: (b: number) => void;
   setCapo: (c: number) => void;
   toggleEditMode: () => void;
+  setEditMode: (on: boolean) => void;
+  resetForSong: (tempo: number, capo: number) => void;
 }
 
 export const usePlayerStore = create<PlayerStore>((set) => ({
   transpose: 0,
   useFlats: false,
-  fontSize: 100,
-  autoScrollSpeed: 1,
+  autoScrollSpeed: 0.7,
   isAutoScrolling: false,
   activeChord: null,
   metronomeOn: false,
@@ -48,7 +47,6 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
   transposeUp: () => set((s) => ({ transpose: ((s.transpose + 1) % 12 + 12) % 12 })),
   transposeDown: () => set((s) => ({ transpose: ((s.transpose - 1) % 12 + 12) % 12 })),
   toggleFlats: () => set((s) => ({ useFlats: !s.useFlats })),
-  setFontSize: (sz) => set({ fontSize: Math.max(60, Math.min(160, sz)) }),
   setAutoScrollSpeed: (sp) => set({ autoScrollSpeed: Math.max(0.05, Math.min(3, sp)) }),
   toggleAutoScroll: () => set((s) => ({ isAutoScrolling: !s.isAutoScrolling })),
   setAutoScrolling: (on) => set({ isAutoScrolling: on }),
@@ -57,9 +55,23 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
   setBpm: (bpm) => set({ bpm: Math.max(40, Math.min(240, bpm)) }),
   setBeat: (b) => set({ beat: b }),
   setCapo: (c) => set({ capo: Math.max(0, Math.min(12, c)) }),
-  toggleEditMode: () => set((s) => ({
-    editMode: !s.editMode,
-    // disable auto-scroll when entering edit mode
-    isAutoScrolling: s.editMode ? s.isAutoScrolling : false,
-  })),
+  toggleEditMode: () =>
+    set((s) => ({
+      editMode: !s.editMode,
+      isAutoScrolling: s.editMode ? s.isAutoScrolling : false,
+    })),
+  setEditMode: (on) =>
+    set((s) => ({
+      editMode: on,
+      isAutoScrolling: on ? false : s.isAutoScrolling,
+    })),
+  resetForSong: (tempo, capo) =>
+    set({
+      transpose: 0,
+      isAutoScrolling: false,
+      activeChord: null,
+      editMode: false,
+      bpm: Math.max(40, Math.min(240, tempo)),
+      capo: Math.max(0, Math.min(12, capo)),
+    }),
 }));

@@ -1,13 +1,15 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { SongCard } from '@/components/song-list/SongCard';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type Tab = 'all' | 'favorites' | 'setlists';
+type SortMode = 'title' | 'rating' | 'bpm' | 'favorites';
 
 function isTab(value: string | null): value is Tab {
   return value === 'all' || value === 'favorites' || value === 'setlists';
@@ -22,51 +24,97 @@ export default function Home() {
 }
 
 function HomeContent() {
+  const entries = useSongStore((s) => s.entries);
   const { getSongs, removeEntry, exportAll, importEntries } = useSongStore();
   const { setlists, createSetlist, deleteSetlist } = useSetlistStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const songs = getSongs();
+
+  const songs = useMemo(() => {
+    void entries;
+    return getSongs();
+  }, [entries, getSongs]);
 
   const tabParam = searchParams.get('tab');
   const tab: Tab = isTab(tabParam) ? tabParam : 'all';
-  const setTab = (t: Tab) => router.replace(t === 'all' ? '/' : `/?tab=${t}`);
+
   const [search, setSearch] = useState('');
+  const [keyFilter, setKeyFilter] = useState('');
+  const [sortBy, setSortBy] = useState<SortMode>('title');
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [importMsg, setImportMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
   const [newSetlistName, setNewSetlistName] = useState('');
   const [showNewSetlist, setShowNewSetlist] = useState(false);
+  const [setlistToDelete, setSetlistToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const baseSongs = tab === 'favorites' ? songs.filter((s) => s.favorite) : songs;
+  const favoriteCount = useMemo(() => songs.filter((s) => s.favorite).length, [songs]);
 
-  const filtered = baseSongs.filter(
-    (s) =>
-      s.title.toLowerCase().includes(search.toLowerCase()) ||
-      s.artist.toLowerCase().includes(search.toLowerCase())
-  );
+  const availableKeys = useMemo(() => {
+    const keys = new Set<string>();
+    songs.forEach((s) => {
+      if (s.displayKey) keys.add(s.displayKey);
+    });
+    return [...keys].sort((a, b) => a.localeCompare(b));
+  }, [songs]);
+
+  const filteredSongs = useMemo(() => {
+    const base = tab === 'favorites' ? songs.filter((s) => s.favorite) : songs;
+    const q = search.trim().toLowerCase();
+
+    const matched = base.filter((s) => {
+      if (keyFilter && s.displayKey !== keyFilter) return false;
+      if (!q) return true;
+      return (
+        s.title.toLowerCase().includes(q) ||
+        s.artist.toLowerCase().includes(q) ||
+        s.displayKey.toLowerCase().includes(q)
+      );
+    });
+
+    return [...matched].sort((a, b) => {
+      if (sortBy === 'rating') return b.rating - a.rating || a.title.localeCompare(b.title);
+      if (sortBy === 'bpm') return b.tempo - a.tempo || a.title.localeCompare(b.title);
+      if (sortBy === 'favorites') {
+        return Number(b.favorite) - Number(a.favorite) || a.title.localeCompare(b.title);
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, [songs, tab, search, keyFilter, sortBy]);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 2600);
+  };
 
   const handleExportAll = () => {
     const cho = exportAll();
-    navigator.clipboard.writeText(cho);
-    alert('All songs copied to clipboard as ChordPro (.cho)!');
+    navigator.clipboard
+      .writeText(cho)
+      .then(() => showToast('Todas as músicas foram copiadas em formato ChordPro (.cho).'))
+      .catch(() => showToast('Não foi possível acessar a área de transferência.'));
   };
 
   const handleImport = () => {
     if (!importText.trim()) {
-      setImportMsg('Paste a ChordPro file first.');
+      setImportMsg('Cole o conteúdo de um arquivo ChordPro primeiro.');
       return;
     }
     const count = importEntries(importText.trim());
     if (count > 0) {
-      setImportMsg(`Successfully imported ${count} song${count > 1 ? 's' : ''}!`);
+      setImportMsg(
+        count === 1
+          ? '1 música importada com sucesso.'
+          : `${count} músicas importadas com sucesso.`
+      );
       setImportText('');
       setTimeout(() => {
         setShowImport(false);
         setImportMsg('');
-      }, 1500);
+      }, 1300);
     } else {
-      setImportMsg('Could not parse ChordPro. Make sure the file starts with {title: ...}');
+      setImportMsg('Não foi possível ler o ChordPro. Confira se o texto começa com {title: ...}.');
     }
   };
 
@@ -79,209 +127,395 @@ function HomeContent() {
     router.push(`/setlists/${sl.id}`);
   };
 
+  const pageHeading =
+    tab === 'favorites'
+      ? { eyebrow: 'Seleção da banda', title: 'Favoritas', count: `${favoriteCount} ${favoriteCount === 1 ? 'música' : 'músicas'}` }
+      : tab === 'setlists'
+      ? { eyebrow: 'Ordem de ensaio e show', title: 'Setlists', count: `${setlists.length} ${setlists.length === 1 ? 'setlist' : 'setlists'}` }
+      : { eyebrow: 'Caderno da banda', title: 'Repertório', count: `${songs.length} ${songs.length === 1 ? 'música' : 'músicas'}` };
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-zinc-800 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-bold font-display tracking-tight text-violet-400">
-            Jamshelf
-          </h1>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setShowImport(true)}
-              className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors whitespace-nowrap"
-            >
-              Import .cho
-            </button>
-            <button
-              onClick={handleExportAll}
-              className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors whitespace-nowrap"
-            >
-              Export All
-            </button>
-            <Link
-              href="/add-song"
-              className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors whitespace-nowrap"
-            >
-              + Add Song
-            </Link>
+    <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* Page header */}
+      <section className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <div className="eyebrow">{pageHeading.eyebrow}</div>
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <h1 className="font-display text-3xl sm:text-4xl text-[var(--ink)] leading-tight">
+              {pageHeading.title}
+            </h1>
+            <span className="font-mono text-xs text-[var(--muted)]">{pageHeading.count}</span>
           </div>
         </div>
-      </header>
 
-      {/* Tabs */}
-      <div className="border-b border-zinc-800 px-6">
-        <div className="max-w-3xl mx-auto flex gap-0">
-          {(['all', 'favorites', 'setlists'] as Tab[]).map((t) => (
+        <div className="flex flex-wrap items-center gap-2">
+          {tab !== 'setlists' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowImport(true)}
+                className="pill-btn px-3.5 py-1.5 text-xs"
+              >
+                Importar .cho
+              </button>
+              <button
+                type="button"
+                onClick={handleExportAll}
+                className="pill-btn px-3.5 py-1.5 text-xs"
+              >
+                Exportar tudo
+              </button>
+              <Link
+                href="/add-song"
+                className="pill-btn pill-btn-primary px-4 py-1.5 text-xs sm:hidden"
+              >
+                + Música
+              </Link>
+            </>
+          ) : (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${
-                tab === t
-                  ? 'border-violet-500 text-violet-400'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-300'
-              }`}
+              type="button"
+              onClick={() => setShowNewSetlist(true)}
+              className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
             >
-              {t === 'favorites' ? '♥ Favorites' : t === 'setlists' ? '♪ Setlists' : 'All Songs'}
+              + Novo setlist
             </button>
-          ))}
+          )}
         </div>
-      </div>
+      </section>
 
-      {/* Search (songs tabs only) */}
-      {tab !== 'setlists' && (
-        <div className="px-6 py-4">
-          <div className="max-w-3xl mx-auto">
-            <input
-              type="text"
-              placeholder={tab === 'favorites' ? 'Search favorites...' : 'Search songs...'}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500 transition-colors"
-            />
-          </div>
+      {toastMsg && (
+        <div
+          role="status"
+          className="rounded-xl border border-[var(--line)] border-l-[3px] border-l-[var(--tune)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--ink)]"
+        >
+          {toastMsg}
         </div>
       )}
 
-      {/* Content */}
-      <main className="flex-1 px-6 pb-8">
-        <div className="max-w-3xl mx-auto">
+      {/* Search + filter bar (Songs & Favorites tabs) */}
+      {tab !== 'setlists' && (
+        <section className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
+          <div className="relative flex-1">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+            >
+              <circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" strokeWidth="1.6" />
+              <path d="m10.8 10.8 3.2 3.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder={
+                tab === 'favorites'
+                  ? 'Filtrar favoritas por música, artista ou tom...'
+                  : 'Filtrar por música, artista ou tom...'
+              }
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="studio-input w-full pl-9 pr-9 py-2.5 text-sm"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Limpar busca"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] flex items-center justify-center cursor-pointer"
+              >
+                &times;
+              </button>
+            )}
+          </div>
 
-          {/* All / Favorites tab */}
-          {tab !== 'setlists' && (
-            <div className="space-y-2">
-              {filtered.length === 0 ? (
-                <div className="text-center py-16 text-zinc-500">
-                  {tab === 'favorites'
-                    ? songs.filter((s) => s.favorite).length === 0
-                      ? 'No favorites yet. Tap ♡ on any song to add it here.'
-                      : 'No favorites match your search.'
-                    : songs.length === 0
-                      ? 'No songs yet. Add one to get started!'
-                      : 'No songs match your search.'}
-                </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {availableKeys.length > 0 && (
+              <select
+                aria-label="Filtrar por tom"
+                value={keyFilter}
+                onChange={(e) => setKeyFilter(e.target.value)}
+                className="studio-input px-3 py-2 text-xs font-mono"
+              >
+                <option value="">Todos os tons</option>
+                {availableKeys.map((k) => (
+                  <option key={k} value={k}>
+                    Tom: {k}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <select
+              aria-label="Ordenar músicas"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortMode)}
+              className="studio-input px-3 py-2 text-xs font-mono"
+            >
+              <option value="title">Ordem: A–Z</option>
+              <option value="rating">Melhor avaliadas</option>
+              <option value="favorites">Favoritas primeiro</option>
+              <option value="bpm">BPM (maior → menor)</option>
+            </select>
+          </div>
+        </section>
+      )}
+
+      {/* Songs list */}
+      {tab !== 'setlists' && (
+        <section>
+          {filteredSongs.length === 0 ? (
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-6 py-14 text-center space-y-3">
+              <p className="text-sm text-[var(--muted)]">
+                {tab === 'favorites'
+                  ? favoriteCount === 0
+                    ? 'Nenhuma favorita ainda. Toque no ♡ de qualquer música para fixar aqui.'
+                    : 'Nenhuma favorita corresponde aos filtros.'
+                  : songs.length === 0
+                  ? 'Nenhuma música no repertório ainda.'
+                  : 'Nenhuma música corresponde à busca ou ao filtro de tom.'}
+              </p>
+              {(search || keyFilter) ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setKeyFilter('');
+                  }}
+                  className="pill-btn px-4 py-1.5 text-xs"
+                >
+                  Limpar filtros
+                </button>
               ) : (
-                filtered.map((song) => (
-                  <SongCard key={song.id} song={song} onRemove={removeEntry} />
-                ))
+                tab === 'all' && (
+                  <Link href="/add-song" className="pill-btn pill-btn-primary px-4 py-2 text-xs">
+                    + Adicionar primeira música
+                  </Link>
+                )
               )}
             </div>
-          )}
-
-          {/* Setlists tab */}
-          {tab === 'setlists' && (
-            <div className="pt-4 space-y-3">
-              {/* Create setlist */}
-              {showNewSetlist ? (
-                <div className="flex gap-2">
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Setlist name..."
-                    value={newSetlistName}
-                    onChange={(e) => setNewSetlistName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleCreateSetlist();
-                      if (e.key === 'Escape') { setShowNewSetlist(false); setNewSetlistName(''); }
-                    }}
-                    className="flex-1 px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500 transition-colors"
-                  />
-                  <button
-                    onClick={handleCreateSetlist}
-                    className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
-                  >
-                    Create
-                  </button>
-                  <button
-                    onClick={() => { setShowNewSetlist(false); setNewSetlistName(''); }}
-                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowNewSetlist(true)}
-                  className="w-full py-3 rounded-xl border-2 border-dashed border-zinc-700 hover:border-violet-500 text-zinc-500 hover:text-violet-400 text-sm font-medium transition-colors"
-                >
-                  + New Setlist
-                </button>
-              )}
-
-              {setlists.length === 0 && !showNewSetlist && (
-                <div className="text-center py-12 text-zinc-500">
-                  No setlists yet. Create one to organize songs for a gig.
-                </div>
-              )}
-
-              {setlists.map((sl) => (
-                <div
-                  key={sl.id}
-                  className="group flex items-center gap-3 p-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 transition-all"
-                >
-                  <Link href={`/setlists/${sl.id}`} className="flex-1 min-w-0">
-                    <div className="font-semibold text-zinc-100">{sl.name}</div>
-                    <div className="text-sm text-zinc-500 mt-0.5">
-                      {sl.songIds.length} song{sl.songIds.length !== 1 ? 's' : ''}
-                    </div>
-                  </Link>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete setlist "${sl.name}"?`)) deleteSetlist(sl.id);
-                    }}
-                    className="text-zinc-500 hover:text-red-400 transition-colors text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700"
-                    title="Delete setlist"
-                  >
-                    &times;
-                  </button>
-                </div>
+          ) : (
+            <div className="border-t border-[var(--line)]">
+              {filteredSongs.map((song) => (
+                <SongCard key={song.id} song={song} onRemove={removeEntry} />
               ))}
             </div>
           )}
-        </div>
-      </main>
+        </section>
+      )}
+
+      {/* Setlists tab */}
+      {tab === 'setlists' && (
+        <section className="space-y-4">
+          {showNewSetlist && (
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 flex flex-wrap gap-2 items-center">
+              <input
+                autoFocus
+                type="text"
+                placeholder="Nome do setlist (ex.: Ensaio de Sexta, Show Bar...)"
+                value={newSetlistName}
+                onChange={(e) => setNewSetlistName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateSetlist();
+                  if (e.key === 'Escape') {
+                    setShowNewSetlist(false);
+                    setNewSetlistName('');
+                  }
+                }}
+                className="studio-input flex-1 min-w-[200px] px-3.5 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={handleCreateSetlist}
+                disabled={!newSetlistName.trim()}
+                className="pill-btn pill-btn-primary px-4 py-2 text-xs"
+              >
+                Criar setlist
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewSetlist(false);
+                  setNewSetlistName('');
+                }}
+                className="pill-btn px-3.5 py-2 text-xs"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {setlists.length === 0 && !showNewSetlist ? (
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-6 py-14 text-center space-y-3">
+              <p className="text-sm text-[var(--muted)]">
+                Nenhum setlist criado ainda. Monte um para organizar a ordem do ensaio ou do show.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowNewSetlist(true)}
+                className="pill-btn pill-btn-primary px-4 py-2 text-xs"
+              >
+                + Criar primeiro setlist
+              </button>
+            </div>
+          ) : (
+            <div className="border-t border-[var(--line)]">
+              {setlists.map((sl) => {
+                const validSongIds = sl.songIds.filter((sid) => songs.some((s) => s.id === sid));
+                const firstSongId = validSongIds[0] ?? null;
+
+                return (
+                  <div
+                    key={sl.id}
+                    className="group flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 py-4 px-2 sm:px-3 border-b border-[var(--line)] hover:bg-[var(--surface2)]/45 transition-colors"
+                  >
+                    <Link href={`/setlists/${sl.id}`} className="flex-1 min-w-0">
+                      <h3 className="font-display text-xl text-[var(--ink)] group-hover:underline underline-offset-4 truncate">
+                        {sl.name}
+                      </h3>
+                      <div className="font-mono text-[11.5px] text-[var(--muted)] mt-0.5">
+                        {validSongIds.length}{' '}
+                        {validSongIds.length === 1 ? 'música' : 'músicas'}
+                      </div>
+                    </Link>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {firstSongId && (
+                        <Link
+                          href={`/song/${firstSongId}?setlist=${sl.id}&show=1`}
+                          className="pill-btn pill-btn-rec px-3.5 py-1.5 text-xs"
+                          title="Abrir este setlist direto no Modo Show"
+                        >
+                          ▶ Modo Show
+                        </Link>
+                      )}
+                      <Link
+                        href={`/setlists/${sl.id}`}
+                        className="pill-btn px-3.5 py-1.5 text-xs"
+                      >
+                        Abrir
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setSetlistToDelete({ id: sl.id, name: sl.name })}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--rec)] hover:bg-[var(--surface2)] transition-colors cursor-pointer"
+                        title="Excluir setlist"
+                        aria-label={`Excluir setlist ${sl.name}`}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Import .cho modal */}
       {showImport && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-              <h3 className="font-bold text-zinc-100">Import ChordPro (.cho)</h3>
+        <div
+          className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          onClick={() => {
+            setShowImport(false);
+            setImportMsg('');
+            setImportText('');
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-2xl flex flex-col overflow-hidden"
+            style={{ boxShadow: 'var(--shadow-md)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line)]">
+              <div>
+                <div className="eyebrow">Arquivo ChordPro</div>
+                <h3 className="font-display text-xl text-[var(--ink)]">Importar .cho</h3>
+              </div>
               <button
-                onClick={() => { setShowImport(false); setImportMsg(''); setImportText(''); }}
-                className="text-zinc-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
+                type="button"
+                onClick={() => {
+                  setShowImport(false);
+                  setImportMsg('');
+                  setImportText('');
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer text-lg"
+                aria-label="Fechar"
               >
                 &times;
               </button>
             </div>
-            <div className="p-4 space-y-4">
-              <p className="text-xs text-zinc-400">
-                Paste a ChordPro file (must start with <code className="text-violet-400">{'{title: ...}'}</code>).
-                You can also paste multiple songs separated by <code className="text-zinc-500">---</code>.
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-[var(--muted)] leading-relaxed">
+                Cole um arquivo ChordPro começando com{' '}
+                <code className="font-mono text-[var(--accent-ink)]">{'{title: ...}'}</code>. Para importar várias músicas de uma vez, separe com{' '}
+                <code className="font-mono text-[var(--ink)]">---</code> numa linha isolada.
               </p>
               <textarea
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
                 rows={12}
-                placeholder={`{title: My Song}\n{artist: Artist Name}\n{key: Am}\n\n[Verse 1]\n[Am]Lyrics here`}
-                className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-600 outline-none focus:border-violet-500 transition-colors font-mono text-xs resize-y"
+                placeholder={`{title: Minha Música}\n{artist: Nome do Artista}\n{key: Am}\n\n[Verse 1]\n[Am]Letra aqui`}
+                className="studio-input w-full px-4 py-3 font-mono text-xs resize-y"
               />
               {importMsg && (
-                <div className={`text-sm rounded-lg px-4 py-2 ${importMsg.includes('Successfully') ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
+                <div
+                  className={`text-xs rounded-xl px-3.5 py-2 border ${
+                    importMsg.includes('sucesso')
+                      ? 'border-[var(--tune)]/40 bg-[var(--tune-dim)] text-[var(--tune)]'
+                      : 'border-[var(--rec)]/40 bg-[var(--rec)]/10 text-[var(--rec)]'
+                  }`}
+                >
                   {importMsg}
                 </div>
               )}
-              <button
-                onClick={handleImport}
-                className="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors"
-              >
-                Import
-              </button>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImport(false);
+                    setImportMsg('');
+                    setImportText('');
+                  }}
+                  className="pill-btn px-4 py-2 text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImport}
+                  className="pill-btn pill-btn-primary px-5 py-2 text-xs"
+                >
+                  Importar
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      <ConfirmDialog
+        open={!!setlistToDelete}
+        title="Excluir setlist?"
+        description={
+          setlistToDelete ? (
+            <>
+              O setlist &ldquo;{setlistToDelete.name}&rdquo; será apagado. As músicas continuam salvas no repertório.
+            </>
+          ) : null
+        }
+        confirmLabel="Excluir"
+        danger
+        onConfirm={() => {
+          if (setlistToDelete) deleteSetlist(setlistToDelete.id);
+          setSetlistToDelete(null);
+        }}
+        onCancel={() => setSetlistToDelete(null)}
+      />
+    </main>
   );
 }

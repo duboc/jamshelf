@@ -48,13 +48,6 @@ export function EditChordOverlay({
   const [pickedRoot, setPickedRoot] = useState(parsed.root);
   const [pickedSuffix, setPickedSuffix] = useState(parsed.suffix);
 
-  // Reset state when selection changes
-  const chordKey = selected
-    ? `${selected.sectionIdx}-${selected.lineIdx}-${selected.segIdx}`
-    : addTarget
-    ? `add-${addTarget.sectionIdx}-${addTarget.lineIdx}-${addTarget.charPos}`
-    : '';
-
   if (!isEdit && !isAdd) return null;
 
   const noteList = useFlats ? FLAT_NOTES : NOTES;
@@ -84,155 +77,160 @@ export function EditChordOverlay({
 
   return (
     <>
-      {/* Backdrop */}
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+
       <div
-        className="fixed inset-0 z-40"
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div className="fixed bottom-0 inset-x-0 z-50 bg-zinc-900 border-t border-zinc-700 shadow-2xl">
-
-        {/* Main mode */}
-        {mode === 'main' && (
-          <div className="px-4 py-4 space-y-3">
-            {/* Header row */}
-            <div className="flex items-center justify-between">
-              <span className="text-base font-bold font-mono text-violet-400">
-                {isAdd ? '+ Add chord' : selected!.chord}
-              </span>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-800 text-zinc-400 hover:text-white text-lg"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Action buttons */}
-            {isEdit && selected && (
-              <>
-                {/* Move row */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500 w-12">Move:</span>
-                  <button
-                    onPointerDown={(e) => { e.preventDefault(); onMove(selected.sectionIdx, selected.lineIdx, selected.segIdx, 'left'); }}
-                    className="flex-1 h-14 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200 text-2xl font-bold transition-colors flex items-center justify-center select-none"
-                    title="Move left"
-                  >
-                    ◀
-                  </button>
-                  <button
-                    onPointerDown={(e) => { e.preventDefault(); onMove(selected.sectionIdx, selected.lineIdx, selected.segIdx, 'right'); }}
-                    className="flex-1 h-14 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200 text-2xl font-bold transition-colors flex items-center justify-center select-none"
-                    title="Move right"
-                  >
-                    ▶
-                  </button>
-                </div>
-
-                {/* Change / Delete row */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleOpenChange}
-                    className="flex-1 h-12 rounded-xl bg-violet-700 hover:bg-violet-600 active:bg-violet-500 text-white font-semibold text-sm transition-colors"
-                  >
-                    Change chord
-                  </button>
-                  <button
-                    onClick={() => {
-                      onDelete(selected.sectionIdx, selected.lineIdx, selected.segIdx);
-                      onClose();
-                    }}
-                    className="flex-1 h-12 rounded-xl bg-red-900/60 hover:bg-red-800 active:bg-red-700 text-red-300 font-semibold text-sm transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Add mode: jump straight to chord picker */}
-            {isAdd && (
-              <button
-                onClick={handleOpenChange}
-                className="w-full h-12 rounded-xl bg-violet-700 hover:bg-violet-600 text-white font-semibold text-sm transition-colors"
-              >
-                Pick chord
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Chord picker mode */}
-        {mode === 'change' && (
-          <div className="px-4 py-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-zinc-300">
-                {isAdd ? 'Insert chord' : 'Change chord'}
-                <span className="ml-2 font-mono text-violet-400">{builtChord}</span>
-              </span>
-              <button
-                onClick={() => setUseFlats((f) => !f)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                  useFlats ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-400'
-                }`}
-              >
-                {useFlats ? '♭ Flats' : '♯ Sharps'}
-              </button>
-            </div>
-
-            {/* Note grid */}
-            <div className="grid grid-cols-6 gap-1.5">
-              {noteList.map((note) => (
+        className="fixed bottom-0 inset-x-0 z-50 bg-[var(--surface)] border-t border-[var(--line)]"
+        style={{ boxShadow: 'var(--shadow-md)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="max-w-xl mx-auto">
+          {mode === 'main' && (
+            <div className="px-4 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-bold font-mono text-[var(--accent-ink)]">
+                  {isAdd ? '+ Adicionar acorde' : selected!.chord}
+                </span>
                 <button
-                  key={note}
-                  onClick={() => setPickedRoot(note)}
-                  className={`h-11 rounded-xl text-sm font-bold font-mono transition-colors ${
-                    pickedRoot === note || (useFlats && note === pickedRoot)
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                  }`}
+                  type="button"
+                  onClick={onClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface2)] text-[var(--muted)] hover:text-[var(--ink)] text-lg cursor-pointer"
+                  aria-label="Fechar"
                 >
-                  {note}
+                  ×
                 </button>
-              ))}
-            </div>
+              </div>
 
-            {/* Suffix chips */}
-            <div className="flex flex-wrap gap-1.5">
-              {SUFFIXES.map((suf) => (
+              {isEdit && selected && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="eyebrow w-14">Mover</span>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        onMove(selected.sectionIdx, selected.lineIdx, selected.segIdx, 'left');
+                      }}
+                      className="flex-1 h-12 rounded-xl border border-[var(--line)] bg-[var(--surface2)] hover:border-[var(--muted)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none cursor-pointer"
+                      title="Mover para esquerda"
+                    >
+                      ◀
+                    </button>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        onMove(selected.sectionIdx, selected.lineIdx, selected.segIdx, 'right');
+                      }}
+                      className="flex-1 h-12 rounded-xl border border-[var(--line)] bg-[var(--surface2)] hover:border-[var(--muted)] text-[var(--ink)] text-xl font-bold transition-colors flex items-center justify-center select-none cursor-pointer"
+                      title="Mover para direita"
+                    >
+                      ▶
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenChange}
+                      className="flex-1 h-11 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] font-semibold text-sm transition-colors cursor-pointer"
+                    >
+                      Trocar acorde
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDelete(selected.sectionIdx, selected.lineIdx, selected.segIdx);
+                        onClose();
+                      }}
+                      className="flex-1 h-11 rounded-full bg-[var(--rec)]/15 hover:bg-[var(--rec)] text-[var(--rec)] hover:text-[var(--on-rec)] border border-[var(--rec)]/40 font-semibold text-sm transition-colors cursor-pointer"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {isAdd && (
                 <button
-                  key={suf || 'maj'}
-                  onClick={() => setPickedSuffix(suf)}
-                  className={`px-3 h-9 rounded-lg text-xs font-mono font-bold transition-colors ${
-                    pickedSuffix === suf
-                      ? 'bg-amber-500 text-zinc-900'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                  }`}
+                  type="button"
+                  onClick={handleOpenChange}
+                  className="w-full h-11 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] font-semibold text-sm transition-colors cursor-pointer"
                 >
-                  {suf || 'maj'}
+                  Escolher acorde
                 </button>
-              ))}
+              )}
             </div>
+          )}
 
-            {/* Confirm / Cancel */}
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setMode('main')}
-                className="flex-1 h-11 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm font-semibold transition-colors"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleApply}
-                className="flex-2 flex-1 h-11 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors"
-              >
-                Apply {builtChord}
-              </button>
+          {mode === 'change' && (
+            <div className="px-4 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[var(--ink)]">
+                  {isAdd ? 'Inserir acorde' : 'Trocar acorde'}:{' '}
+                  <span className="font-mono font-bold text-[var(--accent-ink)]">{builtChord}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUseFlats((f) => !f)}
+                  className={`pill-btn px-3 py-1 text-xs font-mono ${useFlats ? 'pill-btn-primary' : ''}`}
+                >
+                  {useFlats ? '♭ Bemóis' : '♯ Sustenidos'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-6 gap-1.5">
+                {noteList.map((note) => (
+                  <button
+                    key={note}
+                    type="button"
+                    onClick={() => setPickedRoot(note)}
+                    className={`h-10 rounded-xl text-sm font-bold font-mono transition-colors cursor-pointer border ${
+                      pickedRoot === note
+                        ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]'
+                        : 'bg-[var(--surface2)] border-[var(--line)] text-[var(--ink)] hover:border-[var(--muted)]'
+                    }`}
+                  >
+                    {note}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {SUFFIXES.map((suf) => (
+                  <button
+                    key={suf || 'maj'}
+                    type="button"
+                    onClick={() => setPickedSuffix(suf)}
+                    className={`px-3 h-9 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer border ${
+                      pickedSuffix === suf
+                        ? 'bg-[var(--tune)] border-[var(--tune)] text-[var(--on-accent)]'
+                        : 'bg-[var(--surface2)] border-[var(--line)] text-[var(--muted)] hover:text-[var(--ink)]'
+                    }`}
+                  >
+                    {suf || 'maior'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setMode('main')}
+                  className="flex-1 h-10 pill-btn text-sm"
+                >
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  className="flex-1 h-10 pill-btn pill-btn-primary text-sm"
+                >
+                  Aplicar {builtChord}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </>
   );

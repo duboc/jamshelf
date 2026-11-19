@@ -1,7 +1,7 @@
 import { parseLine, transposeChord } from './music';
 
 export const CHORD_WIDGET_CLASS =
-  'inline-block rounded px-1 py-0.5 text-[0.85em] font-bold text-violet-400 font-mono relative -top-[1.35em] select-none';
+  'inline-block rounded px-1 py-0.5 text-[0.85em] font-bold text-[var(--accent-ink)] font-mono relative -top-[1.35em] select-none';
 
 export const LINE_CLASS = 'whitespace-pre-wrap leading-relaxed pt-[1.4em] min-h-[2.8em]';
 
@@ -38,9 +38,7 @@ export function linesToDom(
         widget.className = CHORD_WIDGET_CLASS;
         widget.textContent = transposeChord(seg.chord, transpose + capo, useFlats);
         // Group the chord with its lyric so a line-wrap on narrow viewports
-        // can never split a chord from the syllable it sits above (the
-        // browser's default word-wrap would otherwise happily break here,
-        // since the widget and the following text are separate inline nodes).
+        // can never split a chord from the syllable it sits above.
         const group = document.createElement('span');
         group.className = 'inline-block whitespace-nowrap';
         group.appendChild(widget);
@@ -58,9 +56,7 @@ function isChordWidget(node: Node): boolean {
   return node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).dataset.chord !== undefined;
 }
 
-/** Serializes a single line node's children back to a raw ChordPro string.
- * Any unexpected wrapper element (browser autocorrect spans, stray nested
- * divs) is flattened to its text content rather than losing data. */
+/** Serializes a single line node's children back to a raw ChordPro string. */
 function serializeLine(lineEl: Element): string {
   let text = '';
   lineEl.childNodes.forEach((node) => {
@@ -88,8 +84,7 @@ export function domToLines(root: HTMLElement): string[] {
     .map(serializeLine);
 }
 
-/** Lyric-only text length, matching insertChord's charPos semantics: chord
- * widgets and <br> contribute zero width. */
+/** Lyric-only text length, matching insertChord's charPos semantics. */
 function textLength(node: Node): number {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent?.length ?? 0;
   if (node.nodeType !== Node.ELEMENT_NODE) return 0;
@@ -128,9 +123,7 @@ function findCaretOffset(
   return { chars, found: false };
 }
 
-/** Maps the current DOM selection to { lineIdx, charPos } within a section,
- * where charPos matches insertChord's lyric-only character offset. Returns
- * null if the selection isn't inside `root` at all. */
+/** Maps the current DOM selection to { lineIdx, charPos } within a section. */
 export function selectionToLinePos(
   root: HTMLElement,
   selection: Selection | null

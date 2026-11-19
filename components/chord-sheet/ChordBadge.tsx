@@ -15,9 +15,10 @@ export function ChordBadge({ chord, onTap, size = 'normal' }: ChordBadgeProps) {
 
   return (
     <button
+      type="button"
       onClick={() => onTap(displayed)}
-      className={`inline-block rounded font-bold text-violet-400 hover:bg-violet-500/20 transition-colors cursor-pointer font-mono ${
-        size === 'lg' ? 'text-xl px-3 py-1.5' : 'text-[0.85em] px-1 py-0.5'
+      className={`inline-block rounded-md font-bold text-[var(--accent-ink)] hover:bg-[var(--accent-dim)] transition-colors cursor-pointer font-mono ${
+        size === 'lg' ? 'text-xl px-3 py-1.5 bg-[var(--surface2)]/70' : 'text-[0.86em] px-1 py-0.5'
       }`}
     >
       {displayed}

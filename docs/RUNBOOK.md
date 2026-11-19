@@ -33,7 +33,7 @@ Only point `GOOGLE_CLOUD_PROJECT` at `riojucu` (or any real project) when you sp
 
 Production runs as the `jamshelf` Cloud Run service in project `riojucu` (us-central1).
 
-**Automated:** every push/merge to `main` triggers `.github/workflows/deploy.yml`, which authenticates to GCP keylessly (Workload Identity Federation: pool `github`, provider `jamshelf`, service account `github-deployer@riojucu.iam.gserviceaccount.com`), runs `gcloud run deploy --source`, and smoke-tests `/` and `/api/setlists` on the deployed URL. Day-to-day work happens on `claude/cranky-pascal` (the repo default branch); merging it into `main` is the release action.
+**Automated:** every push/merge to `main` triggers `.github/workflows/deploy.yml`, which authenticates to GCP keylessly (Workload Identity Federation: pool `github`, provider `jamshelf`, service account `github-deployer@riojucu.iam.gserviceaccount.com`), runs `gcloud run deploy --source`, and smoke-tests `/` and `/api/setlists` on the deployed URL.
 
 **Manual fallback:**
 
