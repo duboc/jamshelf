@@ -4,6 +4,7 @@ export interface SpotifyTrackResult {
   artist: string;
   albumArt: string | null;
   spotifyUrl: string;
+  durationMs: number | null;
 }
 
 interface CachedToken {
@@ -69,6 +70,7 @@ export async function searchSpotifyTrack(query: string, limit = 5): Promise<Spot
       artists: { name: string }[];
       album?: { images?: { url: string }[] };
       external_urls?: { spotify?: string };
+      duration_ms?: number;
     };
     return {
       id: track.id,
@@ -76,6 +78,7 @@ export async function searchSpotifyTrack(query: string, limit = 5): Promise<Spot
       artist: track.artists.map((a) => a.name).join(', '),
       albumArt: track.album?.images?.[0]?.url ?? null,
       spotifyUrl: track.external_urls?.spotify ?? `https://open.spotify.com/track/${track.id}`,
+      durationMs: typeof track.duration_ms === 'number' && track.duration_ms > 0 ? track.duration_ms : null,
     };
   });
 }

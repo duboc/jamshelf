@@ -1,0 +1,82 @@
+'use client';
+
+import { formatDuration } from '@/lib/utils/chordpro-parser';
+import type { Section } from '@/lib/types/song';
+
+interface CalibrationBarProps {
+  sections: Section[];
+  elapsedSec: number;
+  marks: (number | null)[];
+  nextSectionIdx: number;
+  onMarkNext: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+export function CalibrationBar({
+  sections,
+  elapsedSec,
+  marks,
+  nextSectionIdx,
+  onMarkNext,
+  onSave,
+  onCancel,
+}: CalibrationBarProps) {
+  const markedCount = marks.filter((m) => m !== null).length;
+  const allMarked = nextSectionIdx >= sections.length;
+  const nextSection = !allMarked ? sections[nextSectionIdx] : null;
+
+  return (
+    <div className="flex-shrink-0 border-b border-[var(--tune)]/45 bg-[var(--tune-dim)] px-4 sm:px-6 py-2.5">
+      <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full bg-[var(--rec)] animate-pulse flex-shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-xs font-bold text-[var(--ink)] tabular-nums">
+                {formatDuration(elapsedSec)}
+              </span>
+              <span className="font-mono text-[11px] text-[var(--muted)]">
+                {markedCount}/{sections.length} seções marcadas
+              </span>
+            </div>
+            <p className="text-xs text-[var(--muted)] truncate">
+              Toque quando a banda entrar em cada seção (ou clique direto no bloco da seção abaixo).
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {nextSection ? (
+            <button
+              type="button"
+              onClick={onMarkNext}
+              className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
+              title="Atalho: Espaço ou Enter"
+            >
+              Marcar &ldquo;{nextSection.label}&rdquo; (Espaço)
+            </button>
+          ) : (
+            <span className="font-mono text-xs text-[var(--tune)] font-semibold">
+              ✓ Todas as seções marcadas
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={markedCount < 2}
+            className="pill-btn pill-btn-tune px-3.5 py-1.5 text-xs"
+            title={markedCount < 2 ? 'Marque pelo menos 2 seções antes de salvar' : 'Salvar tempos das seções'}
+          >
+            Salvar calibração
+          </button>
+
+          <button type="button" onClick={onCancel} className="pill-btn px-3 py-1.5 text-xs">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

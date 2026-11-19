@@ -2,15 +2,15 @@ import type { ParsedSong, Section, SectionType, ChordProEntry } from '@/lib/type
 
 // ─── Section type inference ──────────────────────────────────────────────────
 
-function inferSectionType(label: string): SectionType {
+export function inferSectionType(label: string): SectionType {
   const l = label.toLowerCase();
-  if (l.includes('pre') || l.includes('pré'))          return 'pre-chorus';
+  if (l.includes('pre') || l.includes('pré')) return 'pre-chorus';
   if (l.includes('chorus') || l.includes('refr') || l.includes('refrão')) return 'chorus';
-  if (l.includes('verse') || l.includes('verso'))       return 'verse';
-  if (l.includes('bridge') || l.includes('pont'))       return 'bridge';
-  if (l.includes('intro'))                              return 'intro';
-  if (l.includes('outro'))                              return 'outro';
-  if (l.includes('solo'))                               return 'solo';
+  if (l.includes('verse') || l.includes('verso') || l.includes('estrofe')) return 'verse';
+  if (l.includes('bridge') || l.includes('pont')) return 'bridge';
+  if (l.includes('intro')) return 'intro';
+  if (l.includes('outro') || l.includes('final')) return 'outro';
+  if (l.includes('solo')) return 'solo';
   if (l.includes('interlude') || l.includes('instrumental') || l.includes('grid')) return 'interlude';
   return 'verse';
 }
@@ -19,9 +19,48 @@ function inferSectionType(label: string): SectionType {
 function looksLikeSection(s: string): boolean {
   if (!s) return false;
   if (/\s/.test(s)) return true;
-  if (/^(intro|verse|chorus|pre.?chorus|bridge|outro|solo|interlude|instrumental|grid|refr|verso)/i.test(s)) return true;
+  if (/^(intro|verse|chorus|pre.?chorus|bridge|outro|solo|interlude|instrumental|grid|refr|verso|ponte|estrofe|final)/i.test(s)) return true;
   if (/^[A-G][#b]?[a-z0-9/()#]*$/.test(s)) return false;
   return false;
+}
+
+// ─── Duration & marks helpers ────────────────────────────────────────────────
+
+export function parseDurationValue(raw: string): number | null {
+  const s = raw.trim();
+  if (!s) return null;
+  const mmss = s.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (mmss) {
+    const mins = parseInt(mmss[1], 10);
+    const secs = parseInt(mmss[2], 10);
+    if (secs < 60) {
+      const total = mins * 60 + secs;
+      return total >= 15 && total <= 1800 ? total : null;
+    }
+    return null;
+  }
+  const num = parseInt(s, 10);
+  if (!isNaN(num) && num >= 15 && num <= 1800) return num;
+  return null;
+}
+
+export function formatDuration(seconds: number): string {
+  const safe = Math.max(0, Math.round(seconds));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+export function parseMarksValue(raw: string): number[] | null {
+  const parts = raw
+    .split(',')
+    .map((p) => parseFloat(p.trim()))
+    .filter((n) => Number.isFinite(n) && n >= 0);
+  return parts.length >= 2 ? parts : null;
+}
+
+export function serializeMarks(marks: number[]): string {
+  return marks.map((n) => Number(n.toFixed(1))).join(',');
 }
 
 // ─── Main parser ─────────────────────────────────────────────────────────────
@@ -40,6 +79,9 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     rating: 0,
     favorite: false,
     spotifyTrackId: null as string | null,
+    duration: null as number | null,
+    scrollSpeed: null as number | null,
+    sectionMarks: null as number[] | null,
   };
 
   const sections: Section[] = [];
@@ -73,22 +115,37 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     if (keyM) { meta.originalKey = keyM[1].trim(); meta.displayKey = meta.originalKey; continue; }
 
     const capoM = line.match(/^\{capo:\s*(\d+)\}$/i);
-    if (capoM) { meta.capo = parseInt(capoM[1]); continue; }
+    if (capoM) { meta.capo = parseInt(capoM[1], 10); continue; }
 
     const tempoM = line.match(/^\{tempo:\s*(\d+)\}$/i);
-    if (tempoM) { meta.tempo = parseInt(tempoM[1]); continue; }
+    if (tempoM) { meta.tempo = parseInt(tempoM[1], 10); continue; }
 
     const timeM = line.match(/^\{time:\s*(.+)\}$/i);
     if (timeM) { meta.timeSignature = timeM[1].trim(); continue; }
 
     const ratingM = line.match(/^\{rating:\s*([1-5])\}$/i);
-    if (ratingM) { meta.rating = parseInt(ratingM[1]); continue; }
+    if (ratingM) { meta.rating = parseInt(ratingM[1], 10); continue; }
 
     const favM = line.match(/^\{favorite:\s*(true|false)\}$/i);
     if (favM) { meta.favorite = favM[1].toLowerCase() === 'true'; continue; }
 
     const spotifyM = line.match(/^\{spotify:\s*(.+)\}$/i);
     if (spotifyM) { meta.spotifyTrackId = spotifyM[1].trim(); continue; }
+
+    const durationM = line.match(/^\{duration:\s*(.+)\}$/i);
+    if (durationM) { meta.duration = parseDurationValue(durationM[1]); continue; }
+
+    const scrollM = line.match(/^\{scroll:\s*([0-9.]+)\}$/i);
+    if (scrollM) {
+      const val = parseFloat(scrollM[1]);
+      if (Number.isFinite(val) && val >= 0.1 && val <= 3) {
+        meta.scrollSpeed = val;
+      }
+      continue;
+    }
+
+    const marksM = line.match(/^\{marks:\s*(.+)\}$/i);
+    if (marksM) { meta.sectionMarks = parseMarksValue(marksM[1]); continue; }
 
     // ── Ignored directives ─────────────────────────────────────────────────
     if (/^\{define:/i.test(line)) continue;
@@ -143,7 +200,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
   pushCurrent();
 
   if (sections.length === 0) {
-    const contentLines = lines.filter(l => l.trim() && !/^\{[^}]+\}$/.test(l));
+    const contentLines = lines.filter((l) => l.trim() && !/^\{[^}]+\}$/.test(l));
     if (contentLines.length) {
       sections.push({ type: 'verse', label: 'Song', lines: contentLines });
     }
@@ -161,6 +218,9 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     rating: meta.rating,
     favorite: meta.favorite,
     spotifyTrackId: meta.spotifyTrackId,
+    duration: meta.duration,
+    scrollSpeed: meta.scrollSpeed,
+    sectionMarks: meta.sectionMarks,
     sections,
   };
 }
@@ -172,12 +232,17 @@ export function songToChordPro(song: ParsedSong): string {
   lines.push(`{title: ${song.title}}`);
   lines.push(`{artist: ${song.artist}}`);
   if (song.originalKey) lines.push(`{key: ${song.originalKey}}`);
-  if (song.capo > 0)    lines.push(`{capo: ${song.capo}}`);
+  if (song.capo > 0) lines.push(`{capo: ${song.capo}}`);
   if (song.tempo !== 120) lines.push(`{tempo: ${song.tempo}}`);
   if (song.timeSignature !== '4/4') lines.push(`{time: ${song.timeSignature}}`);
-  if (song.rating > 0)  lines.push(`{rating: ${song.rating}}`);
-  if (song.favorite)    lines.push(`{favorite: true}`);
+  if (song.rating > 0) lines.push(`{rating: ${song.rating}}`);
+  if (song.favorite) lines.push(`{favorite: true}`);
   if (song.spotifyTrackId) lines.push(`{spotify: ${song.spotifyTrackId}}`);
+  if (song.duration && song.duration > 0) lines.push(`{duration: ${Math.round(song.duration)}}`);
+  if (song.scrollSpeed && song.scrollSpeed > 0) lines.push(`{scroll: ${Number(song.scrollSpeed.toFixed(2))}}`);
+  if (song.sectionMarks && song.sectionMarks.length >= 2) {
+    lines.push(`{marks: ${serializeMarks(song.sectionMarks)}}`);
+  }
   lines.push('');
 
   for (const section of song.sections) {
@@ -197,7 +262,7 @@ export function patchChordProMeta(text: string, key: string, value: string | num
   if (pattern.test(text)) {
     return text.replace(pattern, directive);
   }
-  const firstNonDirective = text.split('\n').findIndex(l => l.trim() && !/^\{[^}]+\}$/.test(l.trim()));
+  const firstNonDirective = text.split('\n').findIndex((l) => l.trim() && !/^\{[^}]+\}$/.test(l.trim()));
   const insertAt = firstNonDirective < 0 ? 0 : firstNonDirective;
   const ls = text.split('\n');
   ls.splice(insertAt, 0, directive);

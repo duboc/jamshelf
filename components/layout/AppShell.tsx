@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
-import { useDisplayStore, type DisplayMode, type ThemeMode } from '@/lib/stores/display-store';
+import { useDisplayStore, type DisplayMode, type ScrollLeadIn, type ThemeMode } from '@/lib/stores/display-store';
 import { QuickSearchModal } from './QuickSearchModal';
 
 const DEVICE_NAME_EVENT = 'jamshelf-device-name-change';
@@ -64,6 +64,8 @@ function DeviceSettingsPopover() {
     setFontSize,
     visualPulseEnabled,
     setVisualPulseEnabled,
+    scrollLeadInSec,
+    setScrollLeadInSec,
   } = useDisplayStore();
 
   const [open, setOpen] = useState(false);
@@ -215,6 +217,31 @@ function DeviceSettingsPopover() {
               >
                 A+
               </button>
+            </div>
+          </div>
+
+          {/* Contagem do auto-scroll */}
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="eyebrow">Atraso do auto-scroll</div>
+              <div className="text-[11px] text-[var(--muted)]">Tempo para segurar o instrumento</div>
+            </div>
+            <div className="inline-flex rounded-full border border-[var(--line)] overflow-hidden">
+              {([0, 3, 5] as ScrollLeadIn[]).map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setScrollLeadInSec(sec)}
+                  aria-pressed={scrollLeadInSec === sec}
+                  className={`font-mono text-[11px] px-2 py-1 transition-colors cursor-pointer ${
+                    scrollLeadInSec === sec
+                      ? 'bg-[var(--surface2)] text-[var(--ink)] font-semibold'
+                      : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                  }`}
+                >
+                  {sec === 0 ? '0s' : `${sec}s`}
+                </button>
+              ))}
             </div>
           </div>
 

@@ -75,9 +75,14 @@ export default function AddSongPage() {
 
   const handleConfirm = () => {
     if (!preview) return;
-    const text = selectedSpotifyId
-      ? patchChordProMeta(preview.text, 'spotify', selectedSpotifyId)
-      : preview.text;
+    let text = preview.text;
+    const selectedTrack = spotifyResults.find((t) => t.id === selectedSpotifyId);
+    if (selectedSpotifyId) {
+      text = patchChordProMeta(text, 'spotify', selectedSpotifyId);
+    }
+    if (selectedTrack?.durationMs) {
+      text = patchChordProMeta(text, 'duration', Math.round(selectedTrack.durationMs / 1000));
+    }
     const saved = addEntry({ ...preview, text });
     router.push(`/song/${saved.id}`);
   };

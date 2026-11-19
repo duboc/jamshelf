@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware';
 
 export type DisplayMode = 'both' | 'lyrics-only' | 'chords-only';
 export type ThemeMode = 'system' | 'dark' | 'light';
+export type ScrollLeadIn = 0 | 3 | 5;
 
 interface DisplayStore {
   displayMode: DisplayMode;
@@ -20,6 +21,8 @@ interface DisplayStore {
   setChordsRefOpen: (v: boolean) => void;
   focusMode: boolean;
   setFocusMode: (v: boolean) => void;
+  scrollLeadInSec: ScrollLeadIn;
+  setScrollLeadInSec: (s: ScrollLeadIn) => void;
 }
 
 // Per-device preferences persisted across reloads. Kept separate from
@@ -44,6 +47,8 @@ export const useDisplayStore = create<DisplayStore>()(
       setChordsRefOpen: (v) => set({ chordsRefOpen: v }),
       focusMode: false,
       setFocusMode: (v) => set({ focusMode: v }),
+      scrollLeadInSec: 3,
+      setScrollLeadInSec: (s) => set({ scrollLeadInSec: s }),
     }),
     {
       name: 'jamshelf-display-mode',
@@ -53,6 +58,7 @@ export const useDisplayStore = create<DisplayStore>()(
         theme: s.theme,
         fontSize: s.fontSize,
         chordsRefOpen: s.chordsRefOpen,
+        scrollLeadInSec: s.scrollLeadInSec,
       }),
     }
   )

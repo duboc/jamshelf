@@ -36,9 +36,12 @@ export interface ParsedSong {
   tempo: number;
   timeSignature: string;
   sections: Section[];
-  rating: number;    // 0 = unrated, 1–5 stars
+  rating: number; // 0 = unrated, 1-5 stars
   favorite: boolean;
   spotifyTrackId: string | null;
+  duration: number | null; // song length in seconds (from {duration:} or Spotify)
+  scrollSpeed: number | null; // saved per-song auto-scroll multiplier (from {scroll:})
+  sectionMarks: number[] | null; // calibrated section start timestamps in seconds (from {marks:})
 }
 
 // Alias for backwards compatibility with existing components

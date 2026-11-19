@@ -6,10 +6,27 @@ import { useSongStore } from '@/lib/stores/song-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
-import { useLiveSession } from '@/lib/stores/live-session-store';
+import { useLiveSession, type LiveScrollState } from '@/lib/stores/live-session-store';
 import { extractChords, transposeChord, parseLine, transposeSong } from '@/lib/utils/music';
-import { moveChord, renameChord, deleteChord, insertChord } from '@/lib/utils/edit-chordpro';
-import { songToChordPro, removeChordProMeta } from '@/lib/utils/chordpro-parser';
+import {
+  moveChordWithIndex,
+  renameChord,
+  deleteChord,
+  insertChord,
+  addSongSection,
+  duplicateSongSection,
+  removeSongSection,
+  moveSongSection,
+  renameSongSection,
+} from '@/lib/utils/edit-chordpro';
+import {
+  parseChordPro,
+  songToChordPro,
+  removeChordProMeta,
+  patchChordProMeta,
+  serializeMarks,
+} from '@/lib/utils/chordpro-parser';
+import { hasUsableMarks } from '@/lib/utils/autoscroll';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
@@ -27,10 +44,12 @@ import { SongToolbar } from '@/components/song/SongToolbar';
 import { SectionNav } from '@/components/song/SectionNav';
 import { FocusDock } from '@/components/song/FocusDock';
 import { SpotifySection } from '@/components/song/SpotifySection';
+import { CalibrationBar } from '@/components/song/CalibrationBar';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
 type AddTarget = { sectionIdx: number; lineIdx: number; charPos: number };
+type ChoModalView = 'split' | 'editor' | 'preview';
 
 export default function SongPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -49,9 +68,13 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setFocusMode,
   } = useDisplayStore();
 
+  // Source modal state (with live split preview!)
   const [showExport, setShowExport] = useState(false);
   const [choDraft, setChoDraft] = useState('');
+  const [choView, setChoView] = useState<ChoModalView>('split');
   const [discardArmed, setDiscardArmed] = useState(false);
+
+  // Other modals & overlays
   const [showEnhance, setShowEnhance] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSetlistDrawer, setShowSetlistDrawer] = useState(false);
@@ -65,69 +88,100 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [showTransposeConfirm, setShowTransposeConfirm] = useState(false);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
 
-  // Edit mode state
+  // Visual edit mode draft + Undo/Redo stacks (single PUT on save!)
+  const [editOriginText, setEditOriginText] = useState<string | null>(null);
+  const [editDraftText, setEditDraftText] = useState<string | null>(null);
+  const [undoStack, setUndoStack] = useState<string[]>([]);
+  const [redoStack, setRedoStack] = useState<string[]>([]);
+  const [editDiscardArmed, setEditDiscardArmed] = useState(false);
   const [selectedCoord, setSelectedCoord] = useState<SelectedCoord | null>(null);
   const [addTarget, setAddTarget] = useState<AddTarget | null>(null);
 
-  // Live session (cross-device sync while playing a setlist)
+  // Section timing calibration state ("Gravar rolagem")
+  const [calibrating, setCalibrating] = useState(false);
+  const [calStartMs, setCalStartMs] = useState<number>(0);
+  const [calElapsedSec, setCalElapsedSec] = useState(0);
+  const [calMarks, setCalMarks] = useState<(number | null)[]>([]);
+  const [calNextIdx, setCalNextIdx] = useState(1);
+
+  // Live session (cross-device sync with normalized scrollRatio)
   const setlistIdParam = searchParams.get('setlist');
   const showMode = searchParams.get('show') === '1';
   const activeSetlist = setlistIdParam
     ? setlists.find((sl) => sl.id === setlistIdParam) ?? null
     : null;
-  const scrollTopRef = useRef(0);
+  const scrollStateRef = useRef<LiveScrollState>({ scrollTop: 0, scrollRatio: 0 });
   const sheetScrollRef = useRef<HTMLDivElement>(null);
-  const live = useLiveSession(activeSetlist ? activeSetlist.id : null, id, scrollTopRef);
+  const live = useLiveSession(activeSetlist ? activeSetlist.id : null, id, scrollStateRef);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [nameInput, setNameInput] = useState('');
 
-  const song = useMemo(() => {
+  const storedSong = useMemo(() => {
     void entries;
     return getSong(id);
   }, [entries, getSong, id]);
+
+  // While visual edit mode is active, render from the local draft so edits
+  // never spam Firestore/GCS and Undo/Redo is instant.
+  const song = useMemo(() => {
+    if (store.editMode && editDraftText !== null) {
+      return parseChordPro(id, editDraftText);
+    }
+    return storedSong;
+  }, [store.editMode, editDraftText, id, storedSong]);
+
+  const choPreviewSong = useMemo(() => {
+    if (!showExport) return null;
+    return parseChordPro(id, choDraft);
+  }, [showExport, id, choDraft]);
 
   const [titleInput, setTitleInput] = useState(song?.title || '');
   const [artistInput, setArtistInput] = useState(song?.artist || '');
 
   const flashStatus = useCallback((msg: string) => {
     setStatusMsg(msg);
-    setTimeout(() => setStatusMsg(''), 2200);
+    setTimeout(() => setStatusMsg(''), 2400);
   }, []);
 
   useEffect(() => {
-    if (song) {
-      setTitleInput(song.title);
-      setArtistInput(song.artist);
+    if (storedSong) {
+      setTitleInput(storedSong.title);
+      setArtistInput(storedSong.artist);
     }
-  }, [song]);
+  }, [storedSong]);
 
-  // Reset transient player state cleanly when switching to a different song
+  // Reset transient player state cleanly when switching songs
   const songIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!song) return;
-    if (songIdRef.current !== song.id) {
-      songIdRef.current = song.id;
-      store.resetForSong(song.tempo, song.capo);
+    if (!storedSong) return;
+    if (songIdRef.current !== storedSong.id) {
+      songIdRef.current = storedSong.id;
+      store.resetForSong(storedSong.tempo, storedSong.capo, storedSong.scrollSpeed);
       setActiveSectionIdx(0);
       setSelectedCoord(null);
       setAddTarget(null);
+      setEditOriginText(null);
+      setEditDraftText(null);
+      setUndoStack([]);
+      setRedoStack([]);
+      setCalibrating(false);
       setShowSpotifyPreview(false);
       setSpotifySuggestionDismissed(false);
+      scrollStateRef.current = { scrollTop: 0, scrollRatio: 0 };
     }
-  }, [song, store]);
-
-  // Keep BPM and Capo synced if edited in place on the current song
-  useEffect(() => {
-    if (song) store.setBpm(song.tempo);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [song?.tempo]);
+  }, [storedSong, store]);
 
   useEffect(() => {
-    if (song) store.setCapo(song.capo);
+    if (storedSong) store.setBpm(storedSong.tempo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [song?.capo]);
+  }, [storedSong?.tempo]);
 
-  // Follow the leader to whatever song they're on, preserving &show=1 if in Show Mode!
+  useEffect(() => {
+    if (storedSong) store.setCapo(storedSong.capo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storedSong?.capo]);
+
+  // Follow live session leader, preserving &show=1 in Show Mode
   useEffect(() => {
     if (!activeSetlist) return;
     if (live.isFollowing && live.session.currentSongId && live.session.currentSongId !== id) {
@@ -137,9 +191,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, showMode, router]);
 
   // Auto-search Spotify for unmatched songs
-  const spotifySongId = song?.spotifyTrackId ?? null;
-  const spotifySongTitle = song?.title ?? '';
-  const spotifySongArtist = song?.artist ?? '';
+  const spotifySongId = storedSong?.spotifyTrackId ?? null;
+  const spotifySongTitle = storedSong?.title ?? '';
+  const spotifySongArtist = storedSong?.artist ?? '';
   useEffect(() => {
     if (!spotifySongTitle || spotifySongId) return;
     let cancelled = false;
@@ -157,24 +211,14 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     };
   }, [spotifySongId, spotifySongTitle, spotifySongArtist]);
 
-  // Keyboard shortcuts outside Show Mode (Space = auto-scroll, Esc = exit focus mode)
+  // Calibration stopwatch tick
   useEffect(() => {
-    if (showMode) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
-      if (e.key === 'Escape' && focusMode) {
-        setFocusMode(false);
-      } else if (e.key === ' ' && !store.editMode && !live.isFollowing && !showExport && !showEnhance && !showHistory) {
-        e.preventDefault();
-        store.toggleAutoScroll();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showMode, focusMode, setFocusMode, store, live.isFollowing, showExport, showEnhance, showHistory]);
+    if (!calibrating) return;
+    const timer = setInterval(() => {
+      setCalElapsedSec((Date.now() - calStartMs) / 1000);
+    }, 200);
+    return () => clearInterval(timer);
+  }, [calibrating, calStartMs]);
 
   // Clear edit selection when leaving edit mode
   useEffect(() => {
@@ -186,6 +230,124 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       return () => clearTimeout(timer);
     }
   }, [store.editMode]);
+
+  const handleJumpToSection = useCallback((sectionIdx: number) => {
+    setActiveSectionIdx(sectionIdx);
+    const container = sheetScrollRef.current;
+    if (!container) return;
+    const target = container.querySelector<HTMLElement>(`#section-${sectionIdx}`);
+    if (target) {
+      container.scrollTo({
+        top: Math.max(0, target.offsetTop - 16),
+        behavior: 'smooth',
+      });
+    }
+  }, []);
+
+  const markCalibrationSection = useCallback(
+    (sectionIdx: number) => {
+      if (!calibrating) return;
+      const nowSec = Math.max(0, Number(((Date.now() - calStartMs) / 1000).toFixed(1)));
+      setCalMarks((prev) => {
+        const next = [...prev];
+        next[sectionIdx] = sectionIdx === 0 ? 0 : nowSec;
+        return next;
+      });
+      setCalNextIdx(sectionIdx + 1);
+      handleJumpToSection(sectionIdx);
+    },
+    [calibrating, calStartMs, handleJumpToSection]
+  );
+
+  // Undo / Redo actions in visual edit mode
+  const handleUndo = useCallback(() => {
+    if (!undoStack.length || editDraftText === null) return;
+    const previous = undoStack[undoStack.length - 1];
+    setUndoStack((s) => s.slice(0, -1));
+    setRedoStack((s) => [...s, editDraftText]);
+    setEditDraftText(previous);
+    setSelectedCoord(null);
+    setAddTarget(null);
+  }, [undoStack, editDraftText]);
+
+  const handleRedo = useCallback(() => {
+    if (!redoStack.length || editDraftText === null) return;
+    const next = redoStack[redoStack.length - 1];
+    setRedoStack((s) => s.slice(0, -1));
+    setUndoStack((s) => [...s, editDraftText]);
+    setEditDraftText(next);
+    setSelectedCoord(null);
+    setAddTarget(null);
+  }, [redoStack, editDraftText]);
+
+  // Global keyboard shortcuts on song page
+  useEffect(() => {
+    if (showMode) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inInput =
+        target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      // Ctrl/Cmd+Z & Ctrl/Cmd+Y inside visual edit mode (when not typing inside text input)
+      if (store.editMode && (e.metaKey || e.ctrlKey) && !inInput) {
+        if (e.key.toLowerCase() === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          handleUndo();
+          return;
+        }
+        if (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey)) {
+          e.preventDefault();
+          handleRedo();
+          return;
+        }
+      }
+
+      if (inInput) return;
+
+      if (calibrating) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          if (song && calNextIdx < song.sections.length) {
+            markCalibrationSection(calNextIdx);
+          }
+        } else if (e.key === 'Escape') {
+          setCalibrating(false);
+        }
+        return;
+      }
+
+      if (e.key === 'Escape' && focusMode) {
+        setFocusMode(false);
+      } else if (
+        e.key === ' ' &&
+        !store.editMode &&
+        !live.isFollowing &&
+        !showExport &&
+        !showEnhance &&
+        !showHistory
+      ) {
+        e.preventDefault();
+        store.toggleAutoScroll();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    showMode,
+    store,
+    handleUndo,
+    handleRedo,
+    calibrating,
+    song,
+    calNextIdx,
+    markCalibrationSection,
+    focusMode,
+    setFocusMode,
+    live.isFollowing,
+    showExport,
+    showEnhance,
+    showHistory,
+  ]);
 
   const handleGoLive = () => {
     if (!live.deviceName) {
@@ -255,8 +417,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         onNavigate={(songId) => router.push(`/song/${songId}?setlist=${activeSetlist.id}&show=1`)}
         onExit={() => router.replace(`/song/${id}?setlist=${activeSetlist.id}`)}
         onChordTap={(chord) => store.setActiveChord(chord)}
-        onScrollTopChange={(v) => {
-          scrollTopRef.current = v;
+        onScrollStateChange={(st) => {
+          scrollStateRef.current = st;
         }}
         handleGoLive={handleGoLive}
         confirmGoLive={confirmGoLive}
@@ -268,8 +430,66 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     );
   }
 
-  // ── Edit helpers ────────────────────────────────────────────────────────────
+  // ── Visual edit session lifecycle & draft helpers ───────────────────────────
   const currentSong = song;
+  const editDirty =
+    store.editMode && editOriginText !== null && editDraftText !== null && editDraftText !== editOriginText;
+
+  const enterVisualEdit = () => {
+    const raw = exportEntry(id) ?? songToChordPro(currentSong);
+    setCalibrating(false);
+    setEditOriginText(raw);
+    setEditDraftText(raw);
+    setUndoStack([]);
+    setRedoStack([]);
+    setEditDiscardArmed(false);
+    store.setEditMode(true);
+  };
+
+  const commitDraftText = (nextText: string) => {
+    if (editDraftText !== null && nextText === editDraftText) return;
+    if (editDraftText !== null) {
+      setUndoStack((s) => [...s.slice(-49), editDraftText]);
+    }
+    setRedoStack([]);
+    setEditDraftText(nextText);
+    setEditDiscardArmed(false);
+  };
+
+  const handleSaveVisualEdit = () => {
+    if (editDraftText !== null && editOriginText !== null && editDraftText !== editOriginText) {
+      // Snapshot the pre-edit version in the background so visual edits are undoable in History
+      fetch(`/api/songs/${id}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editOriginText }),
+      }).catch(() => {});
+      updateEntry(id, editDraftText);
+      flashStatus('✓ Alterações salvas');
+    }
+    store.setEditMode(false);
+    setEditOriginText(null);
+    setEditDraftText(null);
+    setUndoStack([]);
+    setRedoStack([]);
+    setEditDiscardArmed(false);
+    closeOverlay();
+  };
+
+  const handleCancelVisualEdit = () => {
+    if (editDirty && !editDiscardArmed) {
+      setEditDiscardArmed(true);
+      setTimeout(() => setEditDiscardArmed(false), 6000);
+      return;
+    }
+    store.setEditMode(false);
+    setEditOriginText(null);
+    setEditDraftText(null);
+    setUndoStack([]);
+    setRedoStack([]);
+    setEditDiscardArmed(false);
+    closeOverlay();
+  };
 
   function applyLineEdit(sectionIdx: number, lineIdx: number, newLine: string) {
     const updatedSections = currentSong.sections.map((sec, si) => {
@@ -279,14 +499,62 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         lines: sec.lines.map((l, li) => (li === lineIdx ? newLine : l)),
       };
     });
-    updateEntry(id, songToChordPro({ ...currentSong, sections: updatedSections }));
+    commitDraftText(songToChordPro({ ...currentSong, sections: updatedSections }));
   }
 
   function applySectionEdit(sectionIdx: number, lines: string[]) {
     const updatedSections = currentSong.sections.map((sec, si) =>
       si === sectionIdx ? { ...sec, lines } : sec
     );
-    updateEntry(id, songToChordPro({ ...currentSong, sections: updatedSections }));
+    commitDraftText(songToChordPro({ ...currentSong, sections: updatedSections }));
+  }
+
+  function handleRenameSection(sectionIdx: number, label: string) {
+    commitDraftText(
+      songToChordPro({
+        ...currentSong,
+        sections: renameSongSection(currentSong.sections, sectionIdx, label),
+      })
+    );
+  }
+
+  function handleDuplicateSection(sectionIdx: number) {
+    commitDraftText(
+      songToChordPro({
+        ...currentSong,
+        sections: duplicateSongSection(currentSong.sections, sectionIdx),
+      })
+    );
+    closeOverlay();
+  }
+
+  function handleMoveSection(sectionIdx: number, dir: 'up' | 'down') {
+    commitDraftText(
+      songToChordPro({
+        ...currentSong,
+        sections: moveSongSection(currentSong.sections, sectionIdx, dir),
+      })
+    );
+    closeOverlay();
+  }
+
+  function handleDeleteSection(sectionIdx: number) {
+    commitDraftText(
+      songToChordPro({
+        ...currentSong,
+        sections: removeSongSection(currentSong.sections, sectionIdx),
+      })
+    );
+    closeOverlay();
+  }
+
+  function handleAddSection(label: string) {
+    commitDraftText(
+      songToChordPro({
+        ...currentSong,
+        sections: addSongSection(currentSong.sections, label),
+      })
+    );
   }
 
   function handleChordSelect(sectionIdx: number, lineIdx: number, segIdx: number) {
@@ -310,7 +578,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   function handleMove(sectionIdx: number, lineIdx: number, segIdx: number, dir: 'left' | 'right') {
     const line = currentSong.sections[sectionIdx].lines[lineIdx];
-    applyLineEdit(sectionIdx, lineIdx, moveChord(line, segIdx, dir));
+    const { line: nextLine, nextSegIdx } = moveChordWithIndex(line, segIdx, dir);
+    applyLineEdit(sectionIdx, lineIdx, nextLine);
+    setSelectedCoord({ sectionIdx, lineIdx, segIdx: nextSegIdx });
   }
 
   function handleRename(sectionIdx: number, lineIdx: number, segIdx: number, newChord: string) {
@@ -334,13 +604,71 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   }
 
   const overlayChordName = selectedCoord
-    ? parseLine(currentSong.sections[selectedCoord.sectionIdx].lines[selectedCoord.lineIdx])[
+    ? parseLine(currentSong.sections[selectedCoord.sectionIdx]?.lines[selectedCoord.lineIdx] ?? '')[
         selectedCoord.segIdx
       ]?.chord ?? ''
     : '';
 
   const overlaySelected =
     selectedCoord && overlayChordName ? { ...selectedCoord, chord: overlayChordName } : null;
+
+  // ── Auto-scroll calibration & saved pace ────────────────────────────────────
+  const handleSaveScrollSpeed = () => {
+    patchMeta(id, 'scroll', Number(store.autoScrollSpeed.toFixed(2)));
+    flashStatus(`✓ Ritmo salvo (${store.autoScrollSpeed.toFixed(2)}×)`);
+  };
+
+  const handleStartCalibration = () => {
+    store.setAutoScrolling(false);
+    const initial: (number | null)[] = currentSong.sections.map((_, idx) => (idx === 0 ? 0 : null));
+    setCalMarks(initial);
+    setCalNextIdx(1);
+    setCalStartMs(Date.now());
+    setCalElapsedSec(0);
+    setCalibrating(true);
+    handleJumpToSection(0);
+  };
+
+  const handleSaveCalibration = () => {
+    const rawText = exportEntry(id);
+    if (!rawText) return;
+    // Fill any unmarked trailing/intermediate gaps monotonically
+    const filled: number[] = [];
+    let last = 0;
+    for (let i = 0; i < currentSong.sections.length; i++) {
+      const m = calMarks[i];
+      if (m !== null && m !== undefined) {
+        last = Math.max(last, m);
+        filled.push(last);
+      } else if (i === 0) {
+        filled.push(0);
+      } else {
+        break;
+      }
+    }
+    if (filled.length < 2) {
+      setCalibrating(false);
+      return;
+    }
+
+    let nextText = patchChordProMeta(rawText, 'marks', serializeMarks(filled));
+    // Also set duration if unset and calibration spanned at least 20s
+    const totalNow = Math.round((Date.now() - calStartMs) / 1000);
+    if (!currentSong.duration && totalNow >= 20) {
+      nextText = patchChordProMeta(nextText, 'duration', totalNow);
+    }
+    updateEntry(id, nextText);
+    store.setAutoScrollSpeed(1);
+    setCalibrating(false);
+    flashStatus('✓ Calibração por seção salva');
+  };
+
+  const handleClearCalibration = () => {
+    const rawText = exportEntry(id);
+    if (!rawText) return;
+    updateEntry(id, removeChordProMeta(rawText, 'marks'));
+    flashStatus('Calibração removida');
+  };
 
   // ── Song metadata & actions ─────────────────────────────────────────────────
   const saveTitle = () => {
@@ -370,10 +698,20 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   };
 
   const handleSelectSpotify = (trackId: string) => {
-    patchMeta(id, 'spotify', trackId);
+    const track = spotifyResults.find((t) => t.id === trackId);
+    const raw = exportEntry(id);
+    if (raw) {
+      let nextText = patchChordProMeta(raw, 'spotify', trackId);
+      if (track?.durationMs && !song.duration) {
+        nextText = patchChordProMeta(nextText, 'duration', Math.round(track.durationMs / 1000));
+      }
+      updateEntry(id, nextText);
+    } else {
+      patchMeta(id, 'spotify', trackId);
+    }
     setShowSpotifyPicker(false);
     setShowMoreSuggestions(false);
-    flashStatus('Spotify vinculado');
+    flashStatus(track?.durationMs && !song.duration ? 'Spotify e duração vinculados' : 'Spotify vinculado');
   };
 
   const handleClearSpotify = () => {
@@ -408,29 +746,26 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const handleSaveCho = () => {
     if (!choIsValid) return;
+    const prev = exportEntry(id);
+    if (prev && prev !== choDraft) {
+      fetch(`/api/songs/${id}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: prev }),
+      }).catch(() => {});
+    }
     updateEntry(id, choDraft);
     setDiscardArmed(false);
     setShowExport(false);
     flashStatus('✓ Salvo');
   };
 
-  const handleJumpToSection = (sectionIdx: number) => {
-    setActiveSectionIdx(sectionIdx);
-    const container = sheetScrollRef.current;
-    if (!container) return;
-    const target = container.querySelector<HTMLElement>(`#section-${sectionIdx}`);
-    if (target) {
-      container.scrollTo({
-        top: Math.max(0, target.offsetTop - 16),
-        behavior: 'smooth',
-      });
-    }
-  };
-
   const navigateInSetlist = (songId: string) => {
     if (!activeSetlist) return;
     router.push(`/song/${songId}?setlist=${activeSetlist.id}`);
   };
+
+  const songHasCalibration = hasUsableMarks(song.sectionMarks, song.sections.length);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -529,38 +864,71 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             beatsPerBar={beatsPerBar}
             chordCount={allChords.length}
             isFollowing={live.isFollowing}
+            savedScrollSpeed={song.scrollSpeed}
+            hasCalibration={songHasCalibration}
+            calibrating={calibrating}
+            canCalibrate={song.sections.length >= 2}
+            canUndo={undoStack.length > 0}
+            canRedo={redoStack.length > 0}
+            editDirty={editDirty}
+            editDiscardArmed={editDiscardArmed}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onSaveEdit={handleSaveVisualEdit}
+            onCancelEdit={handleCancelVisualEdit}
+            onEnterEdit={enterVisualEdit}
+            onSaveScrollSpeed={handleSaveScrollSpeed}
+            onStartCalibration={handleStartCalibration}
+            onClearCalibration={handleClearCalibration}
             onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
-            onToggleEditMode={() => {
-              if (store.editMode) flashStatus('✓ Alterações salvas');
-              store.toggleEditMode();
-              closeOverlay();
-            }}
           />
 
+          {calibrating && (
+            <CalibrationBar
+              sections={song.sections}
+              elapsedSec={calElapsedSec}
+              marks={calMarks}
+              nextSectionIdx={calNextIdx}
+              onMarkNext={() => {
+                if (calNextIdx < song.sections.length) markCalibrationSection(calNextIdx);
+              }}
+              onSave={handleSaveCalibration}
+              onCancel={() => setCalibrating(false)}
+            />
+          )}
+
           {/* Collapsible Chords Reference Strip */}
-          {!store.editMode && displayMode !== 'lyrics-only' && chordsRefOpen && (
+          {!store.editMode && !calibrating && displayMode !== 'lyrics-only' && chordsRefOpen && (
             <ChordsReference
               chords={allChords.map((c) => transposeChord(c, totalShift, store.useFlats))}
             />
           )}
 
-          {/* Edit mode banner */}
+          {/* Edit mode guidance banner */}
           {store.editMode && (
             <div className="flex-shrink-0 border-b border-[var(--accent)]/40 bg-[var(--accent-dim)] px-4 py-2">
               <p className="max-w-5xl mx-auto text-xs text-[var(--accent-ink)] text-center font-medium">
-                Toque na letra para digitar · toque em um acorde para mover, trocar ou remover · use o <b>+</b> no cursor para inserir acorde · toque em <b>✓ Concluir</b> ao terminar
+                {totalShift !== 0 && (
+                  <span className="font-mono font-bold mr-2">
+                    [Editando no tom original {song.originalKey || ''}]
+                  </span>
+                )}
+                Digite direto nas letras · toque num acorde para mover/trocar/apagar · use o <b>+</b> no cursor para inserir · gerencie seções no topo de cada bloco · salve tudo em <b>✓ Salvar e sair</b>
               </p>
             </div>
           )}
         </>
       )}
 
-      {/* Section jump navigation bar (available in both normal and focus mode!) */}
+      {/* Section jump navigation bar */}
       {!store.editMode && (
         <SectionNav
           sections={song.sections}
           activeIdx={activeSectionIdx}
-          onJump={handleJumpToSection}
+          onJump={(idx) => {
+            if (calibrating) markCalibrationSection(idx);
+            else handleJumpToSection(idx);
+          }}
         />
       )}
 
@@ -575,16 +943,25 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           onChordSelect={handleChordSelect}
           onAddChord={handleAddChord}
           onLinesChange={applySectionEdit}
-          onScrollTopChange={(v) => {
-            scrollTopRef.current = v;
+          onRenameSection={handleRenameSection}
+          onDuplicateSection={handleDuplicateSection}
+          onMoveSection={handleMoveSection}
+          onDeleteSection={handleDeleteSection}
+          onAddSection={handleAddSection}
+          calibrating={calibrating}
+          calibrationMarks={calMarks}
+          calibrationTargetIdx={calNextIdx}
+          onCalibrationTap={markCalibrationSection}
+          onScrollStateChange={(st) => {
+            scrollStateRef.current = st;
           }}
           syncCorrection={live.syncCorrection}
           scrollContainerRef={sheetScrollRef}
           onActiveSectionChange={setActiveSectionIdx}
-          bottomPaddingClass={focusMode ? 'pb-28' : 'pb-16'}
+          bottomPaddingClass={focusMode ? 'pb-28' : 'pb-20'}
         />
 
-        {!store.editMode && (
+        {!store.editMode && !calibrating && (
           <ChordPanel
             chord={store.activeChord}
             onClose={() => store.setActiveChord(null)}
@@ -592,7 +969,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         )}
       </div>
 
-      {/* Setlist Drawer — now available in normal rehearsal mode AND focus mode */}
+      {/* Setlist Drawer */}
       {activeSetlist && showSetlistDrawer && (
         <SetlistDrawer
           setlist={activeSetlist}
@@ -603,11 +980,12 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         />
       )}
 
-      {/* Edit chord overlay */}
+      {/* Visual chord editing overlay */}
       {store.editMode && (overlaySelected || addTarget) && (
         <EditChordOverlay
           selected={overlaySelected}
           addTarget={addTarget}
+          songChords={allChords}
           onMove={handleMove}
           onRename={handleRename}
           onDelete={handleDelete}
@@ -635,25 +1013,50 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         onCancel={() => setShowTransposeConfirm(false)}
       />
 
-      {/* Edit raw ChordPro source modal */}
+      {/* Edit raw ChordPro source modal with live split preview */}
       {showExport && (
         <div
-          className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-4"
           onClick={closeExportModal}
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden"
+            className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-b border-[var(--line)] flex-shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 border-b border-[var(--line)] flex-shrink-0">
               <div>
                 <div className="eyebrow">ChordPro (.cho)</div>
                 <h3 className="font-display text-xl text-[var(--ink)]">Editar fonte da música</h3>
               </div>
-              <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* View mode switch */}
+                <div className="inline-flex rounded-full border border-[var(--line)] bg-[var(--surface2)]/80 p-0.5">
+                  {(
+                    [
+                      { id: 'editor', label: 'Código' },
+                      { id: 'split', label: 'Dividido' },
+                      { id: 'preview', label: 'Prévia' },
+                    ] as { id: ChoModalView; label: string }[]
+                  ).map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setChoView(v.id)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                        choView === v.id
+                          ? 'bg-[var(--surface)] text-[var(--ink)] shadow-[var(--shadow-sm)]'
+                          : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -675,22 +1078,51 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 <button
                   type="button"
                   onClick={closeExportModal}
-                  className={`pill-btn px-3 py-1.5 text-xs ${
-                    discardArmed ? 'pill-btn-rec' : ''
-                  }`}
+                  className={`pill-btn px-3 py-1.5 text-xs ${discardArmed ? 'pill-btn-rec' : ''}`}
                 >
                   {discardArmed ? 'Sair sem salvar' : 'Fechar'}
                 </button>
               </div>
             </div>
-            <ChordProEditor
-              value={choDraft}
-              onChange={(val) => {
-                setChoDraft(val);
-                if (discardArmed) setDiscardArmed(false);
-              }}
-              className="flex-1 min-h-0"
-            />
+
+            <div
+              className={`flex-1 min-h-0 grid ${
+                choView === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
+              }`}
+            >
+              {choView !== 'preview' && (
+                <div className="min-h-0 flex flex-col border-b lg:border-b-0 lg:border-r border-[var(--line)]">
+                  <ChordProEditor
+                    value={choDraft}
+                    onChange={(val) => {
+                      setChoDraft(val);
+                      if (discardArmed) setDiscardArmed(false);
+                    }}
+                    className="flex-1 min-h-0"
+                  />
+                </div>
+              )}
+
+              {choView !== 'editor' && choPreviewSong && (
+                <div className="min-h-0 flex flex-col bg-[var(--bg)]/50">
+                  <div className="px-4 py-2 border-b border-[var(--line)] flex items-center justify-between flex-shrink-0">
+                    <span className="eyebrow">Prévia ao vivo</span>
+                    <span className="font-mono text-[10.5px] text-[var(--muted)]">
+                      {choPreviewSong.sections.length}{' '}
+                      {choPreviewSong.sections.length === 1 ? 'seção' : 'seções'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <ChordSheet
+                      song={choPreviewSong}
+                      onChordTap={() => {}}
+                      bottomPaddingClass="pb-8"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {!choIsValid && (
               <div className="px-5 py-2 text-xs text-[var(--rec)] border-t border-[var(--line)] flex-shrink-0">
                 Inclua a diretiva {'{title: ...}'} antes de salvar.

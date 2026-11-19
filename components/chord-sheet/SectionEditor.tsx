@@ -127,7 +127,10 @@ function insertPlainTextAtCaret(root: HTMLElement, text: string) {
 }
 
 export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLinesChange }: SectionEditorProps) {
-  const { transpose, capo, useFlats } = usePlayerStore();
+  const { useFlats } = usePlayerStore();
+  // Always edit in the song's original key (0 shift) so widgets match EditChordOverlay and saved ChordPro.
+  const transpose = 0;
+  const capo = 0;
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [caretMarker, setCaretMarker] = useState<{ top: number; left: number } | null>(null);

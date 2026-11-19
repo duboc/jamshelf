@@ -28,7 +28,7 @@ interface ShowModeViewProps {
   onNavigate: (songId: string) => void;
   onExit: () => void;
   onChordTap: (chord: string) => void;
-  onScrollTopChange: (v: number) => void;
+  onScrollStateChange: (state: { scrollTop: number; scrollRatio: number }) => void;
   handleGoLive: () => void;
   confirmGoLive: () => void;
   showNamePrompt: boolean;
@@ -50,7 +50,7 @@ export function ShowModeView({
   onNavigate,
   onExit,
   onChordTap,
-  onScrollTopChange,
+  onScrollStateChange,
   handleGoLive,
   confirmGoLive,
   showNamePrompt,
@@ -313,7 +313,7 @@ export function ShowModeView({
           song={song}
           displayMode={displayMode}
           onChordTap={onChordTap}
-          onScrollTopChange={onScrollTopChange}
+          onScrollStateChange={onScrollStateChange}
           syncCorrection={live.syncCorrection}
           bottomPaddingClass="pb-20"
         />

@@ -115,19 +115,18 @@ export function FocusDock({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() =>
-                  store.setAutoScrollSpeed(+(store.autoScrollSpeed / 1.15).toFixed(2))
-                }
+                onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
                 className="pill-btn w-7 h-7 font-mono text-xs"
                 aria-label="Diminuir velocidade"
               >
                 -
               </button>
+              <span className="font-mono text-[10.5px] text-[var(--muted)] tabular-nums px-0.5">
+                {store.autoScrollSpeed.toFixed(1)}×
+              </span>
               <button
                 type="button"
-                onClick={() =>
-                  store.setAutoScrollSpeed(+(store.autoScrollSpeed * 1.15).toFixed(2))
-                }
+                onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
                 className="pill-btn w-7 h-7 font-mono text-xs"
                 aria-label="Aumentar velocidade"
               >

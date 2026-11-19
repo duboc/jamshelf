@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ParsedSong, Setlist } from '@/lib/types/song';
 import type { DisplayMode } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
+import { formatDuration, parseDurationValue } from '@/lib/utils/chordpro-parser';
 
 interface SongHeaderProps {
   song: ParsedSong;
@@ -91,6 +92,9 @@ export function SongHeader({
 }: SongHeaderProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [metaOpen, setMetaOpen] = useState(false);
+  const [durationDraft, setDurationDraft] = useState(
+    song.duration ? formatDuration(song.duration) : ''
+  );
   const moreRef = useRef<HTMLDivElement>(null);
   const metaRef = useRef<HTMLDivElement>(null);
 
@@ -192,9 +196,12 @@ export function SongHeader({
               <div ref={metaRef} className="relative flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setMetaOpen((v) => !v)}
+                  onClick={() => {
+                    setDurationDraft(song.duration ? formatDuration(song.duration) : '');
+                    setMetaOpen((v) => !v);
+                  }}
                   className="inline-flex items-center gap-1.5 cursor-pointer group"
-                  title="Ajustar capo, andamento (BPM) e compasso"
+                  title="Ajustar capo, andamento (BPM), compasso e duração"
                 >
                   {displayedKey && (
                     <span className="studio-chip text-[var(--accent-ink)] font-semibold">
@@ -205,7 +212,8 @@ export function SongHeader({
                     <span className="studio-chip text-[var(--tune)]">Capo {song.capo}</span>
                   )}
                   <span className="studio-chip text-[var(--muted)] group-hover:text-[var(--ink)]">
-                    {song.tempo} BPM · {song.timeSignature} ✎
+                    {song.tempo} BPM · {song.timeSignature}
+                    {song.duration ? ` · ${formatDuration(song.duration)}` : ''} ✎
                   </span>
                 </button>
 
@@ -287,6 +295,31 @@ export function SongHeader({
                         <option value="5/4">5/4</option>
                         <option value="7/8">7/8</option>
                       </select>
+                    </div>
+
+                    {/* Duration (used by proportional auto-scroll) */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-semibold text-[var(--ink)]">Duração</div>
+                        <div className="text-[10.5px] text-[var(--muted)]">Base do auto-scroll</div>
+                      </div>
+                      <input
+                        type="text"
+                        value={durationDraft}
+                        onChange={(e) => setDurationDraft(e.target.value)}
+                        onBlur={() => {
+                          const parsed = parseDurationValue(durationDraft);
+                          if (parsed !== null) {
+                            onPatchMeta('duration', parsed);
+                            setDurationDraft(formatDuration(parsed));
+                          } else if (song.duration) {
+                            setDurationDraft(formatDuration(song.duration));
+                          }
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                        placeholder="3:30"
+                        className="studio-input w-20 text-center text-xs font-mono py-1"
+                      />
                     </div>
                   </div>
                 )}

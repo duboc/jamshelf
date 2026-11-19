@@ -7,6 +7,11 @@ import { DEFAULT_LIVE_SESSION, type LiveSession } from '@/lib/types/live-session
 const POLL_MS = 1500;
 const LEADER_STALE_MS = 20000;
 
+export interface LiveScrollState {
+  scrollTop: number;
+  scrollRatio: number;
+}
+
 function loadDeviceId(): string {
   let id = localStorage.getItem('jamshelf-device-id');
   if (!id) {
@@ -28,12 +33,6 @@ async function putSession(setlistId: string, updates: Partial<LiveSession>) {
   }
 }
 
-/**
- * Read-only session status (who's leading, if anyone) with no push/claim
- * logic. Safe to mount anywhere just to display status — e.g. the setlist
- * list page — without risking two live tabs fighting over leadership state.
- * Use `useLiveSession` instead on the actual song-playing page.
- */
 export function useLiveSessionStatus(setlistId: string | null) {
   const [session, setSession] = useState<LiveSession>(DEFAULT_LIVE_SESSION);
 
@@ -64,13 +63,14 @@ export function useLiveSessionStatus(setlistId: string | null) {
 
 /**
  * Keeps auto-scroll, current song, and metronome in sync across every device
- * viewing the same setlist. One device leads (ground truth); everyone else
- * polls and mirrors. See docs/ARCHITECTURE.md for the full design.
+ * viewing the same setlist. Broadcasts both raw scrollTop and normalized
+ * scrollRatio (0..1) so phones in lyrics-only mode stay aligned with tablets
+ * in full chord mode.
  */
 export function useLiveSession(
   setlistId: string | null,
   currentSongId: string,
-  scrollTopRef: { current: number }
+  scrollStateRef: { current: LiveScrollState }
 ) {
   const deviceIdRef = useRef('');
   const deviceNameRef = useRef('');
@@ -99,10 +99,13 @@ export function useLiveSession(
   }, [isLeading]);
   useEffect(() => {
     currentSongIdRef.current = currentSongId;
-    // Leader's song change should reach followers as fast as possible —
-    // don't wait for the next poll tick, push it the moment it happens.
     if (setlistId && isLeadingRef.current) {
-      putSession(setlistId, { currentSongId, updatedAt: Date.now() });
+      putSession(setlistId, {
+        currentSongId,
+        scrollTop: 0,
+        scrollRatio: 0,
+        updatedAt: Date.now(),
+      });
     }
   }, [currentSongId, setlistId]);
 
@@ -129,19 +132,17 @@ export function useLiveSession(
       const player = usePlayerStore.getState();
 
       if (leading) {
-        // I'm the leader: report my own ground-truth state.
         putSession(setlistId, {
           currentSongId: currentSongIdRef.current,
           isAutoScrolling: player.isAutoScrolling,
           autoScrollSpeed: player.autoScrollSpeed,
-          scrollTop: scrollTopRef.current,
+          scrollTop: scrollStateRef.current.scrollTop,
+          scrollRatio: scrollStateRef.current.scrollRatio,
           metronomeOn: player.metronomeOn,
           bpm: player.bpm,
           updatedAt: Date.now(),
         });
       } else if (fetched.leaderId) {
-        // Someone else is leading: mirror their state (only on real changes,
-        // to avoid needless re-renders of every player-store consumer).
         if (player.isAutoScrolling !== fetched.isAutoScrolling) {
           player.setAutoScrolling(fetched.isAutoScrolling);
         }
@@ -164,14 +165,13 @@ export function useLiveSession(
       cancelled = true;
       clearInterval(interval);
     };
-    // scrollTopRef is a stable ref object; currentSongId is tracked via ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setlistId]);
 
   const startLeading = useCallback(
     (name?: string) => {
       if (!setlistId) return;
-      const finalName = name?.trim() || deviceNameRef.current || 'Someone';
+      const finalName = name?.trim() || deviceNameRef.current || 'Alguém';
       if (name) setDeviceName(finalName);
 
       const player = usePlayerStore.getState();
@@ -181,7 +181,8 @@ export function useLiveSession(
         currentSongId: currentSongIdRef.current,
         isAutoScrolling: player.isAutoScrolling,
         autoScrollSpeed: player.autoScrollSpeed,
-        scrollTop: scrollTopRef.current,
+        scrollTop: scrollStateRef.current.scrollTop,
+        scrollRatio: scrollStateRef.current.scrollRatio,
         metronomeOn: player.metronomeOn,
         bpm: player.bpm,
         updatedAt: Date.now(),
@@ -190,7 +191,7 @@ export function useLiveSession(
       setSession((s) => ({ ...s, ...payload } as LiveSession));
       putSession(setlistId, payload);
     },
-    [setlistId, scrollTopRef, setDeviceName]
+    [setlistId, scrollStateRef, setDeviceName]
   );
 
   const stopLeading = useCallback(() => {
@@ -214,8 +215,15 @@ export function useLiveSession(
   const isLeaderStale = isFollowing && Date.now() - session.updatedAt > LEADER_STALE_MS;
 
   const syncCorrection = useMemo(
-    () => (isFollowing ? { scrollTop: session.scrollTop, nonce: syncNonce } : undefined),
-    [isFollowing, session.scrollTop, syncNonce]
+    () =>
+      isFollowing
+        ? {
+            scrollTop: session.scrollTop,
+            scrollRatio: session.scrollRatio ?? null,
+            nonce: syncNonce,
+          }
+        : undefined,
+    [isFollowing, session.scrollTop, session.scrollRatio, syncNonce]
   );
 
   return {

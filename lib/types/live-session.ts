@@ -1,6 +1,6 @@
 // A live session is keyed by setlist id — everyone opening that setlist's
 // songs shares one doc. The leader pushes ground-truth state; followers poll
-// and extrapolate/snap locally. See docs/ARCHITECTURE.md for the sync design.
+// and extrapolate/ease locally.
 export interface LiveSession {
   leaderId: string | null;
   leaderName: string | null;
@@ -8,6 +8,7 @@ export interface LiveSession {
   isAutoScrolling: boolean;
   autoScrollSpeed: number;
   scrollTop: number;
+  scrollRatio: number | null; // normalized 0..1 progress across different screens/font sizes
   metronomeOn: boolean;
   bpm: number;
   updatedAt: number; // leader's own clock only, never compared cross-device
@@ -20,6 +21,7 @@ export const DEFAULT_LIVE_SESSION: LiveSession = {
   isAutoScrolling: false,
   autoScrollSpeed: 1,
   scrollTop: 0,
+  scrollRatio: null,
   metronomeOn: false,
   bpm: 120,
   updatedAt: 0,
