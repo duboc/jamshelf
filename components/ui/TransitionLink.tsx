@@ -2,7 +2,7 @@
 
 import Link, { type LinkProps } from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from 'react';
+import { useRef, type AnchorHTMLAttributes, type FocusEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import {
   navigateWithTransition,
   type TransitionDirection,
@@ -19,12 +19,36 @@ export interface TransitionLinkProps
 export function TransitionLink({
   href,
   onClick,
+  onPointerEnter,
+  onFocus,
   vtSongId,
   vtDirection = 'fade',
   target,
   ...rest
 }: TransitionLinkProps) {
   const router = useRouter();
+  const prefetchedRef = useRef(false);
+
+  const warmRoute = (el: HTMLAnchorElement) => {
+    if (prefetchedRef.current) return;
+    const url = typeof href === 'string' ? href : href.pathname || '';
+    if (!url || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('#')) {
+      return;
+    }
+    prefetchedRef.current = true;
+    el.dataset.vtPrefetched = 'true';
+    router.prefetch(url);
+  };
+
+  const handlePointerEnter = (e: PointerEvent<HTMLAnchorElement>) => {
+    onPointerEnter?.(e);
+    warmRoute(e.currentTarget);
+  };
+
+  const handleFocus = (e: FocusEvent<HTMLAnchorElement>) => {
+    onFocus?.(e);
+    warmRoute(e.currentTarget);
+  };
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(e);
@@ -52,5 +76,14 @@ export function TransitionLink({
     });
   };
 
-  return <Link href={href} target={target} onClick={handleClick} {...rest} />;
+  return (
+    <Link
+      href={href}
+      target={target}
+      onPointerEnter={handlePointerEnter}
+      onFocus={handleFocus}
+      onClick={handleClick}
+      {...rest}
+    />
+  );
 }

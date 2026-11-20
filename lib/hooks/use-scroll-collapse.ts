@@ -32,8 +32,20 @@ export function useScrollCollapse({
   const lastTopRef = useRef(0);
   const accDeltaRef = useRef(0);
   const lockUntilRef = useRef(0);
+  const pendingTopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lockedExpandedRef = useRef(lockedExpanded);
   const pausedRef = useRef(paused);
+
+  const clearPendingTopTimer = useCallback(() => {
+    if (pendingTopTimerRef.current) {
+      clearTimeout(pendingTopTimerRef.current);
+      pendingTopTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearPendingTopTimer();
+  }, [clearPendingTopTimer]);
 
   useEffect(() => {
     lockedExpandedRef.current = lockedExpanded;
@@ -82,8 +94,30 @@ export function useScrollCollapse({
       const now = performance.now();
       if (now < lockUntilRef.current) {
         lastTopRef.current = scrollTop;
+        // If user flicks all the way back to top during the 380ms lockout, schedule an automatic restore
+        // right when lockout ends so the header can never get stuck compact at scrollTop = 0.
+        if (scrollTop <= TOP_RESTORE_PX && compactRef.current) {
+          if (!pendingTopTimerRef.current) {
+            const waitMs = Math.max(16, lockUntilRef.current - now + 12);
+            pendingTopTimerRef.current = setTimeout(() => {
+              pendingTopTimerRef.current = null;
+              if (
+                !lockedExpandedRef.current &&
+                !pausedRef.current &&
+                lastTopRef.current <= TOP_RESTORE_PX &&
+                compactRef.current
+              ) {
+                setCompact(false);
+              }
+            }, waitMs);
+          }
+        } else {
+          clearPendingTopTimer();
+        }
         return;
       }
+
+      clearPendingTopTimer();
 
       // Always restore full header near the top of the sheet
       if (scrollTop <= TOP_RESTORE_PX) {
@@ -116,7 +150,7 @@ export function useScrollCollapse({
         setCompact(false);
       }
     },
-    [setCompact]
+    [setCompact, clearPendingTopTimer]
   );
 
   return {

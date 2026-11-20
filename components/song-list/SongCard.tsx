@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Song } from '@/lib/types/song';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
@@ -15,13 +14,16 @@ interface SongCardProps {
   onRemove: (id: string) => void;
   variant?: 'card' | 'list';
   position?: 'only' | 'first' | 'middle' | 'last';
+  /** Optional viewport-capped stagger index (0..7) for crisp GM3 cascading entrance. */
+  staggerIdx?: number;
 }
 
-export function SongCard({
+export const SongCard = memo(function SongCard({
   song,
   onRemove,
   variant = 'card',
   position = 'only',
+  staggerIdx,
 }: SongCardProps) {
   const { patchMeta } = useSongStore();
   const { setlists, addSongToSetlist } = useSetlistStore();
@@ -29,6 +31,7 @@ export function SongCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [addedNotice, setAddedNotice] = useState('');
   const [favPop, setFavPop] = useState(false);
+  const [starPop, setStarPop] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,6 +55,10 @@ export function SongCard({
   const handleStar = (e: React.MouseEvent, star: number) => {
     e.preventDefault();
     const newRating = song.rating === star ? 0 : star;
+    if (newRating > 0) {
+      setStarPop(star);
+      setTimeout(() => setStarPop(null), 380);
+    }
     patchMeta(song.id, 'rating', newRating);
   };
 
@@ -60,7 +67,7 @@ export function SongCard({
     const nextFav = !song.favorite;
     if (nextFav) {
       setFavPop(true);
-      setTimeout(() => setFavPop(false), 280);
+      setTimeout(() => setFavPop(false), 380);
     }
     patchMeta(song.id, 'favorite', nextFav ? 'true' : 'false');
   };
@@ -102,7 +109,9 @@ export function SongCard({
                   key={star}
                   type="button"
                   onClick={(e) => handleStar(e, star)}
-                  className={`gm3-icon-btn gm3-star-btn w-9 h-9 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
+                  className={`gm3-icon-btn gm3-star-btn ${
+                    starPop === star ? 'gm3-pop-once' : ''
+                  } w-9 h-9 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
                     star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--line)] hover:text-[var(--warn-icon)]'
                   }`}
                   title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
@@ -119,13 +128,14 @@ export function SongCard({
 
           <div className="px-4 py-1.5 field-label">Adicionar ao setlist</div>
           {setlists.length === 0 ? (
-            <Link
+            <TransitionLink
               href="/?tab=setlists"
+              vtDirection="fade"
               onClick={() => setMenuOpen(false)}
               className="gm3-menu-item block mx-1.5 px-3 py-2 text-xs font-medium text-[var(--accent-ink)] hover:bg-[var(--surface-high)]"
             >
               Criar primeiro setlist →
-            </Link>
+            </TransitionLink>
           ) : (
             <div className="max-h-44 overflow-y-auto px-1.5 py-0.5">
               {setlists.map((sl) => {
@@ -169,9 +179,9 @@ export function SongCard({
     </div>
   );
 
-  const confirmDialog = (
+  const confirmDialog = confirmDelete ? (
     <ConfirmDialog
-      open={confirmDelete}
+      open
       title="Excluir esta música?"
       description={
         <>
@@ -186,12 +196,19 @@ export function SongCard({
       }}
       onCancel={() => setConfirmDelete(false)}
     />
-  );
+  ) : null;
+
+  const staggerStyle =
+    staggerIdx !== undefined ? ({ '--stagger-idx': staggerIdx } as CSSProperties) : undefined;
+  const staggerClass = staggerIdx !== undefined ? 'gm3-stagger-item' : '';
 
   // GM3 Expressive Tonal Card (single link per card, signature key badge, clean rating chip)
   if (variant === 'card') {
     return (
-      <article className="gm3-card gm3-card-interactive group relative bg-[var(--surface)] hover:bg-[var(--surface-high)] px-5 py-4 flex flex-col justify-between gap-3">
+      <article
+        style={staggerStyle}
+        className={`gm3-card gm3-card-interactive ${staggerClass} group relative bg-[var(--surface)] hover:bg-[var(--surface-high)] px-5 py-4 flex flex-col justify-between gap-3`}
+      >
         <div className="flex items-start justify-between gap-2">
           <TransitionLink
             href={`/song/${song.id}`}
@@ -301,7 +318,8 @@ export function SongCard({
 
   return (
     <div
-      className={`gm3-card gm3-list-row group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_76px_92px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] ${segmentedRadius}`}
+      style={staggerStyle}
+      className={`gm3-card gm3-list-row ${staggerClass} group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_76px_92px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] ${segmentedRadius}`}
     >
       <TransitionLink
         href={`/song/${song.id}`}
@@ -398,4 +416,4 @@ export function SongCard({
       {confirmDialog}
     </div>
   );
-}
+});

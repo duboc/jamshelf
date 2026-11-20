@@ -128,6 +128,8 @@ export function ShowModeView({
 
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const goLiveDialogRef = useRef<HTMLDivElement>(null);
+  const titleTriggerRef = useRef<HTMLButtonElement>(null);
+  const palcoTriggerRef = useRef<HTMLButtonElement>(null);
   const [showSetlist, setShowSetlist] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [pitchRinging, setPitchRinging] = useState(false);
@@ -177,8 +179,10 @@ export function ShowModeView({
 
       if (e.key === 'Escape') {
         if (showSetlist) setShowSetlist(false);
-        else if (mobileToolsOpen) setMobileToolsOpen(false);
-        else onExit();
+        else if (mobileToolsOpen) {
+          setMobileToolsOpen(false);
+          requestAnimationFrame(() => palcoTriggerRef.current?.focus({ preventScroll: true }));
+        } else onExit();
         return;
       }
 
@@ -324,12 +328,6 @@ export function ShowModeView({
             <span className="w-2 h-2 rounded-full bg-current" aria-hidden="true" />
             <span className="hidden 2xl:inline">Iniciar </span>Ao Vivo
           </button>
-        )}
-
-        {live.liveError && (
-          <span role="alert" className="studio-chip bg-[var(--rec-dim)] text-[var(--on-rec-container)]">
-            {live.liveError}
-          </span>
         )}
       </div>
 
@@ -483,16 +481,13 @@ export function ShowModeView({
       >
         <div
           className={`w-full rounded-[20px] bg-[var(--surface)] px-4 sm:px-5 ${
-            stageCompact ? 'py-1.5' : 'py-2.5 space-y-2.5'
+            stageCompact ? 'py-1.5' : 'py-2.5'
           }`}
         >
-          <div
-            className={`flex flex-col lg:flex-row lg:items-center justify-between ${
-              stageCompact ? 'gap-0 lg:gap-2.5' : 'gap-2.5'
-            }`}
-          >
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-0 lg:gap-2.5">
             <div className="flex items-center justify-between gap-2 min-w-0 lg:contents">
               <button
+                ref={titleTriggerRef}
                 type="button"
                 aria-expanded={showSetlist}
                 aria-haspopup="dialog"
@@ -500,15 +495,22 @@ export function ShowModeView({
                 title="Abrir setlist (atalho: S) - toque para pular ou arraste para reordenar"
                 className="gm3-card-interactive min-w-0 text-left -mx-2 px-3 py-1 hover:bg-[var(--surface-high)] cursor-pointer lg:order-1 lg:mr-auto"
               >
-                {!stageCompact && (
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] truncate">
-                    <MenuListIcon size={14} className="flex-shrink-0" />
-                    <span className="truncate">
-                      {activeSetlist.name} · {setlistSongIdx + 1} de {totalSongs}
-                      {wakeLockActive ? ' · Tela ativa' : ''}
-                    </span>
+                <div
+                  data-show-subtitle-collapsible="true"
+                  data-collapsed={stageCompact ? 'true' : undefined}
+                  aria-hidden={stageCompact || undefined}
+                  className="gm3-collapsible"
+                >
+                  <div className="gm3-collapsible-inner">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] truncate">
+                      <MenuListIcon size={14} className="flex-shrink-0" />
+                      <span className="truncate">
+                        {activeSetlist.name} · {setlistSongIdx + 1} de {totalSongs}
+                        {wakeLockActive ? ' · Tela ativa' : ''}
+                      </span>
+                    </div>
                   </div>
-                )}
+                </div>
                 <div className="flex items-baseline gap-2.5 min-w-0">
                   <h1
                     data-vt-song-title={song.id}
@@ -537,7 +539,7 @@ export function ShowModeView({
                     type="button"
                     aria-pressed={store.isAutoScrolling}
                     onClick={store.toggleAutoScroll}
-                    className={`lg:hidden pill-btn w-11 h-11 text-xs flex-shrink-0 ${
+                    className={`gm3-compact-enter lg:hidden pill-btn w-11 h-11 text-xs flex-shrink-0 ${
                       store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
                     }`}
                     title={store.isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
@@ -570,8 +572,11 @@ export function ShowModeView({
                 {stageCompact && (
                   <button
                     type="button"
-                    onClick={() => setStageCompact(false)}
-                    className="lg:hidden gm3-icon-btn w-11 h-11 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                    onClick={() => {
+                      setStageCompact(false);
+                      requestAnimationFrame(() => titleTriggerRef.current?.focus({ preventScroll: true }));
+                    }}
+                    className="gm3-compact-enter lg:hidden gm3-icon-btn w-11 h-11 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
                     title="Expandir controles de palco"
                     aria-label="Expandir controles de palco"
                   >
@@ -581,7 +586,7 @@ export function ShowModeView({
               </div>
             </div>
 
-            {/* Primary controls (44px touch targets; collapses smoothly on < lg scroll down) */}
+            {/* Primary controls (44px touch targets; collapses smoothly with inner spacing on < lg scroll down) */}
             <div
               className="gm3-collapsible-mobile lg:order-2"
               data-collapsed={stageCompact ? 'true' : undefined}
@@ -589,7 +594,7 @@ export function ShowModeView({
               inert={stageCompact || undefined}
             >
               <div className="gm3-collapsible-inner lg:contents">
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap lg:order-2">
+                <div className="pt-2.5 pb-1 px-1 -mx-1 lg:p-0 lg:m-0 flex items-center gap-1.5 sm:gap-2 flex-wrap lg:order-2">
               {canNavigate && (
                 <button
                   type="button"
@@ -640,6 +645,7 @@ export function ShowModeView({
 
               {/* Compact tray trigger on mobile/tablet (< lg) so zero controls clip */}
               <button
+                ref={palcoTriggerRef}
                 type="button"
                 aria-expanded={mobileToolsOpen}
                 onClick={() => setMobileToolsOpen((v) => !v)}
@@ -652,17 +658,36 @@ export function ShowModeView({
                 Palco
               </button>
 
-              {/* Full inline wrapped controls on desktop (>= lg) */}
-              <div className="hidden lg:contents">{secondaryStageControls}</div>
+              {/* Full inline wrapped controls on desktop (>= lg); strictly single Metronome instance */}
+              {isDesktopStage && <div className="hidden lg:contents">{secondaryStageControls}</div>}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Mobile / Tablet collapsible stage controls tray */}
-          {mobileToolsOpen && (
-            <div className="gm3-panel-enter lg:hidden pt-2.5 border-t border-[var(--line-subtle)]/40 flex flex-wrap items-center gap-2">
-              {secondaryStageControls}
+          {/* Always-mounted live-session error alert (never silenced inside collapsed Palco tray) */}
+          {live.liveError && (
+            <div role="alert" className="mt-2 flex">
+              <span className="studio-chip bg-[var(--rec-dim)] text-[var(--on-rec-container)]">
+                {live.liveError}
+              </span>
+            </div>
+          )}
+
+          {/* Mobile / Tablet bidirectional collapsible stage controls tray (0fr <-> 1fr) */}
+          {!isDesktopStage && (
+            <div
+              data-palco-tray="true"
+              data-collapsed={mobileToolsOpen ? undefined : 'true'}
+              aria-hidden={!mobileToolsOpen || undefined}
+              inert={!mobileToolsOpen || undefined}
+              className="gm3-collapsible lg:hidden"
+            >
+              <div className="gm3-collapsible-inner">
+                <div className="mt-2.5 pt-2.5 pb-1 px-1 -mx-1 border-t border-[var(--line-subtle)]/40 flex flex-wrap items-center gap-2">
+                  {secondaryStageControls}
+                </div>
+              </div>
             </div>
           )}
         </div>

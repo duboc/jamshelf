@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 import { SECTION_COLORS, isInstrumentalSection } from '@/lib/utils/music';
 import type { Section } from '@/lib/types/song';
 import { ArrowDownIcon, ArrowUpIcon } from '@/components/ui/Icons';
@@ -23,13 +23,14 @@ interface SectionBlockProps {
   onDuplicateSection?: (sectionIdx: number) => void;
   onMoveSection?: (sectionIdx: number, dir: 'up' | 'down') => void;
   onDeleteSection?: (sectionIdx: number) => void;
-  // Calibration props
+  // Calibration & spatial arrival cue props
   calibrationMarkSec?: number | null;
   isCalibrationTarget?: boolean;
+  isArrived?: boolean;
   onCalibrationTap?: (sectionIdx: number) => void;
 }
 
-export function SectionBlock({
+export const SectionBlock = memo(function SectionBlock({
   section,
   sectionIdx,
   totalSections = 1,
@@ -46,6 +47,7 @@ export function SectionBlock({
   onDeleteSection,
   calibrationMarkSec = null,
   isCalibrationTarget = false,
+  isArrived = false,
   onCalibrationTap,
 }: SectionBlockProps) {
   const colors = SECTION_COLORS[section.type] || SECTION_COLORS.verse;
@@ -73,8 +75,12 @@ export function SectionBlock({
       <div
         id={`section-${sectionIdx}`}
         data-section-idx={sectionIdx}
+        data-section-arrived={isArrived ? 'true' : undefined}
+        tabIndex={-1}
         onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-        className={`gm3-card ${!editMode ? 'gm3-sheet-block' : ''} break-inside-avoid scroll-mt-4 mb-3 flex items-center justify-between gap-2.5 rounded-[20px] px-5 py-3 ${
+        className={`gm3-card ${!editMode ? 'gm3-sheet-block' : ''} ${
+          isArrived ? 'gm3-section-arrived' : ''
+        } break-inside-avoid scroll-mt-4 relative mb-3 flex items-center justify-between gap-2.5 rounded-[20px] px-5 py-3 focus:outline-none ${
           onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''
         } ${isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''}`}
         style={blockStyle}
@@ -106,8 +112,12 @@ export function SectionBlock({
     <section
       id={`section-${sectionIdx}`}
       data-section-idx={sectionIdx}
+      data-section-arrived={isArrived ? 'true' : undefined}
+      tabIndex={-1}
       onClick={onCalibrationTap ? () => onCalibrationTap(sectionIdx) : undefined}
-      className={`gm3-card ${!editMode ? 'gm3-sheet-block' : ''} break-inside-avoid scroll-mt-4 relative rounded-[24px] ${
+      className={`gm3-card ${!editMode ? 'gm3-sheet-block' : ''} ${
+        isArrived ? 'gm3-section-arrived' : ''
+      } break-inside-avoid scroll-mt-4 relative rounded-[24px] focus:outline-none ${
         isSingerMode ? 'px-6 sm:px-8 py-6 mb-4' : 'p-5 sm:p-6 mb-4'
       } ${onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''} ${
         isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''
@@ -216,4 +226,4 @@ export function SectionBlock({
       )}
     </section>
   );
-}
+});

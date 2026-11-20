@@ -41,6 +41,7 @@ export function Metronome({
   // Tap tempo state
   const tapTimesRef = useRef<number[]>([]);
   const [tapActive, setTapActive] = useState(false);
+  const [tapPulse, setTapPulse] = useState(0);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const tapClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -148,6 +149,7 @@ export function Metronome({
     }
 
     setTapActive(true);
+    setTapPulse((n) => n + 1);
     if (tapClearRef.current) clearTimeout(tapClearRef.current);
     tapClearRef.current = setTimeout(() => setTapActive(false), 900);
 
@@ -267,7 +269,9 @@ export function Metronome({
         }`}
         title="Bata no ritmo 2 ou mais vezes para detectar o BPM"
       >
-        Tap
+        <span key={tapPulse} className={tapPulse > 0 ? 'gm3-beat-pop inline-block' : 'inline-block'}>
+          Tap
+        </span>
       </button>
 
       {metronomeOn && (

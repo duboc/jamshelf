@@ -45,6 +45,7 @@ interface SongToolbarProps {
   onRequestSaveTranspose: () => void;
   onTriggerCountIn: () => void;
   onToggleEditNotes: () => void;
+  onChordsRefToggle?: () => void;
 }
 
 export function SongToolbar({
@@ -74,6 +75,7 @@ export function SongToolbar({
   onRequestSaveTranspose,
   onTriggerCountIn,
   onToggleEditNotes,
+  onChordsRefToggle,
 }: SongToolbarProps) {
   const store = usePlayerStore();
   const {
@@ -433,7 +435,10 @@ export function SongToolbar({
           chordCount > 0 && (
             <button
               type="button"
-              onClick={() => setChordsRefOpen(!chordsRefOpen)}
+              onClick={() => {
+                onChordsRefToggle?.();
+                setChordsRefOpen(!chordsRefOpen);
+              }}
               aria-expanded={chordsRefOpen}
               className={`pill-btn px-3 h-9 text-xs ${
                 chordsRefOpen ? 'border-[var(--accent)] text-[var(--accent-ink)]' : ''

@@ -516,59 +516,100 @@
     transition-timing-function: var(--motion-press-ease);
   }
 
-  /* GM3 Expressive Connected Button Group (outer 20px, inner 6px seams, selected springs to full 20px pill) */
+  /* GM3 Expressive Connected Button Group (outer 20px, inner 6px seams, GPU sliding pill above fills & below text) */
   .gm3-connected-group {
+    position: relative;
+    isolation: isolate;
     display: inline-flex;
     align-items: center;
     gap: 2px;
   }
 
+  .gm3-connected-indicator {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--secondary-container);
+    opacity: 0;
+    will-change: clip-path;
+  }
+
+  .gm3-connected-group[data-sliding="true"] .gm3-connected-indicator {
+    opacity: 1;
+  }
+
+  .gm3-connected-indicator[data-ready="true"] {
+    transition: clip-path var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
+  }
+
   .gm3-connected-btn {
+    position: relative;
     border: 1px solid transparent;
     border-radius: 6px;
-    background: var(--surface);
+    background: transparent;
     color: var(--muted);
     transition:
       border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
       transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
-      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
       color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
-  .gm3-connected-group-subtle .gm3-connected-btn {
+  .gm3-connected-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: -2;
+    background: var(--surface);
+    pointer-events: none;
+    transition: background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-connected-group-subtle .gm3-connected-btn::before {
     background: var(--bg);
   }
 
-  .gm3-connected-btn:first-child {
+  .gm3-connected-btn:first-of-type {
     border-top-left-radius: 20px;
     border-bottom-left-radius: 20px;
   }
 
-  .gm3-connected-btn:last-child {
+  .gm3-connected-btn:last-of-type {
     border-top-right-radius: 20px;
     border-bottom-right-radius: 20px;
   }
 
   .gm3-connected-btn:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
     border-radius: 10px;
-    background: var(--surface-high);
     color: var(--ink);
   }
 
-  .gm3-connected-btn:first-child:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
+  .gm3-connected-btn:hover:not(:disabled):not(:active):not([aria-pressed="true"])::before {
+    background: var(--surface-high);
+  }
+
+  .gm3-connected-btn:first-of-type:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
     border-top-left-radius: 20px;
     border-bottom-left-radius: 20px;
   }
 
-  .gm3-connected-btn:last-child:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
+  .gm3-connected-btn:last-of-type:hover:not(:disabled):not(:active):not([aria-pressed="true"]) {
     border-top-right-radius: 20px;
     border-bottom-right-radius: 20px;
   }
 
   .gm3-connected-btn[aria-pressed="true"] {
     border-radius: 20px;
-    background: var(--secondary-container);
     color: var(--on-secondary-container);
+  }
+
+  .gm3-connected-btn[aria-pressed="true"]::before {
+    background: var(--secondary-container);
+  }
+
+  .gm3-connected-group[data-sliding="true"] .gm3-connected-btn[aria-pressed="true"]::before {
+    background: transparent;
   }
 
   .gm3-connected-btn:active:not(:disabled) {
@@ -584,8 +625,7 @@
   }
 
   .gm3-connected-btn:focus-visible {
-    position: relative;
-    z-index: 2;
+    z-index: 3;
   }
 
   /* GM3 Expressive Standard Button Group (GPU-only neighbor coupling, Standard damped nudge to avoid toolbar wobble) */
@@ -632,7 +672,7 @@
   }
 
   .gm3-icon-swap {
-    animation: gm3-icon-turn var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) both;
+    animation: gm3-icon-turn var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) backwards;
   }
 
   /* GM3 Navigation Rail & Bottom Bar: separate hover (::before) and active center-bloom (::after) indicators */
@@ -640,6 +680,18 @@
     transition-property: width;
     transition-duration: var(--motion-spring-standard-default-duration);
     transition-timing-function: var(--motion-spring-standard-default);
+  }
+
+  @media (min-width: 768px) {
+    .gm3-rail {
+      view-transition-name: app-chrome-rail;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .gm3-mobile-nav {
+      view-transition-name: app-chrome-bottom;
+    }
   }
 
   .gm3-nav-pill {
@@ -711,8 +763,8 @@
 
   .gm3-rail-label {
     animation:
-      gm3-label-spatial var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-label-spatial var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   /* GM3 Switch (pure GPU transform via --switch-x, Expressive Fast spring settle) */
@@ -1094,23 +1146,23 @@
     border: 1px solid transparent;
   }
 
-  /* GM3 Expressive overlays, anchored popovers, sheets & drawers (decoupled Spatial + Effects animations) */
+  /* GM3 Expressive overlays, anchored popovers, sheets & drawers (backwards fill releases transform on settle) */
   .gm3-backdrop-enter {
-    animation: gm3-fade-in var(--motion-effects-default-duration) var(--motion-effects-default) both;
+    animation: gm3-fade-in var(--motion-effects-default-duration) var(--motion-effects-default) backwards;
   }
 
   .gm3-dialog-enter {
     animation:
-      gm3-dialog-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-dialog-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-popover-enter,
   .gm3-popover-top-right,
   .gm3-popover-top-left {
     animation:
-      gm3-popover-down-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-popover-down-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-popover-top-right {
@@ -1124,50 +1176,71 @@
   .gm3-popover-bottom-left {
     transform-origin: bottom left;
     animation:
-      gm3-popover-up-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-popover-up-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-panel-enter {
     animation:
-      gm3-panel-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-panel-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-view-enter {
     animation:
-      gm3-view-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-view-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-sheet-enter {
     animation:
-      gm3-sheet-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-sheet-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-drawer-left {
     animation:
-      gm3-slide-left-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-slide-left-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-drawer-right {
     animation:
-      gm3-slide-right-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-slide-right-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
   }
 
   .gm3-page-enter {
     animation:
-      gm3-page-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
-      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) both;
+      gm3-page-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
+  }
+
+  /* Avoid double-fading or post-VT blink when a native View Transition drives the route enter */
+  :root[data-vt-dir] .gm3-page-enter,
+  :root[data-vt-dir] .gm3-sheet-block,
+  :root[data-vt-dir] .gm3-stagger-item,
+  [data-vt-settled="true"].gm3-page-enter,
+  [data-vt-settled="true"].gm3-sheet-block,
+  [data-vt-settled="true"].gm3-stagger-item {
+    animation: none;
+  }
+
+  .gm3-compact-enter {
+    animation:
+      gm3-compact-spatial var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) backwards,
+      gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
+  }
+
+  .gm3-autoscroll-bar {
+    transform-origin: left center;
+    will-change: transform;
   }
 
   .gm3-beat-pop {
     animation:
-      gm3-beat-spatial var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) both,
-      gm3-fade-in var(--motion-press-duration) var(--motion-effects-fast) both;
+      gm3-beat-spatial var(--motion-spring-standard-fast-duration) var(--motion-spring-standard-fast) backwards,
+      gm3-fade-in var(--motion-press-duration) var(--motion-effects-fast) backwards;
   }
 
   /* GM3 Scroll-Collapsible Top App Bar rows (smooth 1fr <-> 0fr grid collapse, zero height reflow hacks) */
@@ -1268,9 +1341,29 @@
   /* Cascading entrance for initial chord-sheet blocks (capped at first 4 via --block-idx) */
   .gm3-sheet-block {
     animation:
-      gm3-block-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) both,
-      gm3-fade-in var(--motion-effects-default-duration) var(--motion-effects-default) both;
+      gm3-block-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-default-duration) var(--motion-effects-default) backwards;
     animation-delay: calc(var(--block-idx, 0) * 32ms);
+  }
+
+  /* Viewport-capped cascading entrance for library cards/rows (first 8 items only, max 154ms total) */
+  .gm3-stagger-item {
+    animation:
+      gm3-block-spatial var(--motion-spring-standard-default-duration) var(--motion-spring-standard-default) backwards,
+      gm3-fade-in var(--motion-effects-default-duration) var(--motion-effects-default) backwards;
+    animation-delay: calc(var(--stagger-idx, 0) * 22ms);
+  }
+
+  /* GPU-composited spatial arrival halo on ::after (never conflicts with .gm3-sheet-block animation) */
+  .gm3-section-arrived::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: 0 0 0 2.5px var(--accent);
+    opacity: 0;
+    animation: gm3-section-arrive-opacity 700ms var(--motion-effects-default) backwards;
   }
 
   .no-scrollbar {
@@ -1306,8 +1399,28 @@
 }
 
 @media (forced-colors: active) {
-  .gm3-connected-btn[aria-pressed="true"] {
-    border-color: Highlight;
+  .gm3-connected-indicator {
+    display: none;
+  }
+  .pill-btn,
+  .gm3-connected-btn,
+  .gm3-chord-tile {
+    border-color: ButtonBorder;
+  }
+  .pill-btn[aria-pressed="true"],
+  .pill-btn[aria-expanded="true"],
+  .pill-btn[data-active="true"],
+  .gm3-connected-btn[aria-pressed="true"],
+  .gm3-chord-tile[aria-pressed="true"] {
+    border: 2px solid Highlight;
+  }
+  .gm3-card,
+  aside[aria-labelledby="chord-panel-title"] {
+    border: 1px solid CanvasText;
+  }
+  .gm3-section-arrived::after {
+    outline: 2px solid Highlight;
+    opacity: 1;
   }
 }
 
@@ -1407,6 +1520,17 @@
   to { transform: translateY(0); }
 }
 
+@keyframes gm3-compact-spatial {
+  from { transform: scale(0.86) translateY(-2px); }
+  to { transform: scale(1) translateY(0); }
+}
+
+@keyframes gm3-section-arrive-opacity {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 @keyframes gm3-vt-fade-out {
   from { opacity: 1; }
   to { opacity: 0; }
@@ -1447,11 +1571,27 @@
   to { transform: translateX(0); }
 }
 
-/* Native GM3 Shared-Element & Shared-Axis View Transitions */
-::view-transition-group(song-title-hero),
-::view-transition-group(song-key-hero) {
+/* Native GM3 Shared-Element, Anchored Chrome & Shared-Axis View Transitions */
+::view-transition-group(app-chrome-rail),
+::view-transition-group(app-chrome-bottom) {
   animation-duration: var(--motion-spring-standard-default-duration);
   animation-timing-function: var(--motion-spring-standard-default);
+  z-index: 15;
+}
+
+::view-transition-old(app-chrome-rail),
+::view-transition-new(app-chrome-rail),
+::view-transition-old(app-chrome-bottom),
+::view-transition-new(app-chrome-bottom) {
+  height: 100%;
+  animation-duration: var(--motion-effects-fast-duration);
+  animation-timing-function: var(--motion-effects-fast);
+}
+
+::view-transition-group(song-title-hero),
+::view-transition-group(song-key-hero) {
+  animation-duration: 340ms;
+  animation-timing-function: var(--motion-spring-expressive-default);
   z-index: 20;
 }
 
@@ -1594,10 +1734,17 @@
   .gm3-panel-enter,
   .gm3-view-enter,
   .gm3-page-enter,
+  .gm3-compact-enter,
   .gm3-sheet-block,
+  .gm3-stagger-item,
   .gm3-rail-label {
-    animation: gm3-reduced-fade 120ms ease-out both !important;
+    animation: gm3-reduced-fade 120ms ease-out backwards !important;
     animation-delay: 0ms !important;
+  }
+
+  .gm3-section-arrived::after {
+    animation: none !important;
+    opacity: 1 !important;
   }
 
   ::view-transition-group(*),

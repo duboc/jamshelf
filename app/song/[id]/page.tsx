@@ -32,6 +32,7 @@ import { ChordPanel } from '@/components/chord-diagrams/ChordPanel';
 import { EditChordOverlay } from '@/components/chord-sheet/EditChordOverlay';
 import { VisualPulse } from '@/components/metronome/VisualPulse';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { ChordProEditor } from '@/components/ui/ChordProEditor';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ShowModeView } from '@/components/show-mode/ShowModeView';
@@ -99,6 +100,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [showTransposeConfirm, setShowTransposeConfirm] = useState(false);
   const [showClearCalConfirm, setShowClearCalConfirm] = useState(false);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
+  const [arrivedSectionIdx, setArrivedSectionIdx] = useState<number | null>(null);
+  const arrivedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const arrivedFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [chordsRefEverOpened, setChordsRefEverOpened] = useState(chordsRefOpen);
   const [editingNotes, setEditingNotes] = useState(false);
   const [headerOverlayState, setHeaderOverlayState] = useState({
     popoverOpen: false,
@@ -177,6 +182,11 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     }
     return storedSong;
   }, [store.editMode, editDraftText, id, storedSong]);
+
+  const allChords = useMemo(
+    () => (song ? extractChords(song.sections) : []),
+    [song]
+  );
 
   const choPreviewSong = useMemo(() => {
     if (!showExport) return null;
@@ -285,17 +295,49 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const handleJumpToSection = useCallback((sectionIdx: number) => {
     setActiveSectionIdx(sectionIdx);
+    if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
+    if (arrivedFallbackRef.current) clearTimeout(arrivedFallbackRef.current);
+
+    const triggerArrival = () => {
+      if (arrivedFallbackRef.current) {
+        clearTimeout(arrivedFallbackRef.current);
+        arrivedFallbackRef.current = null;
+      }
+      setArrivedSectionIdx(sectionIdx);
+      if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
+      arrivedTimerRef.current = setTimeout(() => setArrivedSectionIdx(null), 740);
+    };
+
     const container = sheetScrollRef.current;
-    if (!container) return;
+    if (!container) {
+      triggerArrival();
+      return;
+    }
     const target = container.querySelector<HTMLElement>(`#section-${sectionIdx}`);
     if (target) {
       const reducedMotion =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      container.scrollTo({
-        top: Math.max(0, target.offsetTop - 16),
-        behavior: reducedMotion ? 'auto' : 'smooth',
-      });
+      const targetTop = Math.max(0, target.offsetTop - 16);
+      const alreadyNear = Math.abs(container.scrollTop - targetTop) < 8;
+
+      if (reducedMotion || alreadyNear) {
+        container.scrollTo({ top: targetTop, behavior: 'auto' });
+        triggerArrival();
+      } else {
+        const onScrollEnd = () => {
+          container.removeEventListener('scrollend', onScrollEnd);
+          triggerArrival();
+        };
+        container.addEventListener('scrollend', onScrollEnd, { once: true });
+        arrivedFallbackRef.current = setTimeout(() => {
+          container.removeEventListener('scrollend', onScrollEnd);
+          triggerArrival();
+        }, 260);
+        container.scrollTo({ top: targetTop, behavior: 'smooth' });
+      }
+      // Move keyboard focus safely to the target section so collapsing SectionNav never drops focus to body
+      target.focus({ preventScroll: true });
     }
   }, []);
 
@@ -567,7 +609,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     );
   }
 
-  const allChords = extractChords(song.sections);
   const beatsPerBar = parseInt(song.timeSignature, 10) || 4;
   // {key:} is already the concert sounding key; transpose shifts it without double-adding {capo:}.
   const displayedKey = store.transpose
@@ -1209,6 +1250,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
                 onTriggerCountIn={handleTriggerCountIn}
                 onToggleEditNotes={() => setEditingNotes((v) => !v)}
+                onChordsRefToggle={() => setChordsRefEverOpened(true)}
               />
             }
           />
@@ -1252,11 +1294,23 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             />
           )}
 
-          {/* Collapsible Chords Reference Strip */}
-          {!store.editMode && !calibrating && displayMode !== 'lyrics-only' && chordsRefOpen && (
-            <ChordsReference
-              chords={allChords.map((c) => transposeChord(c, chordDisplayShift, store.useFlats))}
-            />
+          {/* Bidirectional Collapsible Chords Reference Strip (lazy-mounted on first open for zero initial SVG cost) */}
+          {!store.editMode && !calibrating && displayMode !== 'lyrics-only' && allChords.length > 0 && (
+            <div
+              data-chords-ref-collapsible="true"
+              data-collapsed={chordsRefOpen ? undefined : 'true'}
+              aria-hidden={!chordsRefOpen || undefined}
+              inert={!chordsRefOpen || undefined}
+              className="gm3-collapsible flex-shrink-0"
+            >
+              <div className="gm3-collapsible-inner">
+                {(chordsRefOpen || chordsRefEverOpened) && (
+                  <ChordsReference
+                    chords={allChords.map((c) => transposeChord(c, chordDisplayShift, store.useFlats))}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {/* Edit mode guidance banner */}
@@ -1324,6 +1378,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           syncCorrection={live.syncCorrection}
           scrollContainerRef={sheetScrollRef}
           onActiveSectionChange={setActiveSectionIdx}
+          arrivedSectionIdx={arrivedSectionIdx}
           bottomPaddingClass={focusMode ? 'pb-28' : 'pb-20'}
         />
 
@@ -1412,10 +1467,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* View mode M3 Expressive Connected Button Group */}
-                <div
-                  role="group"
-                  aria-label="Modo do editor ChordPro"
-                  className="gm3-connected-group gm3-connected-group-subtle"
+                <ConnectedGroup
+                  value={choView}
+                  ariaLabel="Modo do editor ChordPro"
+                  subtle
                 >
                   {(
                     [
@@ -1434,7 +1489,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                       {v.label}
                     </button>
                   ))}
-                </div>
+                </ConnectedGroup>
 
                 <button
                   type="button"

@@ -7,6 +7,7 @@ import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
 import { formatDuration, parseDurationValue } from '@/lib/utils/chordpro-parser';
 import { playReferencePitch } from '@/lib/utils/pitch-audio';
+import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -133,6 +134,7 @@ export function SongHeader({
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [pitchRinging, setPitchRinging] = useState(false);
   const [favPop, setFavPop] = useState(false);
+  const [starPop, setStarPop] = useState<number | null>(null);
   const [bpmDraft, setBpmDraft] = useState(String(song.tempo));
   const [bpmHint, setBpmHint] = useState('');
   const [durationDraft, setDurationDraft] = useState(
@@ -143,6 +145,8 @@ export function SongHeader({
   const metaRef = useRef<HTMLDivElement>(null);
   const moreTriggerRef = useRef<HTMLButtonElement>(null);
   const metaTriggerRef = useRef<HTMLButtonElement>(null);
+  const compactAutoScrollRef = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const goLiveDialogRef = useRef<HTMLDivElement>(null);
 
@@ -222,8 +226,18 @@ export function SongHeader({
     onOverlayStateChange?.({ popoverOpen: moreOpen || metaOpen, editingIdentity });
   }, [moreOpen, metaOpen, editingIdentity, onOverlayStateChange]);
 
+  // Preserve keyboard focus if scroll-collapse applies inert to the currently focused header control
+  useEffect(() => {
+    if (!compact) return;
+    const active = document.activeElement as HTMLElement | null;
+    if (active && headerRef.current?.contains(active) && active.closest('[inert]')) {
+      (compactAutoScrollRef.current ?? moreTriggerRef.current)?.focus({ preventScroll: true });
+    }
+  }, [compact]);
+
   return (
     <section
+      ref={headerRef}
       data-compact={compact ? 'true' : undefined}
       className={`flex-shrink-0 px-4 sm:px-6 lg:px-8 border-b transition-colors duration-200 ${
         compact
@@ -241,20 +255,17 @@ export function SongHeader({
           Row 1: Setlist stepper + Title/Subtitle (col 1) | Action pills (col 2) | Favorite & Mais (col 3)
           Row 2: Dedicated full-width GM3 toolbar capsule spanning cols 1-3
         - Compact (scrolled down):
-          Row 2 & Row 3 smoothly collapse to 0fr, leaving a single ~52px GM3 bar with Back, Title, Key, Auto-scroll, Mais, and Expand.
+          Row 2 & Row 3 smoothly collapse to 0fr (with inner spacing folding smoothly too),
+          leaving a single ~52px GM3 bar with Back, Title, Key, Auto-scroll, Mais, and Expand.
       */}
-      <div
-        className={`w-full grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 lg:gap-x-3 items-center ${
-          compact ? 'gap-y-0' : 'gap-y-1.5 lg:gap-y-2.5'
-        }`}
-      >
+      <div className="w-full grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 lg:gap-x-3 gap-y-0 items-center">
         {/* Col 1, Row 1: Inline Back (compact) + Setlist stepper (sm+) + Title + Key (compact) */}
         <div className={`col-start-1 row-start-1 min-w-0 flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
           {compact && onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+              className="gm3-compact-enter group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
               title="Voltar"
               aria-label="Voltar"
             >
@@ -362,7 +373,7 @@ export function SongHeader({
                   {compact && displayedKey && (
                     <span
                       data-vt-song-key={song.id}
-                      className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold flex-shrink-0 px-2 py-0.5 text-[11px]"
+                      className="gm3-compact-enter studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold flex-shrink-0 px-2 py-0.5 text-[11px]"
                     >
                       <span className="hidden sm:inline">Tom </span>
                       {displayedKey}
@@ -389,7 +400,7 @@ export function SongHeader({
                 <span
                   role="status"
                   aria-live="polite"
-                  className="font-mono text-xs text-[var(--tune)] font-semibold flex-shrink-0 hidden sm:inline"
+                  className="font-mono text-xs text-[var(--tune)] font-semibold flex-shrink-0 sr-only sm:not-sr-only"
                 >
                   {statusMsg}
                 </span>
@@ -402,10 +413,11 @@ export function SongHeader({
         <div className="col-start-2 row-start-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 flex items-center gap-1.5 flex-shrink-0 justify-end">
           {compact && !isFollowing && !editMode && onToggleAutoScroll && (
             <button
+              ref={compactAutoScrollRef}
               type="button"
               aria-pressed={isAutoScrolling}
               onClick={onToggleAutoScroll}
-              className={`pill-btn h-9 w-9 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
+              className={`gm3-compact-enter pill-btn h-9 w-9 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
                 isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
               }`}
               title={isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
@@ -422,7 +434,7 @@ export function SongHeader({
             onClick={() => {
               if (!song.favorite) {
                 setFavPop(true);
-                setTimeout(() => setFavPop(false), 280);
+                setTimeout(() => setFavPop(false), 380);
               }
               onPatchMeta('favorite', song.favorite ? 'false' : 'true');
             }}
@@ -468,8 +480,17 @@ export function SongHeader({
                         type="button"
                         aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
                         aria-pressed={song.rating === star}
-                        onClick={() => onPatchMeta('rating', song.rating === star ? 0 : star)}
-                        className={`gm3-icon-btn gm3-star-btn w-9 h-9 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
+                        onClick={() => {
+                          const next = song.rating === star ? 0 : star;
+                          if (next > 0) {
+                            setStarPop(star);
+                            setTimeout(() => setStarPop(null), 380);
+                          }
+                          onPatchMeta('rating', next);
+                        }}
+                        className={`gm3-icon-btn gm3-star-btn ${
+                          starPop === star ? 'gm3-pop-once' : ''
+                        } w-9 h-9 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
                           star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--muted)]'
                         }`}
                       >
@@ -598,8 +619,11 @@ export function SongHeader({
           {compact && onExpandHeader && (
             <button
               type="button"
-              onClick={onExpandHeader}
-              className="gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+              onClick={() => {
+                onExpandHeader();
+                requestAnimationFrame(() => metaTriggerRef.current?.focus({ preventScroll: true }));
+              }}
+              className="gm3-compact-enter gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
               title="Mostrar todos os controles da música"
               aria-label="Expandir cabeçalho e controles"
             >
@@ -616,7 +640,7 @@ export function SongHeader({
           inert={compact || undefined}
         >
           <div className={metaOpen ? 'gm3-collapsible-inner-open' : 'gm3-collapsible-inner'}>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 sm:pl-0">
+            <div className="pt-1 lg:pt-1.5 pb-1 px-1 -mx-1 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 sm:pl-1">
               {isEditingTitle ? (
                 <input
                   type="text"
@@ -695,16 +719,6 @@ export function SongHeader({
               </button>
             )}
 
-            {statusMsg && (
-              <span
-                role="status"
-                aria-live="polite"
-                className="font-mono text-xs text-[var(--tune)] font-semibold sm:hidden"
-              >
-                {statusMsg}
-              </span>
-            )}
-
             {metaOpen && (
               <div
                 role="dialog"
@@ -743,10 +757,10 @@ export function SongHeader({
                 {song.capo > 0 && (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-[var(--muted)]">Mostrar acordes como</span>
-                    <div
-                      role="group"
-                      aria-label="Formato de exibição dos acordes com capo"
-                      className="gm3-connected-group gm3-connected-group-subtle"
+                    <ConnectedGroup
+                      value={capoDisplay}
+                      ariaLabel="Formato de exibição dos acordes com capo"
+                      subtle
                     >
                       <button
                         type="button"
@@ -764,7 +778,7 @@ export function SongHeader({
                       >
                         Formas
                       </button>
-                    </div>
+                    </ConnectedGroup>
                   </div>
                 )}
 
@@ -896,19 +910,20 @@ export function SongHeader({
           inert={compact || undefined}
         >
           <div className="gm3-collapsible-inner lg:contents">
-            <div className="relative lg:contents">
-              <div className="rounded-2xl bg-[var(--surface-high)] px-2 py-1.5 pr-9 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar lg:contents">
-                {/* Header Action Pills (hidden on mobile during editMode so edit bar stays spotless) */}
-                <div
-                  className="gm3-collapsible-desktop-x lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
-                  data-collapsed={compact ? 'true' : undefined}
-                >
-                  <div className="contents lg:block lg:min-w-0 lg:overflow-hidden">
-                    <div
-                      className={`${
-                        editMode ? 'hidden lg:flex' : 'flex'
-                      } items-center gap-1.5 flex-nowrap flex-shrink-0 lg:justify-end lg:py-0.5`}
-                    >
+            <div className="pt-1.5 pb-1 px-1 -mx-1 lg:p-0 lg:m-0 lg:contents">
+              <div className="relative lg:contents">
+                <div className="rounded-2xl bg-[var(--surface-high)] px-2 py-1.5 pr-9 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar lg:contents">
+                  {/* Header Action Pills (hidden on mobile during editMode so edit bar stays spotless) */}
+                  <div
+                    className="gm3-collapsible-desktop-x lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
+                    data-collapsed={compact ? 'true' : undefined}
+                  >
+                    <div className="contents lg:block lg:min-w-0 lg:overflow-hidden">
+                      <div
+                        className={`${
+                          editMode ? 'hidden lg:flex' : 'flex'
+                        } items-center gap-1.5 flex-nowrap flex-shrink-0 lg:justify-end lg:p-1`}
+                      >
               {/* Show Mode CTA first on mobile/tablet when in setlist */}
               {activeSetlist && !editMode && (
                 <button
@@ -923,10 +938,10 @@ export function SongHeader({
               )}
 
               {/* Reading mode M3 Expressive Connected Button Group */}
-              <div
-                role="group"
-                aria-label="Modo de leitura"
-                className="gm3-connected-group flex-shrink-0"
+              <ConnectedGroup
+                value={displayMode}
+                ariaLabel="Modo de leitura"
+                className="flex-shrink-0"
               >
                 {(
                   [
@@ -956,7 +971,7 @@ export function SongHeader({
                     </button>
                   );
                 })}
-              </div>
+              </ConnectedGroup>
 
               {/* Pitch guide */}
               {pitchTarget && !editMode && (
@@ -1086,7 +1101,9 @@ export function SongHeader({
                   data-collapsed={compact ? 'true' : undefined}
                 >
                   <div className="contents lg:block gm3-collapsible-inner">
-                    {toolbarSlot}
+                    <div className="contents lg:block lg:pt-2 lg:pb-1 lg:px-1 lg:-mx-1">
+                      {toolbarSlot}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1095,6 +1112,7 @@ export function SongHeader({
                 aria-hidden="true"
                 className="lg:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-9 rounded-r-2xl bg-gradient-to-l from-[var(--surface-high)] to-transparent"
               />
+            </div>
             </div>
           </div>
         </div>

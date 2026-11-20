@@ -19,6 +19,17 @@ let pendingResolve: (() => void) | null = null;
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSongId: string | null = null;
 let taggedElements: HTMLElement[] = [];
+let transitionSeq = 0;
+
+function markSettledEntrances() {
+  if (typeof document === 'undefined') return;
+  const nodes = document.querySelectorAll<HTMLElement>(
+    '.gm3-page-enter, .gm3-sheet-block, .gm3-stagger-item'
+  );
+  nodes.forEach((el) => {
+    el.dataset.vtSettled = 'true';
+  });
+}
 
 function clearTaggedElements() {
   for (const el of taggedElements) {
@@ -72,6 +83,7 @@ export function commitPendingViewTransition() {
     clearTimeout(pendingTimer);
     pendingTimer = null;
   }
+  markSettledEntrances();
   tagHeroElementsForSong(songId);
   resolve();
 }
@@ -126,6 +138,7 @@ export function navigateWithTransition(
   }
 
   const direction: TransitionDirection = opts?.direction ?? 'fade';
+  const mySeq = ++transitionSeq;
   pendingSongId = opts?.songId ?? null;
   document.documentElement.dataset.vtDir = direction;
   tagHeroElementsForSong(pendingSongId);
@@ -136,10 +149,11 @@ export function navigateWithTransition(
         pendingResolve = resolve;
         go();
         pendingTimer = setTimeout(() => {
-          if (pendingResolve) {
+          if (pendingResolve && transitionSeq === mySeq) {
             const done = pendingResolve;
             pendingResolve = null;
             pendingTimer = null;
+            markSettledEntrances();
             tagHeroElementsForSong(pendingSongId);
             done();
           }
@@ -152,14 +166,17 @@ export function navigateWithTransition(
         // Ignore aborted transitions when user clicks rapidly
       })
       .finally(() => {
+        if (transitionSeq !== mySeq) return;
         clearTaggedElements();
         pendingSongId = null;
         delete document.documentElement.dataset.vtDir;
       });
   } catch {
-    clearTaggedElements();
-    pendingSongId = null;
-    delete document.documentElement.dataset.vtDir;
+    if (transitionSeq === mySeq) {
+      clearTaggedElements();
+      pendingSongId = null;
+      delete document.documentElement.dataset.vtDir;
+    }
     go();
   }
 }

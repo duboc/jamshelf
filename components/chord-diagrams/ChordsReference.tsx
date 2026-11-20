@@ -14,9 +14,9 @@ export function ChordsReference({ chords }: ChordsReferenceProps) {
   if (!chords || chords.length === 0) return null;
 
   return (
-    <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
+    <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2.5">
       <div className="w-full rounded-[20px] bg-[var(--surface)] px-3.5 py-3">
-        <div className="flex gap-2.5 overflow-x-auto pb-0.5 no-scrollbar">
+        <div className="flex gap-2.5 overflow-x-auto p-1.5 -m-1.5 no-scrollbar">
           {chords.map((chord) => {
             const positions = getGuitarPositions(chord);
             const currentVoicing = positions[0];

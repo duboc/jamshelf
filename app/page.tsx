@@ -6,7 +6,9 @@ import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
 import { SongCard } from '@/components/song-list/SongCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { TransitionLink } from '@/components/ui/TransitionLink';
+import { navigateWithTransition } from '@/lib/utils/view-transition';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { normalizeSearch } from '@/lib/utils/music';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
@@ -18,7 +20,6 @@ import {
   PlayIcon,
   PlusIcon,
 } from '@/components/ui/Icons';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type Tab = 'all' | 'favorites' | 'setlists';
@@ -224,7 +225,7 @@ function HomeContent() {
     const sl = createSetlist(name);
     setNewSetlistName('');
     setShowNewSetlist(false);
-    router.push(`/setlists/${sl.id}`);
+    navigateWithTransition(router, `/setlists/${sl.id}`, { direction: 'forward' });
   };
 
   const pageHeading =
@@ -407,11 +408,7 @@ function HomeContent() {
               </div>
 
               {/* Cards | Lista M3 Expressive Connected Button Group */}
-              <div
-                role="group"
-                aria-label="Modo de visualização"
-                className="gm3-connected-group"
-              >
+              <ConnectedGroup value={viewMode} ariaLabel="Modo de visualização">
                 <button
                   type="button"
                   onClick={() => setViewMode('cards')}
@@ -428,7 +425,7 @@ function HomeContent() {
                 >
                   Lista
                 </button>
-              </div>
+              </ConnectedGroup>
             </div>
           </div>
 
@@ -472,17 +469,27 @@ function HomeContent() {
                 </button>
               ) : (
                 tab === 'all' && (
-                  <Link href="/add-song" className="pill-btn pill-btn-primary h-10 px-5 text-sm mt-1">
+                  <TransitionLink
+                    href="/add-song"
+                    vtDirection="forward"
+                    className="pill-btn pill-btn-primary h-10 px-5 text-sm mt-1"
+                  >
                     <PlusIcon size={16} />
                     Nova música
-                  </Link>
+                  </TransitionLink>
                 )
               )}
             </div>
           ) : viewMode === 'cards' ? (
             <div key="cards" className="gm3-view-enter grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
-              {filteredSongs.map((song) => (
-                <SongCard key={song.id} song={song} onRemove={removeEntry} variant="card" />
+              {filteredSongs.map((song, idx) => (
+                <SongCard
+                  key={song.id}
+                  song={song}
+                  onRemove={removeEntry}
+                  variant="card"
+                  staggerIdx={idx < 8 ? idx : undefined}
+                />
               ))}
             </div>
           ) : (
@@ -503,6 +510,7 @@ function HomeContent() {
                     onRemove={removeEntry}
                     variant="list"
                     position={position}
+                    staggerIdx={idx < 8 ? idx : undefined}
                   />
                 );
               })}

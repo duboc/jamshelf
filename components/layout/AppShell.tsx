@@ -13,6 +13,7 @@ import {
 } from '@/lib/stores/display-store';
 import { commitPendingViewTransition } from '@/lib/utils/view-transition';
 import { TransitionLink } from '@/components/ui/TransitionLink';
+import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { QuickSearchModal } from './QuickSearchModal';
 import { ShortcutsModal } from '@/components/ui/ShortcutsModal';
 import { HelpCircleIcon, JamshelfMark, PlusIcon } from '@/components/ui/Icons';
@@ -212,11 +213,7 @@ function DeviceSettingsPopover({
           {/* Tema */}
           <div className="flex flex-col gap-2">
             <span className="field-label">Tema</span>
-            <div
-              role="group"
-              aria-label="Tema de cores"
-              className="gm3-connected-group gm3-connected-group-subtle w-full"
-            >
+            <ConnectedGroup value={theme} ariaLabel="Tema de cores" subtle className="w-full">
               {(
                 [
                   { id: 'system', label: 'Sistema' },
@@ -234,17 +231,13 @@ function DeviceSettingsPopover({
                   {opt.label}
                 </button>
               ))}
-            </div>
+            </ConnectedGroup>
           </div>
 
           {/* Modo de leitura padrão */}
           <div className="flex flex-col gap-2">
             <span className="field-label">Leitura na música</span>
-            <div
-              role="group"
-              aria-label="Modo de leitura padrão"
-              className="gm3-connected-group gm3-connected-group-subtle w-full"
-            >
+            <ConnectedGroup value={displayMode} ariaLabel="Modo de leitura padrão" subtle className="w-full">
               {(
                 [
                   { id: 'both', label: 'Cifra' },
@@ -262,7 +255,7 @@ function DeviceSettingsPopover({
                   {opt.label}
                 </button>
               ))}
-            </div>
+            </ConnectedGroup>
           </div>
 
           {/* Tamanho da fonte */}
@@ -297,11 +290,7 @@ function DeviceSettingsPopover({
               <div className="text-[13px] font-medium text-[var(--ink)]">Atraso do auto-scroll</div>
               <div className="text-xs text-[var(--muted)]">Tempo para segurar o instrumento</div>
             </div>
-            <div
-              role="group"
-              aria-label="Atraso do auto-scroll"
-              className="gm3-connected-group gm3-connected-group-subtle"
-            >
+            <ConnectedGroup value={scrollLeadInSec} ariaLabel="Atraso do auto-scroll" subtle>
               {([0, 3, 5] as ScrollLeadIn[]).map((sec) => (
                 <button
                   key={sec}
@@ -315,7 +304,7 @@ function DeviceSettingsPopover({
                   {sec === 0 ? '0s' : `${sec}s`}
                 </button>
               ))}
-            </div>
+            </ConnectedGroup>
           </div>
 
           {/* Pulso visual (GM3 Switch) */}
@@ -907,7 +896,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav
             aria-label="Navegação móvel"
-            className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[var(--surface-high)]/95 backdrop-blur-md"
+            className="gm3-mobile-nav md:hidden fixed bottom-0 inset-x-0 z-30 bg-[var(--surface-high)]/95 backdrop-blur-md"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="grid grid-cols-3 h-16 px-2">
