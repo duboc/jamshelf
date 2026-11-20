@@ -303,3 +303,46 @@ export function SlidesIcon({ size = 16, ...rest }: IconProps) {
     </svg>
   );
 }
+
+/** Chisel-tip highlighter marker icon for slide markup. */
+export function HighlighterIcon({ size = 16, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <path d="m14.8 4.4 4.8 4.8-8.2 8.2-4.8-4.8 8.2-8.2Z" />
+      <path d="m6.6 12.6-2.4 4.6 2.6 2.6 4.6-2.4" />
+      <path d="M4.5 20.2h15" />
+    </svg>
+  );
+}
+
+/** Rounded tonal text-note chip icon for slide annotations. */
+export function TextNoteIcon({ size = 16, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <rect x="4" y="4" width="16" height="16" rx="3.5" />
+      <path d="M8.5 9h7M12 9v6.5" />
+    </svg>
+  );
+}
+
+/** Angled rounded eraser icon for slide annotations. */
+export function EraserIcon({ size = 16, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <path d="m7.2 19.5-3.4-3.4a2.2 2.2 0 0 1 0-3.1l7.9-7.9a2.2 2.2 0 0 1 3.1 0l4.9 4.9a2.2 2.2 0 0 1 0 3.1l-6.4 6.4H7.2Z" />
+      <path d="M13 19.5h7" />
+      <path d="m9.4 7.5 7.1 7.1" />
+    </svg>
+  );
+}
+
+/** Clean minimal trash / clear icon. */
+export function TrashIcon({ size = 15, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <path d="M4.5 7h15" />
+      <path d="M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2" />
+      <path d="M6.8 7 7.6 18.2A1.8 1.8 0 0 0 9.4 20h5.2a1.8 1.8 0 0 0 1.8-1.8L17.2 7" />
+    </svg>
+  );
+}

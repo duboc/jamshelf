@@ -61,6 +61,19 @@
   --rec-dim: #f9dedc;
   --on-rec-container: #8c1d18;
 
+  /* GM3 Slide Annotation Inks & Highlighters (theme-adaptive WCAG AA tones across all 4 HCT palettes) */
+  --note-ink-amber: #874f00;
+  --note-ink-primary: var(--accent);
+  --note-ink-tune: var(--tune);
+  --note-ink-rec: var(--rec);
+  --note-chip-primary-bg: var(--primary-container);
+  --note-chip-primary-fg: var(--on-primary-container);
+  --note-hi-amber: rgba(255, 177, 36, 0.3);
+  --note-hi-primary: color-mix(in srgb, var(--accent) 20%, transparent);
+  --note-hi-tune: rgba(20, 108, 46, 0.22);
+  --note-hi-rec: rgba(179, 38, 30, 0.18);
+  --note-hi-blend: multiply;
+
   /* Piano keys */
   --key-white: #ffffff;
   --key-black: #1f1f1f;
@@ -198,6 +211,11 @@
   --nav-active-bg: #d3f2dd;
   --minor-container: #e4ede7;
   --on-minor-container: #2f4537;
+  /* Keep primary note tone distinct from green tune tone when Emerald is active */
+  --note-ink-primary: #00639b;
+  --note-chip-primary-bg: #c2e7ff;
+  --note-chip-primary-fg: #004a77;
+  --note-hi-primary: rgba(0, 99, 155, 0.2);
 }
 
 :root[data-palette="terracotta"] {
@@ -268,6 +286,18 @@
     --rec-dim: #601410;
     --on-rec-container: #f9dedc;
 
+    --note-ink-amber: #fdd663;
+    --note-ink-primary: var(--accent);
+    --note-ink-tune: var(--tune);
+    --note-ink-rec: #f28b82;
+    --note-chip-primary-bg: var(--primary-container);
+    --note-chip-primary-fg: var(--on-primary-container);
+    --note-hi-amber: rgba(253, 214, 99, 0.18);
+    --note-hi-primary: color-mix(in srgb, var(--accent) 18%, transparent);
+    --note-hi-tune: rgba(109, 213, 140, 0.18);
+    --note-hi-rec: rgba(242, 139, 130, 0.18);
+    --note-hi-blend: normal;
+
     --key-white: #e3e3e3;
     --key-black: #131314;
 
@@ -307,6 +337,10 @@
     --nav-active-bg: #1b4b2a;
     --minor-container: #27332b;
     --on-minor-container: #c6dccd;
+    --note-ink-primary: #7fcfff;
+    --note-chip-primary-bg: #004a77;
+    --note-chip-primary-fg: #c2e7ff;
+    --note-hi-primary: rgba(127, 207, 255, 0.18);
   }
 
   :root:not([data-theme="light"])[data-palette="terracotta"] {
@@ -377,6 +411,18 @@
   --rec-dim: #601410;
   --on-rec-container: #f9dedc;
 
+  --note-ink-amber: #fdd663;
+  --note-ink-primary: var(--accent);
+  --note-ink-tune: var(--tune);
+  --note-ink-rec: #f28b82;
+  --note-chip-primary-bg: var(--primary-container);
+  --note-chip-primary-fg: var(--on-primary-container);
+  --note-hi-amber: rgba(253, 214, 99, 0.18);
+  --note-hi-primary: color-mix(in srgb, var(--accent) 18%, transparent);
+  --note-hi-tune: rgba(109, 213, 140, 0.18);
+  --note-hi-rec: rgba(242, 139, 130, 0.18);
+  --note-hi-blend: normal;
+
   --key-white: #e3e3e3;
   --key-black: #131314;
 
@@ -416,6 +462,10 @@
   --nav-active-bg: #1b4b2a;
   --minor-container: #27332b;
   --on-minor-container: #c6dccd;
+  --note-ink-primary: #7fcfff;
+  --note-chip-primary-bg: #004a77;
+  --note-chip-primary-fg: #c2e7ff;
+  --note-hi-primary: rgba(127, 207, 255, 0.18);
 }
 
 :root[data-theme="dark"][data-palette="terracotta"] {
@@ -1160,6 +1210,103 @@
       background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
+  /* GM3 Slide Annotations: harmonious tonal chips, swatches, highlighter blend & floating dock */
+  .gm3-note-hi-stroke {
+    mix-blend-mode: var(--note-hi-blend);
+  }
+
+  .gm3-note-chip {
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 16%, transparent), var(--shadow-sm);
+    transition:
+      scale var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      box-shadow var(--motion-effects-fast-duration) var(--motion-effects-fast),
+      opacity var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-note-chip[data-editable="true"] {
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 32%, transparent), var(--shadow-sm);
+  }
+
+  .gm3-note-chip[data-editable="true"]:hover {
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 45%, transparent), var(--shadow-md);
+  }
+
+  .gm3-note-chip[data-dragging="true"] {
+    border-radius: 18px;
+    scale: 1.04;
+    box-shadow: var(--shadow-md);
+  }
+
+  .gm3-note-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      box-shadow var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+
+  .gm3-note-swatch[data-selected="true"] {
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 20%, transparent);
+  }
+
+  .gm3-note-swatch:active {
+    transform: scale(0.92);
+  }
+
+  .gm3-annotate-dock {
+    border-radius: 28px;
+    background: var(--surface-high);
+    box-shadow: var(--shadow-md);
+    animation:
+      gm3-popover-up-spatial 240ms var(--motion-spring-standard-default) backwards,
+      gm3-fade-in 180ms var(--motion-effects-fast) backwards;
+  }
+
+  .gm3-note-composer {
+    border-radius: 28px;
+    background: var(--surface-high);
+    box-shadow: var(--shadow-md);
+    animation:
+      gm3-popover-down-spatial 220ms var(--motion-spring-standard-fast) backwards,
+      gm3-fade-in 160ms var(--motion-effects-fast) backwards;
+  }
+
+  .gm3-undo-snackbar {
+    border-radius: 22px;
+    background: var(--ink);
+    color: var(--surface);
+    box-shadow: var(--shadow-md);
+    animation:
+      gm3-popover-up-spatial 220ms var(--motion-spring-standard-fast) backwards,
+      gm3-fade-in 160ms var(--motion-effects-fast) backwards;
+  }
+
+  .gm3-dock-popover {
+    border-radius: 24px;
+    background: var(--surface-high);
+    box-shadow: var(--shadow-md);
+    animation:
+      gm3-popover-up-spatial 200ms var(--motion-spring-standard-fast) backwards,
+      gm3-fade-in 150ms var(--motion-effects-fast) backwards;
+  }
+
+  .gm3-header-popover {
+    border-radius: 24px;
+    background: var(--surface-high);
+    box-shadow: var(--shadow-md);
+    animation:
+      gm3-popover-down-spatial 200ms var(--motion-spring-standard-fast) backwards,
+      gm3-fade-in 150ms var(--motion-effects-fast) backwards;
+  }
+
   .gm3-key-badge {
     border-radius: 16px;
     transition:
@@ -1491,6 +1638,11 @@
   .studio-input:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 2px var(--accent-dim);
+  }
+
+  .studio-input:focus-visible {
+    outline: 2px solid var(--secondary);
+    outline-offset: 1px;
   }
 
   .studio-input::placeholder {
@@ -2001,6 +2153,17 @@
     outline: 2px solid Highlight;
     opacity: 1;
   }
+  .gm3-note-chip,
+  .gm3-annotate-dock,
+  .gm3-note-composer,
+  .gm3-undo-snackbar,
+  .gm3-dock-popover,
+  .gm3-header-popover {
+    border: 1px solid CanvasText;
+  }
+  .gm3-note-swatch[data-selected="true"] {
+    outline: 2px solid Highlight;
+  }
 }
 
 @keyframes metronome-flash {
@@ -2424,8 +2587,21 @@
   .gm3-slide-bump-left,
   .gm3-slide-bump-right,
   .gm3-song-toast,
+  .gm3-annotate-dock,
+  .gm3-note-composer,
+  .gm3-undo-snackbar,
+  .gm3-dock-popover,
+  .gm3-header-popover,
   .animate-pulse {
     animation: none !important;
+  }
+
+  .gm3-note-chip[data-dragging="true"] {
+    scale: 1 !important;
+  }
+
+  .gm3-note-swatch:active {
+    transform: none !important;
   }
 
   .gm3-edge-pulse {

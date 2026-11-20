@@ -8,6 +8,8 @@ export interface SlideSectionInput {
   label: string;
   /** Filtered lines actually rendered in the active displayMode. */
   lines: string[];
+  /** Original 0-based index of each filtered line inside `ParsedSong.sections[sectionIdx].lines`. */
+  origLineIndices: number[];
   instrumentalOnly: boolean;
 }
 
@@ -26,6 +28,8 @@ export interface SlideChunk {
   label: string;
   continuation: boolean;
   lines: string[];
+  /** Original 0-based index in `ParsedSong.sections[sectionIdx].lines` for each line in `lines`. */
+  origLineIndices: number[];
   instrumentalOnly: boolean;
   /** Index of the first line of this chunk within the filtered section lines. */
   startLineIdx: number;
@@ -33,14 +37,23 @@ export interface SlideChunk {
 
 export interface SlidePage {
   columns: SlideChunk[][];
+  /** Measured natural pixel height of each column in `columns` (used for auto-fit utilization metrics). */
+  columnHeights: number[];
   anchorSectionIdx: number;
   anchorLineIdx: number;
 }
 
+export interface SlideFillStats {
+  pageCount: number;
+  maxColFill: number;
+  avgColFill: number;
+  lastSlideFill: number;
+}
+
 /**
  * Filters a song's sections down to the exact visible sections & lines for the
- * chosen reading mode (`both`, `chords-only`, `lyrics-only`) so pagination never
- * allocates vertical height for hidden lines or empty sections.
+ * chosen reading mode (`both`, `chords-only`, `lyrics-only`) while preserving
+ * each line's original index so slide annotations remain glued across mode switches.
  */
 export function prepareSlideSections(
   sections: Section[],
@@ -57,50 +70,62 @@ export function prepareSlideSections(
           type: sec.type,
           label: sec.label,
           lines: [],
+          origLineIndices: [],
           instrumentalOnly: true,
         });
         continue;
       }
-      const visibleLines = sec.lines.filter((line) => line.trim() === '' || lineHasLyrics(line));
-      while (visibleLines.length > 0 && visibleLines[0].trim() === '') visibleLines.shift();
-      while (visibleLines.length > 0 && visibleLines[visibleLines.length - 1].trim() === '') {
-        visibleLines.pop();
+      const pairs: Array<{ text: string; origIdx: number }> = [];
+      for (let li = 0; li < sec.lines.length; li++) {
+        const line = sec.lines[li];
+        if (line.trim() === '' || lineHasLyrics(line)) {
+          pairs.push({ text: line, origIdx: li });
+        }
       }
-      if (visibleLines.length === 0) continue;
+      while (pairs.length > 0 && pairs[0].text.trim() === '') pairs.shift();
+      while (pairs.length > 0 && pairs[pairs.length - 1].text.trim() === '') pairs.pop();
+      if (pairs.length === 0) continue;
       prepared.push({
         sectionIdx,
         type: sec.type,
         label: sec.label,
-        lines: visibleLines,
+        lines: pairs.map((p) => p.text),
+        origLineIndices: pairs.map((p) => p.origIdx),
         instrumentalOnly: false,
       });
       continue;
     }
 
     if (displayMode === 'chords-only') {
-      const chordLines = sec.lines.filter((line) =>
-        parseLine(line).some((seg) => Boolean(seg.chord))
-      );
-      if (chordLines.length === 0) continue;
+      const pairs: Array<{ text: string; origIdx: number }> = [];
+      for (let li = 0; li < sec.lines.length; li++) {
+        const line = sec.lines[li];
+        if (parseLine(line).some((seg) => Boolean(seg.chord))) {
+          pairs.push({ text: line, origIdx: li });
+        }
+      }
+      if (pairs.length === 0) continue;
       prepared.push({
         sectionIdx,
         type: sec.type,
         label: sec.label,
-        lines: chordLines,
+        lines: pairs.map((p) => p.text),
+        origLineIndices: pairs.map((p) => p.origIdx),
         instrumentalOnly: false,
       });
       continue;
     }
 
-    const trimmed = [...sec.lines];
-    while (trimmed.length > 0 && trimmed[0].trim() === '') trimmed.shift();
-    while (trimmed.length > 0 && trimmed[trimmed.length - 1].trim() === '') trimmed.pop();
-    if (trimmed.length === 0) continue;
+    const pairs = sec.lines.map((text, origIdx) => ({ text, origIdx }));
+    while (pairs.length > 0 && pairs[0].text.trim() === '') pairs.shift();
+    while (pairs.length > 0 && pairs[pairs.length - 1].text.trim() === '') pairs.pop();
+    if (pairs.length === 0) continue;
     prepared.push({
       sectionIdx,
       type: sec.type,
       label: sec.label,
-      lines: trimmed,
+      lines: pairs.map((p) => p.text),
+      origLineIndices: pairs.map((p) => p.origIdx),
       instrumentalOnly: false,
     });
   }
@@ -108,15 +133,34 @@ export function prepareSlideSections(
   return prepared;
 }
 
+interface InternalChunk {
+  chunk: SlideChunk;
+  height: number;
+  chromeHeight: number;
+  lineHeights: number[];
+}
+
+function measureColHeight(items: InternalChunk[], cardGap: number): number {
+  if (items.length === 0) return 0;
+  let total = 0;
+  for (let i = 0; i < items.length; i++) {
+    if (i > 0) total += cardGap;
+    total += items[i].height;
+  }
+  return total;
+}
+
 /**
- * Packs measured song sections into zero-overflow columns and multi-column slides.
+ * Packs measured song sections into zero-overflow columns and balanced multi-column slides.
  * Rules:
  * 1. Charge `cardGap` ONLY between stacked cards (never after the last card of a column).
  * 2. Keep whole sections together whenever a section fits in the current column or a fresh column.
  * 3. In 2-column landscape spreads, if the left column of a spread is under 36% full (e.g. a 2-line Intro)
  *    and the next section is tall (> 55% of column height) so it cannot fit whole below it, split cleanly
- *    across Left -> Right of the SAME visible spread (eliminates 80%-empty left columns and cuts page turns).
- * 4. Never orphan a header with 0 lines or a 1-line stub; always guarantee forward progress.
+ *    across Left -> Right of the SAME visible spread.
+ * 4. Balance any lone trailing column on the final 2-column spread across BOTH columns so the screen
+ *    never sits half-empty on the last page.
+ * 5. Never orphan a header with 0 lines or a 1-line stub; always guarantee forward progress.
  */
 export function packSectionsIntoSlides(
   sections: SlideSectionInput[],
@@ -126,12 +170,12 @@ export function packSectionsIntoSlides(
   cardGap = 12
 ): SlidePage[] {
   if (sections.length === 0) {
-    return [{ columns: [[]], anchorSectionIdx: 0, anchorLineIdx: 0 }];
+    return [{ columns: [[]], columnHeights: [0], anchorSectionIdx: 0, anchorLineIdx: 0 }];
   }
 
   const budget = Math.max(120, Math.floor(columnHeight));
-  const columns: SlideChunk[][] = [];
-  let curCol: SlideChunk[] = [];
+  const columns: InternalChunk[][] = [];
+  let curCol: InternalChunk[] = [];
   let usedH = 0;
 
   const gapIfNotEmpty = () => (curCol.length > 0 ? cardGap : 0);
@@ -156,13 +200,19 @@ export function packSectionsIntoSlides(
       }
       usedH += gapIfNotEmpty() + m.fullHeight;
       curCol.push({
-        sectionIdx: sec.sectionIdx,
-        type: sec.type,
-        label: sec.label,
-        continuation: false,
-        lines: [],
-        instrumentalOnly: true,
-        startLineIdx: 0,
+        chunk: {
+          sectionIdx: sec.sectionIdx,
+          type: sec.type,
+          label: sec.label,
+          continuation: false,
+          lines: [],
+          origLineIndices: [],
+          instrumentalOnly: true,
+          startLineIdx: 0,
+        },
+        height: m.fullHeight,
+        chromeHeight: m.fullHeight,
+        lineHeights: [],
       });
       continue;
     }
@@ -171,13 +221,19 @@ export function packSectionsIntoSlides(
     if (usedH + gapIfNotEmpty() + m.fullHeight <= budget) {
       usedH += gapIfNotEmpty() + m.fullHeight;
       curCol.push({
-        sectionIdx: sec.sectionIdx,
-        type: sec.type,
-        label: sec.label,
-        continuation: false,
-        lines: sec.lines,
-        instrumentalOnly: false,
-        startLineIdx: 0,
+        chunk: {
+          sectionIdx: sec.sectionIdx,
+          type: sec.type,
+          label: sec.label,
+          continuation: false,
+          lines: sec.lines,
+          origLineIndices: sec.origLineIndices,
+          instrumentalOnly: false,
+          startLineIdx: 0,
+        },
+        height: m.fullHeight,
+        chromeHeight: m.chromeHeight,
+        lineHeights: m.lineHeights,
       });
       continue;
     }
@@ -189,7 +245,6 @@ export function packSectionsIntoSlides(
 
     let canSplitIntoSameSpread = false;
     if (leftColSparse && isTallSection) {
-      // Only split across the spread if at least 3 lines fit cleanly below the short intro
       const threeLineH =
         m.chromeHeight +
         (m.lineHeights[0] ?? 32) +
@@ -205,18 +260,24 @@ export function packSectionsIntoSlides(
       flushColumn();
       usedH = m.fullHeight;
       curCol.push({
-        sectionIdx: sec.sectionIdx,
-        type: sec.type,
-        label: sec.label,
-        continuation: false,
-        lines: sec.lines,
-        instrumentalOnly: false,
-        startLineIdx: 0,
+        chunk: {
+          sectionIdx: sec.sectionIdx,
+          type: sec.type,
+          label: sec.label,
+          continuation: false,
+          lines: sec.lines,
+          origLineIndices: sec.origLineIndices,
+          instrumentalOnly: false,
+          startLineIdx: 0,
+        },
+        height: m.fullHeight,
+        chromeHeight: m.chromeHeight,
+        lineHeights: m.lineHeights,
       });
       continue;
     }
 
-    // Rule 3: Split cleanly between lines (either taller than 1 column, or filling a sparse left spread column)
+    // Rule 3: Split cleanly between lines
     const firstLineH = m.lineHeights[0] ?? 32;
     const secondLineH = m.lineHeights[1] ?? 0;
     const minStartChunkH =
@@ -263,13 +324,19 @@ export function packSectionsIntoSlides(
 
       usedH += leadingGap + chunkH;
       curCol.push({
-        sectionIdx: sec.sectionIdx,
-        type: sec.type,
-        label: sec.label,
-        continuation: cursor > 0,
-        lines: sec.lines.slice(cursor, end),
-        instrumentalOnly: false,
-        startLineIdx: cursor,
+        chunk: {
+          sectionIdx: sec.sectionIdx,
+          type: sec.type,
+          label: sec.label,
+          continuation: cursor > 0,
+          lines: sec.lines.slice(cursor, end),
+          origLineIndices: sec.origLineIndices.slice(cursor, end),
+          instrumentalOnly: false,
+          startLineIdx: cursor,
+        },
+        height: chunkH,
+        chromeHeight: m.chromeHeight,
+        lineHeights: m.lineHeights.slice(cursor, end),
       });
       cursor = end;
 
@@ -282,21 +349,109 @@ export function packSectionsIntoSlides(
   flushColumn();
 
   if (columns.length === 0) {
-    return [{ columns: [[]], anchorSectionIdx: 0, anchorLineIdx: 0 }];
+    return [{ columns: [[]], columnHeights: [0], anchorSectionIdx: 0, anchorLineIdx: 0 }];
+  }
+
+  // Rule 4: Balance a lone trailing column on a 2-column spread across BOTH columns
+  if (columnsPerSlide === 2 && columns.length % 2 === 1) {
+    const lastCol = columns[columns.length - 1];
+    if (lastCol.length >= 2) {
+      let bestSplit = 1;
+      let bestDiff = Infinity;
+      for (let k = 1; k < lastCol.length; k++) {
+        const lh = measureColHeight(lastCol.slice(0, k), cardGap);
+        const rh = measureColHeight(lastCol.slice(k), cardGap);
+        const diff = Math.abs(lh - rh);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestSplit = k;
+        }
+      }
+      columns.splice(columns.length - 1, 1, lastCol.slice(0, bestSplit), lastCol.slice(bestSplit));
+    } else if (
+      lastCol.length === 1 &&
+      !lastCol[0].chunk.instrumentalOnly &&
+      lastCol[0].chunk.lines.length >= 4
+    ) {
+      const item = lastCol[0];
+      const mid = Math.ceil(item.chunk.lines.length / 2);
+      const leftLinesH = item.lineHeights.slice(0, mid).reduce((a, b) => a + b, 0);
+      const rightLinesH = item.lineHeights.slice(mid).reduce((a, b) => a + b, 0);
+      const leftH = item.chromeHeight + leftLinesH;
+      const rightH = item.chromeHeight + rightLinesH;
+      if (leftH <= budget && rightH <= budget) {
+        const leftItem: InternalChunk = {
+          chunk: {
+            ...item.chunk,
+            lines: item.chunk.lines.slice(0, mid),
+            origLineIndices: item.chunk.origLineIndices.slice(0, mid),
+          },
+          height: leftH,
+          chromeHeight: item.chromeHeight,
+          lineHeights: item.lineHeights.slice(0, mid),
+        };
+        const rightItem: InternalChunk = {
+          chunk: {
+            ...item.chunk,
+            continuation: true,
+            lines: item.chunk.lines.slice(mid),
+            origLineIndices: item.chunk.origLineIndices.slice(mid),
+            startLineIdx: item.chunk.startLineIdx + mid,
+          },
+          height: rightH,
+          chromeHeight: item.chromeHeight,
+          lineHeights: item.lineHeights.slice(mid),
+        };
+        columns.splice(columns.length - 1, 1, [leftItem], [rightItem]);
+      }
+    }
   }
 
   const slides: SlidePage[] = [];
   for (let c = 0; c < columns.length; c += columnsPerSlide) {
-    const pageCols = columns.slice(c, c + columnsPerSlide);
+    const pageInternalCols = columns.slice(c, c + columnsPerSlide);
+    const pageCols = pageInternalCols.map((col) => col.map((item) => item.chunk));
+    const colHeights = pageInternalCols.map((col) => measureColHeight(col, cardGap));
     const firstChunk = pageCols[0]?.[0];
     slides.push({
       columns: pageCols,
+      columnHeights: colHeights,
       anchorSectionIdx: firstChunk?.sectionIdx ?? 0,
       anchorLineIdx: firstChunk?.startLineIdx ?? 0,
     });
   }
 
   return slides;
+}
+
+/**
+ * Summarizes how well the packed slides fill the available column height budget
+ * so SlideshowView can auto-fit typography without adding extra page turns.
+ */
+export function computeSlideFillStats(slides: SlidePage[], columnHeight: number): SlideFillStats {
+  const budget = Math.max(120, columnHeight);
+  if (slides.length === 0) {
+    return { pageCount: 0, maxColFill: 0, avgColFill: 0, lastSlideFill: 0 };
+  }
+  let maxColFill = 0;
+  let sumFill = 0;
+  let colCount = 0;
+  for (const slide of slides) {
+    for (const h of slide.columnHeights) {
+      const ratio = h / budget;
+      if (ratio > maxColFill) maxColFill = ratio;
+      sumFill += ratio;
+      colCount++;
+    }
+  }
+  const last = slides[slides.length - 1];
+  const lastMax = last.columnHeights.reduce((m, h) => Math.max(m, h), 0);
+  return {
+    pageCount: slides.length,
+    maxColFill,
+    avgColFill: colCount > 0 ? sumFill / colCount : 0,
+    lastSlideFill: lastMax / budget,
+  };
 }
 
 /**

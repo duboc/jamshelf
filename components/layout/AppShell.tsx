@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { usePlayerStore } from '@/lib/stores/player-store';
+import { useAnnotationStore } from '@/lib/stores/annotation-store';
 import {
   useDisplayStore,
   type DisplayMode,
@@ -452,6 +453,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     void useSongStore.persist.rehydrate();
     void useSetlistStore.persist.rehydrate();
     void useDisplayStore.persist.rehydrate();
+    void useAnnotationStore.persist.rehydrate();
     fetchEntries();
     fetchSetlists();
   }, [fetchEntries, fetchSetlists]);
