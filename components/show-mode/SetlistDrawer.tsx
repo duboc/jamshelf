@@ -126,11 +126,11 @@ export function SetlistDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="gm3-icon-btn text-[var(--muted)] hover:text-[var(--ink)] w-9 h-9 flex items-center justify-center hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+            className="gm3-icon-btn text-[var(--muted)] hover:text-[var(--ink)] w-11 h-11 flex items-center justify-center hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
             title="Fechar setlist"
             aria-label="Fechar setlist"
           >
-            <CloseIcon size={17} />
+            <CloseIcon size={18} />
           </button>
         </div>
 
@@ -189,32 +189,32 @@ export function SetlistDrawer({
                   </div>
                 </button>
                 {canReorder && (
-                  <div className="flex items-center flex-shrink-0 pr-1">
+                  <div className="flex items-center gap-0.5 flex-shrink-0 pr-1">
                     <button
                       type="button"
                       disabled={displayIdx === 0}
                       onClick={() => handleKeyboardReorder(displayIdx, -1)}
-                      className="gm3-icon-btn w-7 h-7 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
+                      className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
                       aria-label={`Mover ${song.title} para cima`}
                       title="Mover para cima"
                     >
-                      <ArrowUpIcon size={13} />
+                      <ArrowUpIcon size={14} />
                     </button>
                     <button
                       type="button"
                       disabled={displayIdx >= displayEntries.length - 1}
                       onClick={() => handleKeyboardReorder(displayIdx, 1)}
-                      className="gm3-icon-btn w-7 h-7 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
+                      className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg)]/60 disabled:opacity-30 cursor-pointer"
                       aria-label={`Mover ${song.title} para baixo`}
                       title="Mover para baixo"
                     >
-                      <ArrowDownIcon size={13} />
+                      <ArrowDownIcon size={14} />
                     </button>
                     <div
                       {...getHandleProps(displayIdx)}
                       title="Arrastar para reordenar"
                       aria-hidden="true"
-                      className="touch-none select-none cursor-grab active:cursor-grabbing text-[var(--muted)] hover:text-[var(--ink)] p-2 flex-shrink-0"
+                      className="touch-none select-none cursor-grab active:cursor-grabbing text-[var(--muted)] hover:text-[var(--ink)] p-2.5 flex-shrink-0"
                     >
                       <GripIcon size={15} />
                     </div>

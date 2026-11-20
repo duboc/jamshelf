@@ -8,6 +8,7 @@ import { usePlayerStore } from '@/lib/stores/player-store';
 import {
   useDisplayStore,
   type DisplayMode,
+  type PaletteTheme,
   type ScrollLeadIn,
   type ThemeMode,
 } from '@/lib/stores/display-store';
@@ -17,7 +18,14 @@ import { TransitionLink } from '@/components/ui/TransitionLink';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { QuickSearchModal } from './QuickSearchModal';
 import { ShortcutsModal } from '@/components/ui/ShortcutsModal';
-import { HelpCircleIcon, JamshelfMark, PlusIcon } from '@/components/ui/Icons';
+import { CheckIcon, HelpCircleIcon, JamshelfMark, PlusIcon } from '@/components/ui/Icons';
+
+const PALETTE_OPTIONS: { id: PaletteTheme; label: string; dotClass: string }[] = [
+  { id: 'blue', label: 'Google Blue', dotClass: 'gm3-swatch-dot-blue' },
+  { id: 'violet', label: 'Studio Violet', dotClass: 'gm3-swatch-dot-violet' },
+  { id: 'emerald', label: 'Stage Emerald', dotClass: 'gm3-swatch-dot-emerald' },
+  { id: 'terracotta', label: 'Warm Terracotta', dotClass: 'gm3-swatch-dot-terracotta' },
+];
 
 const DEVICE_NAME_EVENT = 'jamshelf-device-name-change';
 
@@ -107,6 +115,8 @@ function DeviceSettingsPopover({
   const {
     theme,
     setTheme,
+    palette,
+    setPalette,
     displayMode,
     setDisplayMode,
     fontSize,
@@ -235,6 +245,42 @@ function DeviceSettingsPopover({
                 </button>
               ))}
             </ConnectedGroup>
+          </div>
+
+          {/* Cor de destaque (GM3 HCT) */}
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-[13px] font-medium text-[var(--ink)]">Cor de destaque</div>
+              <div className="text-xs text-[var(--muted)]">
+                {PALETTE_OPTIONS.find((p) => p.id === palette)?.label ?? 'Google Blue'}
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-1" role="group" aria-label="Paleta de destaque HCT">
+              {PALETTE_OPTIONS.map((opt) => {
+                const selected = palette === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setPalette(opt.id)}
+                    aria-pressed={selected}
+                    aria-label={`Cor ${opt.label}`}
+                    title={opt.label}
+                    className={`gm3-palette-swatch w-10 h-10 inline-flex items-center justify-center cursor-pointer ${
+                      selected ? 'bg-[var(--surface-high)]' : 'hover:bg-[var(--surface-high)]/70'
+                    }`}
+                  >
+                    <span
+                      className={`w-6 h-6 rounded-full inline-flex items-center justify-center ${opt.dotClass} ${
+                        selected ? 'ring-2 ring-[var(--ink)] ring-offset-2 ring-offset-[var(--surface)]' : ''
+                      }`}
+                    >
+                      {selected && <CheckIcon size={13} />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Modo de leitura padrão */}
@@ -381,7 +427,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setlistSyncError = useSetlistStore((s) => s.syncError);
   const clearSongError = useSongStore((s) => s.clearSyncError);
   const clearSetlistError = useSetlistStore((s) => s.clearSyncError);
-  const { theme, focusMode, setFocusMode, singleKeyShortcuts } = useDisplayStore();
+  const { theme, palette, focusMode, setFocusMode, singleKeyShortcuts } = useDisplayStore();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -418,7 +464,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     } else {
       root.removeAttribute('data-theme');
     }
-  }, [theme]);
+    if (palette === 'violet' || palette === 'emerald' || palette === 'terracotta') {
+      root.setAttribute('data-palette', palette);
+    } else {
+      root.removeAttribute('data-palette');
+    }
+  }, [theme, palette]);
 
   useEffect(() => {
     if (!pathname.startsWith('/song/') && focusMode) {
@@ -448,7 +499,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
       if (e.key === '/') {
-        if (usePlayerStore.getState().editMode) return;
+        if (usePlayerStore.getState().editMode || pathname.startsWith('/slides')) return;
         e.preventDefault();
         setSearchOpen(true);
       } else if (e.key === '?') {
@@ -458,11 +509,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [singleKeyShortcuts]);
+  }, [singleKeyShortcuts, pathname]);
 
   const isSongPage = pathname.startsWith('/song/');
+  const isSlidesPage = pathname.startsWith('/slides');
   const isShowMode = isSongPage && searchParams.get('show') === '1';
-  const hideChrome = isShowMode || (isSongPage && focusMode);
+  const hideChrome = isShowMode || isSlidesPage || (isSongPage && focusMode);
   const isHomeAll = pathname === '/' && (!searchParams.get('tab') || searchParams.get('tab') === 'all');
 
   const tabParam = searchParams.get('tab');
@@ -595,14 +647,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     },
   ];
 
+  const primarySetlistId = useMemo(() => {
+    const firstActive = setlists.find((sl) => sl.songIds.some((sid) => validSongIds.has(sid)));
+    return firstActive?.id ?? null;
+  }, [setlists, validSongIds]);
+
   // On song pages keep rail collapsed by default so the chord sheet gets maximum horizontal space
   const isExpandedRail = railExpanded && !isSongPage;
 
   return (
     <div
-      className={`min-h-screen flex bg-[var(--bg)] text-[var(--ink)] ${
-        isSongPage ? 'h-screen overflow-hidden' : ''
-      }`}
+      className={`min-h-screen flex text-[var(--ink)] ${
+        hideChrome ? 'bg-[var(--bg)]' : 'gm3-ambient-canvas'
+      } ${isSongPage ? 'h-screen overflow-hidden' : ''}`}
     >
       {/* WCAG 2.4.1 Skip Link */}
       <a
@@ -616,7 +673,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!hideChrome && (
         <aside
           aria-label="Navegação principal"
-          className={`gm3-rail hidden md:flex flex-col justify-between flex-shrink-0 sticky top-0 h-screen z-40 bg-[var(--bg)] py-5 select-none ${
+          className={`gm3-rail hidden md:flex flex-col justify-between flex-shrink-0 sticky top-0 h-screen z-40 bg-transparent py-5 select-none ${
             isExpandedRail ? 'w-[216px] px-4' : 'w-[88px] px-2 items-center'
           }`}
         >
@@ -757,9 +814,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 className={`w-2 h-2 rounded-full flex-shrink-0 ${
                                   isActive
                                     ? 'bg-[var(--on-secondary-container)]'
-                                    : validCount === 0
-                                    ? 'bg-[var(--line)]'
-                                    : 'bg-[var(--muted)]'
+                                    : sl.id === primarySetlistId
+                                    ? 'bg-[var(--accent)]'
+                                    : 'bg-[var(--line)]'
                                 }`}
                               />
                               <span className="truncate">{sl.name}</span>

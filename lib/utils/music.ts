@@ -32,49 +32,67 @@ export const PIANO_INTERVALS: Record<string, number[]> = {
   mmaj7: [0, 3, 7, 11],
 };
 
-// Theme-aware GM3 section accents (readable in both light and dark mode)
-export const SECTION_COLORS: Record<string, { bg: string; bd: string; lb: string }> = {
+// Restrained single-hue GM3 section accents: only Chorus lifts tonally;
+// all other sections stay crisp neutral cards with a quiet semantic dot.
+export const SECTION_COLORS: Record<
+  string,
+  { bg: string; bd: string; lb: string; pillBg: string }
+> = {
   intro: {
     bg: 'var(--surface)',
     bd: 'var(--flat)',
-    lb: 'var(--flat)',
+    lb: 'var(--muted)',
+    pillBg: 'var(--surface-high)',
   },
   verse: {
     bg: 'var(--surface)',
     bd: 'var(--line)',
     lb: 'var(--muted)',
+    pillBg: 'var(--surface-high)',
   },
   'pre-chorus': {
-    bg: 'color-mix(in srgb, var(--warn) 9%, var(--surface))',
+    bg: 'var(--surface)',
     bd: 'var(--warn-icon)',
-    lb: 'var(--warn-ink)',
+    lb: 'var(--muted)',
+    pillBg: 'var(--surface-high)',
   },
   chorus: {
-    bg: 'color-mix(in srgb, var(--sharp) 9%, var(--surface))',
-    bd: 'var(--sharp)',
-    lb: 'var(--sharp)',
+    bg: 'var(--chorus-tint)',
+    bd: 'var(--accent)',
+    lb: 'var(--on-primary-container)',
+    pillBg: 'var(--primary-container)',
   },
   bridge: {
-    bg: 'color-mix(in srgb, var(--tune) 9%, var(--surface))',
+    bg: 'var(--surface)',
     bd: 'var(--tune)',
-    lb: 'var(--tune)',
+    lb: 'var(--muted)',
+    pillBg: 'var(--surface-high)',
   },
   outro: {
     bg: 'var(--surface)',
     bd: 'var(--flat)',
-    lb: 'var(--flat)',
+    lb: 'var(--muted)',
+    pillBg: 'var(--surface-high)',
   },
   solo: {
-    bg: 'color-mix(in srgb, var(--accent) 9%, var(--surface))',
+    bg: 'var(--surface)',
     bd: 'var(--accent)',
-    lb: 'var(--accent-ink)',
+    lb: 'var(--muted)',
+    pillBg: 'var(--surface-high)',
   },
   interlude: {
-    bg: 'color-mix(in srgb, var(--tune) 7%, var(--surface))',
+    bg: 'var(--surface)',
     bd: 'var(--tune)',
-    lb: 'var(--tune)',
+    lb: 'var(--muted)',
+    pillBg: 'var(--surface-high)',
   },
 };
+
+/** True for minor keys such as "Am", "F#m", "Bbm", "Cm7", "Cmin" (false for major / "CM7" / "Cmaj7"). */
+export function isMinorKey(key?: string | null): boolean {
+  if (!key) return false;
+  return /^[A-Ga-g][#b♯♭]?(?:m(?!aj)|min)/.test(key.trim());
+}
 
 /** Folds PT-BR diacritics and case so "evidencias" matches "Evidências". */
 export function normalizeSearch(value: string): string {

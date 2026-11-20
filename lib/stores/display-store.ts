@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware';
 
 export type DisplayMode = 'both' | 'lyrics-only' | 'chords-only';
 export type ThemeMode = 'system' | 'dark' | 'light';
+export type PaletteTheme = 'blue' | 'violet' | 'emerald' | 'terracotta';
 export type ScrollLeadIn = 0 | 3 | 5;
 export type LibraryViewMode = 'cards' | 'list';
 export type CapoDisplay = 'sounding' | 'shapes';
@@ -18,6 +19,8 @@ interface DisplayStore {
   setVisualPulseEnabled: (v: boolean) => void;
   theme: ThemeMode;
   setTheme: (t: ThemeMode) => void;
+  palette: PaletteTheme;
+  setPalette: (p: PaletteTheme) => void;
   fontSize: number;
   setFontSize: (s: number) => void;
   chordsRefOpen: boolean;
@@ -38,7 +41,7 @@ interface DisplayStore {
 
 let themeTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
-function applyThemeToDom(theme: ThemeMode, animate: boolean) {
+function triggerThemeCrossfade(animate: boolean) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const reduced =
@@ -53,11 +56,27 @@ function applyThemeToDom(theme: ThemeMode, animate: boolean) {
       themeTransitionTimer = null;
     }, 380);
   }
+}
 
+function applyThemeToDom(theme: ThemeMode, animate: boolean) {
+  if (typeof document === 'undefined') return;
+  triggerThemeCrossfade(animate);
+  const root = document.documentElement;
   if (theme === 'dark' || theme === 'light') {
     root.setAttribute('data-theme', theme);
   } else {
     root.removeAttribute('data-theme');
+  }
+}
+
+function applyPaletteToDom(palette: PaletteTheme, animate: boolean) {
+  if (typeof document === 'undefined') return;
+  triggerThemeCrossfade(animate);
+  const root = document.documentElement;
+  if (palette === 'violet' || palette === 'emerald' || palette === 'terracotta') {
+    root.setAttribute('data-palette', palette);
+  } else {
+    root.removeAttribute('data-palette');
   }
 }
 
@@ -80,6 +99,11 @@ export const useDisplayStore = create<DisplayStore>()(
       setTheme: (t) => {
         applyThemeToDom(t, true);
         set({ theme: t });
+      },
+      palette: 'blue',
+      setPalette: (p) => {
+        applyPaletteToDom(p, true);
+        set({ palette: p });
       },
       fontSize: 100,
       setFontSize: (sz) => set({ fontSize: Math.max(70, Math.min(180, sz)) }),
@@ -105,6 +129,7 @@ export const useDisplayStore = create<DisplayStore>()(
         displayMode: s.displayMode,
         visualPulseEnabled: s.visualPulseEnabled,
         theme: s.theme,
+        palette: s.palette,
         fontSize: s.fontSize,
         chordsRefOpen: s.chordsRefOpen,
         scrollLeadInSec: s.scrollLeadInSec,

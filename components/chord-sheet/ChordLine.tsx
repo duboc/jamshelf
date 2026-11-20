@@ -8,6 +8,10 @@ interface ChordLineProps {
   line: string;
   onChordTap: (chord: string) => void;
   displayMode?: 'both' | 'lyrics-only' | 'chords-only';
+  /** When false (Slideshow mode), chords render as non-interactive badges so full-screen tap zones work cleanly. */
+  interactiveChords?: boolean;
+  /** High-contrast pill surface when rendered inside a tinted Chorus card in chords-only mode. */
+  inChorus?: boolean;
   // Edit mode props
   editMode?: boolean;
   selectedSegIdx?: number | null;
@@ -19,6 +23,8 @@ export function ChordLine({
   line,
   onChordTap,
   displayMode = 'both',
+  interactiveChords = true,
+  inChorus = false,
   editMode = false,
   selectedSegIdx = null,
   onChordSelect,
@@ -26,6 +32,32 @@ export function ChordLine({
 }: ChordLineProps) {
   const segments = parseLine(line);
   const hasChords = segments.some((s) => s.chord);
+
+  const renderChord = (chord: string, size: 'normal' | 'lg' = 'normal') => {
+    if (interactiveChords) {
+      return <ChordBadge chord={chord} onTap={onChordTap} size={size} />;
+    }
+    if (size === 'lg') {
+      const toneCls = inChorus
+        ? 'bg-[var(--surface)] text-[var(--accent-ink)]'
+        : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]';
+      return (
+        <span
+          className={`inline-flex items-center px-3.5 py-1.5 rounded-full font-mono font-semibold text-[1.08em] leading-none ${toneCls} select-none`}
+        >
+          <span className="sr-only">Acorde </span>
+          {chord}
+          <span className="sr-only"> </span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-block font-mono font-semibold text-[0.9em] leading-none text-[var(--accent-ink)] pr-1.5 select-none">
+        {chord}
+        <span className="sr-only"> </span>
+      </span>
+    );
+  };
 
   if (!editMode) {
     if (displayMode === 'lyrics-only') {
@@ -51,7 +83,7 @@ export function ChordLine({
           {segments
             .filter((seg) => seg.chord)
             .map((seg, i) => (
-              <ChordBadge key={i} chord={seg.chord!} onTap={onChordTap} size="lg" />
+              <span key={i}>{renderChord(seg.chord!, 'lg')}</span>
             ))}
         </div>
       );
@@ -73,7 +105,7 @@ export function ChordLine({
             const extra = seg.text.trim();
             return (
               <span key={i} className="inline-flex items-center gap-1.5">
-                {seg.chord ? <ChordBadge chord={seg.chord} onTap={onChordTap} /> : null}
+                {seg.chord ? renderChord(seg.chord) : null}
                 {extra ? <span className="text-[var(--muted)] text-[0.9em]">{extra}</span> : null}
               </span>
             );
@@ -83,11 +115,15 @@ export function ChordLine({
     }
 
     return (
-      <div className="flex flex-wrap items-end leading-relaxed text-[var(--ink)]">
+      <div
+        className={`flex flex-wrap items-end text-[var(--ink)] ${
+          interactiveChords ? 'leading-relaxed' : 'leading-snug'
+        }`}
+      >
         {segments.map((seg, i) => (
           <span key={i} className="inline-flex flex-col">
-            <span className="min-h-[1.4em]">
-              {seg.chord ? <ChordBadge chord={seg.chord} onTap={onChordTap} /> : null}
+            <span className={interactiveChords ? 'min-h-[1.4em]' : 'min-h-[1.2em]'}>
+              {seg.chord ? renderChord(seg.chord) : null}
             </span>
             <span className="whitespace-pre-wrap">{seg.text || '\u00A0'}</span>
           </span>

@@ -10,7 +10,7 @@ import { useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import { useFlipList } from '@/lib/hooks/use-flip-list';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
-import { normalizeSearch } from '@/lib/utils/music';
+import { isMinorKey, normalizeSearch } from '@/lib/utils/music';
 import { navigateWithTransition } from '@/lib/utils/view-transition';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { TransitionLink } from '@/components/ui/TransitionLink';
@@ -23,6 +23,7 @@ import {
   MusicNoteIcon,
   PlayIcon,
   PlusIcon,
+  SlidesIcon,
 } from '@/components/ui/Icons';
 
 export default function SetlistPage({ params }: { params: Promise<{ id: string }> }) {
@@ -266,9 +267,28 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
             </button>
             <button
               type="button"
+              onClick={() =>
+                startSongId &&
+                navigateWithTransition(router, `/slides?setlist=${id}`, {
+                  direction: 'forward',
+                })
+              }
+              disabled={!startSongId}
+              title={
+                !startSongId
+                  ? 'Adicione uma música primeiro'
+                  : 'Abrir setlist em páginas (Slides) para iPad e pedal Bluetooth'
+              }
+              className="pill-btn pill-btn-tonal h-11 px-5 text-sm"
+            >
+              <SlidesIcon size={15} />
+              Slides
+            </button>
+            <button
+              type="button"
               aria-expanded={showAddSong}
               onClick={() => setShowAddSong((v) => !v)}
-              className="pill-btn pill-btn-tonal h-11 px-5 text-sm"
+              className="pill-btn h-11 px-5 text-sm"
             >
               <PlusIcon size={16} className="gm3-plus-toggle" />
               {showAddSong ? 'Fechar lista' : 'Adicionar música'}
@@ -463,7 +483,11 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                           {song.displayKey && (
                             <span
                               data-vt-song-key={song.id}
-                              className="gm3-key-badge inline-flex items-center px-2.5 py-0.5 text-xs bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold leading-snug"
+                              className={`gm3-key-badge inline-flex items-center px-2.5 py-0.5 text-xs font-semibold leading-snug ${
+                                isMinorKey(song.displayKey)
+                                  ? 'bg-[var(--minor-container)] text-[var(--on-minor-container)]'
+                                  : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]'
+                              }`}
                             >
                               {song.displayKey}
                             </span>

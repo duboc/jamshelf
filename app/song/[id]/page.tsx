@@ -1205,6 +1205,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onSetDisplayMode={(m) => runStateViewTransition(() => setDisplayMode(m), 'morph')}
             editMode={store.editMode}
             onEnterFocusMode={() => runStateViewTransition(() => setFocusMode(true), 'morph')}
+            onEnterSlidesMode={() =>
+              navigateWithTransition(
+                router,
+                activeSetlist
+                  ? `/slides?setlist=${activeSetlist.id}&song=${id}`
+                  : `/slides?song=${id}`,
+                { direction: 'forward' }
+              )
+            }
             activeSetlist={activeSetlist}
             setlistSongIdx={setlistSongIdx}
             totalSetlistSongs={existingSetlistSongIds.length}

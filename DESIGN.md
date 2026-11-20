@@ -12,7 +12,7 @@ Direção visual do Jamshelf baseada em **Google Material 3 (GM3)** com elemento
 
 ## 2. Cores e Tokens (Light e Dark)
 
-Paleta derivada no espaço HCT a partir do azul GM3 `#0B57D0`. Todo par `container` / `on-container` mantém diferença tonal >= 50.
+Paleta derivada no espaço HCT a partir do azul GM3 `#0B57D0` (padrão). Preferências do aparelho oferecem 3 temas HCT opcionais (`Studio Violet`, `Stage Emerald` e `Warm Terracotta`) que deslocam `primary`, `secondary`, `minor-container` e o fundo suave juntos em uma única cor ativa, preservando as cores musicais fixas (`--tune`, `--warn`, `--rec`) e diferença tonal >= 50.
 
 ### Tokens de sistema
 
@@ -25,7 +25,8 @@ Paleta derivada no espaço HCT a partir do azul GM3 `#0B57D0`. Todo par `contain
 | `secondary` | `--secondary` (novo) | `#00639B` | `#7FCFFF` | Ícone/texto ativo no Navigation Rail, anel de foco (`:focus-visible`) |
 | `secondary-container` | `--secondary-container` (novo) | `#C2E7FF` | `#004A77` | Pílula ativa no Rail/Bottom Bar, botão tonal, segmento selecionado (`Cifra`) |
 | `on-secondary-container` | `--on-secondary-container` (novo) | `#004A77` | `#C2E7FF` | Texto e ícone sobre `secondary-container` |
-| `surface-container` | `--bg` | `#F0F4F9` | `#131314` | Canvas principal da aplicação e fundo do Navigation Rail |
+| Tom menor (calm slate) | `--minor-container` / `--on-minor-container` | `#E4EAF2` / `#344054` | `#2C313A` / `#C9D5E8` | Chips de tons menores (`Am`, `Cm`, `F#m`) sem adicionar arco-íris |
+| `surface-container` | `--bg` | `#F0F4F9` | `#131314` | Canvas principal da aplicação e fundo do Navigation Rail (com wash ambiental suave no topo fora dos modos de palco) |
 | `surface-container-lowest` | `--surface` | `#FFFFFF` | `#1E1F20` | Cards principais (músicas, setlists, folha da cifra), barra de busca |
 | `surface-container-high` | `--surface-high` (novo) | `#E9EEF6` | `#282A2C` | Dialogs, popovers, barras de ferramentas agrupadas |
 | `surface-container-highest` | `--surface2` | `#DDE3EA` | `#333537` | Cards secundários/inativos, chips neutros, trilha de switch desligado |
@@ -127,22 +128,23 @@ A top bar fixa estilo Cloud Console sai de cena. O shell se adapta em dois break
   - Grid responsivo em tela cheia (sem teto estreito de `max-w-*`): `1` coluna no mobile, `2` colunas no tablet/desktop médio, `3` colunas em telas largas (`>= 1280px`) e `4` colunas em monitores amplos (`>= 1536px`).
   - Cada card (`#FFFFFF`, raio `20px`, padding `18px 20px`) segue a leitura rápida dos cards de cidades da referência:
     - Esquerda: título da música (`20px` Bold `700` `#1F1F1F`), artista (`13px` `#444746`) e avaliação por estrelas (`#FFB124`) + coração favorita.
-    - Direita: **Tom** em destaque com `Google Sans Flex` (`ROND 100`, `24px`, `#0B57D0` ou `#1F1F1F`) e chip sutil de `BPM` / `Capo`.
+    - Direita: **Tom** em destaque com `Google Sans Flex` (`ROND 100`, `primary-container` para tons maiores e `--minor-container` ardósia calmo para tons menores; no máximo 1 card em destaque por tela usa a forma geométrica GM3 Cookie de 8 pontas em `Gm3FocalBadge`) e chip sutil de `BPM` / `Capo`.
     - Estado hover: transição suave para `#E9EEF6` (`surface-container-high`), sem lift exagerado nem sombra pesada.
 - **Modo Lista (toggle para repertórios grandes)**:
   - Lista segmentada GM3 Expressive em largura total: itens `#FFFFFF` empilhados com `gap: 2px`; título da música em `20px` Bold `700`; primeiro item com raio `20px 20px 6px 6px`, itens do meio `6px`, último `6px 6px 20px 20px`.
 
 ### Setlists (`app/page.tsx?tab=setlists`, `app/setlists/[id]`)
-- Cards em `#FFFFFF` (setlists ativos/próximos) ou `#DDE3EA` (arquivados/rascunhos) com nome, contagem de músicas, duração estimada em `Google Sans Flex` (`ROND 100`, `tabular-nums`) e botão direto `▶ Show` (pílula `#B3261E` / `#FFFFFF` ou `#F9DEDC` / `#8C1D18`).
+- Cards em `#FFFFFF` (setlists ativos/próximos) ou `#DDE3EA` (arquivados/rascunhos) com nome, contagem de músicas, duração estimada em `Google Sans Flex` (`ROND 100`, `tabular-nums`) e botão direto `▶ Show` (pílula `#B3261E` / `#FFFFFF` ou `#F9DEDC` / `#8C1D18`). Apenas o primeiro setlist ativo recebe ponto `--accent` e contador focal em `Gm3FocalBadge`; os demais mantêm pílulas neutras (`--surface-high`) para evitar excesso de cores.
 - Na tela interna do setlist, a ordem das músicas usa a lista segmentada GM3 Expressive com número da faixa em `Google Sans Flex` arredondado (`01`, `02`, `03`).
 
 ### Página da Música (`app/song/[id]`)
 - **Cabeçalho (`SongHeader`)**: integrado ao canvas `#F0F4F9` (sem borda dura), título editável grande em `Google Sans Flex`, chips tonais de `Tom`, `Capo` e `BPM · Compasso`, e controle segmentado em pílula conectado para `Cifra | Só letra | Acordes` (segmento ativo em `#C2E7FF` / `#004A77`).
 - **Barra de controles (`SongToolbar`)**: agrupada em container tonal `#E9EEF6` (raio `16px`) com transposição (`- / 0 / +`, `♯/♭`), tamanho da letra (`A- / A+`), auto-scroll (fica verde `#C4EED0` / `#146C2E` quando ativo), metrônomo com bolinhas (`#0B57D0` / `#6DD58C` / `#C4C7C5`), botão `1·2·3·4` e `Diagramas`.
-- **Folha da cifra (`ChordSheet`)**: card amplo em `#FFFFFF` (no escuro `#1E1F20`), raio `24px`, margens confortáveis (`24px–32px`), acordes (`ChordBadge`) em `Google Sans Mono` Bold `#0B57D0` (no escuro `#A8C7FA`) com fundo `#D3E3FD` suave ao toque/hover.
+- **Folha da cifra (`ChordSheet`)**: card amplo em `#FFFFFF` (no escuro `#1E1F20`), raio `24px`, margens confortáveis (`24px–32px`), acordes (`ChordBadge`) em `Google Sans Mono` Bold `#0B57D0` (no escuro `#A8C7FA`) com fundo `#D3E3FD` suave ao toque/hover. Apenas blocos de **Refrão (`chorus`)** recebem elevação tonal suave (`--chorus-tint` + pílula `primary-container`); as demais seções permanecem em `--surface` neutro com pílula `--surface-high` e ponto semântico discreto.
 
-### Modo Show e Contagem (`ShowModeView`, `CountInOverlay`, `Metronome`)
+### Modo Show, Slides e Contagem (`ShowModeView`, `SlideshowView`, `CountInOverlay`, `Metronome`)
 - **Modo Show**: pode seguir o tema do aparelho ou oferecer atalho de 1 toque para modo escuro de palco (`#131314` canvas + `#1E1F20` folha).
+- **Modo Slides (`/slides`, iPad e pedal Bluetooth)**: pagina automaticamente a música (ou o setlist inteiro de ponta a ponta) sem rolagem vertical, adaptando-se entre 1 coluna no modo vertical e 2 colunas lado a lado no modo horizontal (`>= 900px`). Mantém apenas controles essenciais de estante (`Cifra | Letra | Acordes`, `A- / A+`, `2 col`, tema Claro/Escuro, alternância `Capo / Tom real` quando aplicável e lista rápida do setlist), sem bordas `1px`, com alvos mínimos de `44px`, virada por toque nas laterais, deslize horizontal ou pedais Bluetooth (`PageDown`/`PageUp`, setas, `Espaço`/`Shift+Espaço`), aviso discreto ao cruzar de música e `useWakeLock` ativo.
 - Barra superior e rodapé de navegação (`‹ Anterior` / `Próxima ›`) em `#F0F4F9` (escuro `#131314`) com botões em pílula de alvo mínimo `44px`.
 - **`CountInOverlay`**: modal central raio `28px` em `#FFFFFF` (escuro `#1E1F20`) com o número da batida em `Google Sans Flex` `96px` (`ROND 100`) na cor `#0B57D0` no tempo 1, acompanhado pela sequência de pontos circulares (`#0B57D0` atual, `#6DD58C` passados, `#C4C7C5` restantes).
 

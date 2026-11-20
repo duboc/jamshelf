@@ -5,7 +5,9 @@ import type { Song } from '@/lib/types/song';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
+import { isMinorKey } from '@/lib/utils/music';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Gm3FocalBadge } from '@/components/ui/Gm3FocalBadge';
 import { TransitionLink } from '@/components/ui/TransitionLink';
 import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import { CheckIcon, HeartIcon, MoreVertIcon, StarIcon } from '@/components/ui/Icons';
@@ -17,6 +19,8 @@ interface SongCardProps {
   position?: 'only' | 'first' | 'middle' | 'last';
   /** Optional viewport-capped stagger index (0..7) for crisp GM3 cascading entrance. */
   staggerIdx?: number;
+  /** Highlights at most one featured card on the screen with the GM3 geometric focal silhouette. */
+  focalKey?: boolean;
 }
 
 export const SongCard = memo(function SongCard({
@@ -25,6 +29,7 @@ export const SongCard = memo(function SongCard({
   variant = 'card',
   position = 'only',
   staggerIdx,
+  focalKey = false,
 }: SongCardProps) {
   const { patchMeta } = useSongStore();
   const { setlists, addSongToSetlist } = useSetlistStore();
@@ -206,6 +211,10 @@ export const SongCard = memo(function SongCard({
   const staggerStyle =
     staggerIdx !== undefined ? ({ '--stagger-idx': staggerIdx } as CSSProperties) : undefined;
   const staggerClass = staggerIdx !== undefined ? 'gm3-stagger-item' : '';
+  const minorKey = isMinorKey(song.displayKey);
+  const keyToneClasses = minorKey
+    ? 'bg-[var(--minor-container)] text-[var(--on-minor-container)]'
+    : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]';
 
   // GM3 Expressive Tonal Card (single link per card, signature key badge, clean rating chip)
   if (variant === 'card') {
@@ -244,15 +253,27 @@ export const SongCard = memo(function SongCard({
               </p>
             </div>
 
-            {/* Signature GM3 Expressive Musical Key badge */}
+            {/* Signature GM3 Expressive Musical Key badge (Major: primary-container, Minor: calm slate) */}
             {song.displayKey ? (
-              <span
-                data-vt-song-key={song.id}
-                className="gm3-key-badge min-w-[44px] h-10 px-2.5 bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-[19px] leading-none inline-flex items-center justify-center flex-shrink-0"
-                title={`Tom ${song.displayKey}`}
-              >
-                {song.displayKey}
-              </span>
+              focalKey ? (
+                <Gm3FocalBadge
+                  size="md"
+                  tone={minorKey ? 'minor' : 'primary'}
+                  vtSongKey={song.id}
+                  title={`Tom ${song.displayKey}`}
+                  className="gm3-key-badge"
+                >
+                  {song.displayKey}
+                </Gm3FocalBadge>
+              ) : (
+                <span
+                  data-vt-song-key={song.id}
+                  className={`gm3-key-badge min-w-[44px] h-10 px-2.5 ${keyToneClasses} font-expressive text-[19px] leading-none inline-flex items-center justify-center flex-shrink-0`}
+                  title={`Tom ${song.displayKey}`}
+                >
+                  {song.displayKey}
+                </span>
+              )
             ) : (
               <span className="gm3-key-badge min-w-[44px] h-10 px-2.5 bg-[var(--bg)] text-[var(--muted)] font-expressive text-base leading-none inline-flex items-center justify-center flex-shrink-0">
                 -
@@ -358,7 +379,7 @@ export const SongCard = memo(function SongCard({
         {song.displayKey ? (
           <span
             data-vt-song-key={song.id}
-            className="gm3-key-badge min-w-[40px] h-8 px-2.5 bg-[var(--primary-container)] text-[var(--on-primary-container)] font-expressive text-base leading-none inline-flex items-center justify-center"
+            className={`gm3-key-badge min-w-[40px] h-8 px-2.5 ${keyToneClasses} font-expressive text-base leading-none inline-flex items-center justify-center`}
           >
             {song.displayKey}
           </span>

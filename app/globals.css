@@ -26,6 +26,13 @@
   --on-secondary-container: #004a77;
   --nav-active-bg: #c2e7ff;
 
+  /* Calm minor key container & subtle ambient/chorus surface accents */
+  --minor-container: #e4eaf2;
+  --on-minor-container: #344054;
+  --wash-strength: 11%;
+  --wash-secondary-strength: 32%;
+  --chorus-tint: color-mix(in srgb, var(--accent) 8%, var(--surface));
+
   /* Inks & outlines */
   --ink: #1f1f1f;
   --muted: #444746;
@@ -160,6 +167,55 @@
   --motion-spatial-slow: var(--motion-spring-standard-default);
 }
 
+/* Optional GM3 Dynamic Color HCT palettes (Light) — keeps fixed musical semantics intact */
+:root[data-palette="violet"] {
+  --accent: #6750a4;
+  --accent-ink: #6750a4;
+  --accent-hover: #4f378b;
+  --on-accent: #ffffff;
+  --primary-container: #eaddff;
+  --on-primary-container: #4f378b;
+  --accent-dim: rgba(103, 80, 164, 0.12);
+  --secondary: #625b71;
+  --secondary-container: #e8def8;
+  --on-secondary-container: #4a4458;
+  --nav-active-bg: #e8def8;
+  --minor-container: #ece8f3;
+  --on-minor-container: #463f56;
+}
+
+:root[data-palette="emerald"] {
+  --accent: #146c2e;
+  --accent-ink: #146c2e;
+  --accent-hover: #0f5223;
+  --on-accent: #ffffff;
+  --primary-container: #c4eed0;
+  --on-primary-container: #0a3818;
+  --accent-dim: rgba(20, 108, 46, 0.12);
+  --secondary: #2d6a4f;
+  --secondary-container: #d3f2dd;
+  --on-secondary-container: #0f5223;
+  --nav-active-bg: #d3f2dd;
+  --minor-container: #e4ede7;
+  --on-minor-container: #2f4537;
+}
+
+:root[data-palette="terracotta"] {
+  --accent: #a6461c;
+  --accent-ink: #a6461c;
+  --accent-hover: #7c2d0c;
+  --on-accent: #ffffff;
+  --primary-container: #ffdbcc;
+  --on-primary-container: #692304;
+  --accent-dim: rgba(166, 70, 28, 0.12);
+  --secondary: #8c4a32;
+  --secondary-container: #f9e2d8;
+  --on-secondary-container: #7c2d0c;
+  --nav-active-bg: #f9e2d8;
+  --minor-container: #efe7e3;
+  --on-minor-container: #4e3d36;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #131314;
@@ -179,6 +235,12 @@
     --secondary-container: #004a77;
     --on-secondary-container: #c2e7ff;
     --nav-active-bg: #004a77;
+
+    --minor-container: #2c313a;
+    --on-minor-container: #c9d5e8;
+    --wash-strength: 15%;
+    --wash-secondary-strength: 26%;
+    --chorus-tint: color-mix(in srgb, var(--accent) 12%, var(--surface));
 
     --ink: #e3e3e3;
     --muted: #c4c7c5;
@@ -214,6 +276,54 @@
 
     color-scheme: dark;
   }
+
+  :root:not([data-theme="light"])[data-palette="violet"] {
+    --accent: #d0bcff;
+    --accent-ink: #d0bcff;
+    --accent-hover: #eaddff;
+    --on-accent: #381e72;
+    --primary-container: #4f378b;
+    --on-primary-container: #eaddff;
+    --accent-dim: rgba(208, 188, 255, 0.16);
+    --secondary: #ccc2dc;
+    --secondary-container: #4a4458;
+    --on-secondary-container: #e8def8;
+    --nav-active-bg: #4a4458;
+    --minor-container: #302c39;
+    --on-minor-container: #d7cee8;
+  }
+
+  :root:not([data-theme="light"])[data-palette="emerald"] {
+    --accent: #6dd58c;
+    --accent-ink: #6dd58c;
+    --accent-hover: #c4eed0;
+    --on-accent: #0a3818;
+    --primary-container: #0f5223;
+    --on-primary-container: #c4eed0;
+    --accent-dim: rgba(109, 213, 140, 0.16);
+    --secondary: #8ce0a8;
+    --secondary-container: #1b4b2a;
+    --on-secondary-container: #c4eed0;
+    --nav-active-bg: #1b4b2a;
+    --minor-container: #27332b;
+    --on-minor-container: #c6dccd;
+  }
+
+  :root:not([data-theme="light"])[data-palette="terracotta"] {
+    --accent: #ffb598;
+    --accent-ink: #ffb598;
+    --accent-hover: #ffdbcc;
+    --on-accent: #561d04;
+    --primary-container: #6b290b;
+    --on-primary-container: #ffdbcc;
+    --accent-dim: rgba(255, 181, 152, 0.16);
+    --secondary: #e7bdb0;
+    --secondary-container: #5c3121;
+    --on-secondary-container: #ffdbcc;
+    --nav-active-bg: #5c3121;
+    --minor-container: #352c29;
+    --on-minor-container: #e2d0c9;
+  }
 }
 
 :root[data-theme="dark"] {
@@ -234,6 +344,12 @@
   --secondary-container: #004a77;
   --on-secondary-container: #c2e7ff;
   --nav-active-bg: #004a77;
+
+  --minor-container: #2c313a;
+  --on-minor-container: #c9d5e8;
+  --wash-strength: 15%;
+  --wash-secondary-strength: 26%;
+  --chorus-tint: color-mix(in srgb, var(--accent) 12%, var(--surface));
 
   --ink: #e3e3e3;
   --muted: #c4c7c5;
@@ -268,6 +384,54 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.52);
 
   color-scheme: dark;
+}
+
+:root[data-theme="dark"][data-palette="violet"] {
+  --accent: #d0bcff;
+  --accent-ink: #d0bcff;
+  --accent-hover: #eaddff;
+  --on-accent: #381e72;
+  --primary-container: #4f378b;
+  --on-primary-container: #eaddff;
+  --accent-dim: rgba(208, 188, 255, 0.16);
+  --secondary: #ccc2dc;
+  --secondary-container: #4a4458;
+  --on-secondary-container: #e8def8;
+  --nav-active-bg: #4a4458;
+  --minor-container: #302c39;
+  --on-minor-container: #d7cee8;
+}
+
+:root[data-theme="dark"][data-palette="emerald"] {
+  --accent: #6dd58c;
+  --accent-ink: #6dd58c;
+  --accent-hover: #c4eed0;
+  --on-accent: #0a3818;
+  --primary-container: #0f5223;
+  --on-primary-container: #c4eed0;
+  --accent-dim: rgba(109, 213, 140, 0.16);
+  --secondary: #8ce0a8;
+  --secondary-container: #1b4b2a;
+  --on-secondary-container: #c4eed0;
+  --nav-active-bg: #1b4b2a;
+  --minor-container: #27332b;
+  --on-minor-container: #c6dccd;
+}
+
+:root[data-theme="dark"][data-palette="terracotta"] {
+  --accent: #ffb598;
+  --accent-ink: #ffb598;
+  --accent-hover: #ffdbcc;
+  --on-accent: #561d04;
+  --primary-container: #6b290b;
+  --on-primary-container: #ffdbcc;
+  --accent-dim: rgba(255, 181, 152, 0.16);
+  --secondary: #e7bdb0;
+  --secondary-container: #5c3121;
+  --on-secondary-container: #ffdbcc;
+  --nav-active-bg: #5c3121;
+  --minor-container: #352c29;
+  --on-minor-container: #e2d0c9;
 }
 
 @theme inline {
@@ -307,13 +471,17 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Smooth 340ms surface crossfade scoped strictly to user-triggered Light <-> Dark switches */
+  /* Smooth 340ms surface crossfade scoped strictly to user-triggered theme/palette switches */
   html.gm3-theme-transitioning,
   html.gm3-theme-transitioning body,
-  html.gm3-theme-transitioning :where(main, aside, header, nav, section, article, footer, div, p, h1, h2, h3, label, kbd, input, textarea, select):not([class*="gm3-collapsible"]):not([class*="gm3-slot-x"]):not(.gm3-title-morph):not(.gm3-rail):not(.gm3-connected-indicator):not(.gm3-switch-thumb):not(.gm3-autoscroll-bar):not(.gm3-card-interactive):not(.gm3-list-row):not(.gm3-search-pill):not(.gm3-mobile-fab) {
+  html.gm3-theme-transitioning :where(main, aside, header, nav, section, article, footer, div, p, h1, h2, h3, span, label, kbd, input, textarea, select):not([class*="gm3-collapsible"]):not([class*="gm3-slot-x"]):not(.gm3-title-morph):not(.gm3-rail):not(.gm3-connected-indicator):not(.gm3-switch-thumb):not(.gm3-autoscroll-bar):not(.gm3-card-interactive):not(.gm3-list-row):not(.gm3-search-pill):not(.gm3-mobile-fab) {
     transition-property: background-color, color, border-color;
     transition-duration: 340ms;
     transition-timing-function: var(--motion-effects-default);
+  }
+
+  html.gm3-theme-transitioning .gm3-focal-cookie-path {
+    transition: fill 340ms var(--motion-effects-default);
   }
 
   :focus-visible {
@@ -844,6 +1012,152 @@
     transform: scale(0.988);
     transition-duration: var(--motion-press-duration);
     transition-timing-function: var(--motion-press-ease);
+  }
+
+  /* Subtle single-hue ambient tonal wash anchored at top of app canvas (calm, non-carnival) */
+  .gm3-ambient-canvas {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(
+        88% 520px at 14% -40px,
+        color-mix(in srgb, var(--accent) var(--wash-strength), transparent) 0%,
+        transparent 68%
+      ),
+      radial-gradient(
+        52% 380px at 90% 10px,
+        color-mix(in srgb, var(--secondary-container) var(--wash-secondary-strength), transparent) 0%,
+        transparent 62%
+      );
+    background-repeat: no-repeat;
+  }
+
+  /* HCT Theme swatch pills inside Device Settings */
+  .gm3-palette-swatch {
+    border-radius: 20px;
+    transition:
+      transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      box-shadow var(--motion-effects-fast-duration) var(--motion-effects-fast);
+  }
+  .gm3-palette-swatch:hover {
+    transform: scale(1.06);
+  }
+  .gm3-palette-swatch:active {
+    transform: scale(0.94);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+  .gm3-swatch-dot-blue { background-color: #0b57d0; color: #ffffff; }
+  .gm3-swatch-dot-violet { background-color: #6750a4; color: #ffffff; }
+  .gm3-swatch-dot-emerald { background-color: #146c2e; color: #ffffff; }
+  .gm3-swatch-dot-terracotta { background-color: #a6461c; color: #ffffff; }
+
+  /* Single geometric GM3 Expressive focal badge (at most one per screen) */
+  .gm3-focal-badge {
+    transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
+  }
+  .gm3-card-interactive:hover .gm3-focal-badge,
+  button:hover .gm3-focal-badge {
+    transform: scale(1.04);
+  }
+
+  /* Edge fade mask for horizontally scrolling section rail over ambient canvas */
+  .gm3-scroll-fade-right {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+
+  /* Slideshow stage page turns (crisp GM3 Standard motion, zero bounce/wobble on stage) */
+  @keyframes gm3-slide-in-next {
+    from {
+      opacity: 0;
+      transform: translate3d(26px, 0, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes gm3-slide-in-prev {
+    from {
+      opacity: 0;
+      transform: translate3d(-26px, 0, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes gm3-slide-bump-left {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    40% { transform: translate3d(10px, 0, 0); }
+  }
+
+  @keyframes gm3-slide-bump-right {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    40% { transform: translate3d(-10px, 0, 0); }
+  }
+
+  @keyframes gm3-edge-pulse {
+    0% { opacity: 0.34; }
+    100% { opacity: 0; }
+  }
+
+  .gm3-slide-enter-next {
+    animation: gm3-slide-in-next 210ms var(--motion-effects-default) both;
+  }
+
+  .gm3-slide-enter-prev {
+    animation: gm3-slide-in-prev 210ms var(--motion-effects-default) both;
+  }
+
+  .gm3-slide-bump-left {
+    animation: gm3-slide-bump-left 180ms var(--motion-effects-fast) both;
+  }
+
+  .gm3-slide-bump-right {
+    animation: gm3-slide-bump-right 180ms var(--motion-effects-fast) both;
+  }
+
+  .gm3-edge-pulse {
+    opacity: 0;
+    animation: gm3-edge-pulse 260ms var(--motion-effects-default) forwards;
+  }
+
+  @keyframes gm3-song-toast-in {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, -8px, 0);
+    }
+    15% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+    82% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(0, -6px, 0);
+    }
+  }
+
+  .gm3-song-toast {
+    animation: gm3-song-toast-in 1350ms var(--motion-effects-default) forwards;
+  }
+
+  .gm3-stage-active-ring {
+    box-shadow: inset 0 0 0 1.5px var(--secondary);
+  }
+
+  .gm3-page-dot {
+    height: 8px;
+    border-radius: 4px;
+    transition:
+      width var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+      background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
   }
 
   .gm3-key-badge {
@@ -2021,6 +2335,8 @@
   .gm3-nav-pill::after,
   .gm3-card-interactive:active,
   .gm3-key-badge,
+  .gm3-focal-badge,
+  .gm3-palette-swatch,
   .gm3-list-row:active,
   .gm3-list-row[data-dragging="true"],
   .gm3-menu-item:active,
@@ -2103,8 +2419,17 @@
   .gm3-wave-ringing .gm3-wave-bar,
   .gm3-downbeat-ring,
   .gm3-skeleton::after,
+  .gm3-slide-enter-next,
+  .gm3-slide-enter-prev,
+  .gm3-slide-bump-left,
+  .gm3-slide-bump-right,
+  .gm3-song-toast,
   .animate-pulse {
     animation: none !important;
+  }
+
+  .gm3-edge-pulse {
+    display: none !important;
   }
 
   .gm3-skeleton {

@@ -38,7 +38,7 @@ export function Breadcrumb({ items, onBack, rightSlot, vtSongId }: BreadcrumbPro
   return (
     <nav
       aria-label="Onde você está"
-      className="flex-shrink-0 bg-[var(--bg)]"
+      className="flex-shrink-0 bg-transparent"
     >
       <div className="w-full px-4 sm:px-6 lg:px-8 pt-3 pb-1 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0 flex-1">

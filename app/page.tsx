@@ -7,6 +7,7 @@ import { useDisplayStore } from '@/lib/stores/display-store';
 import { SongCard } from '@/components/song-list/SongCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
+import { Gm3FocalBadge } from '@/components/ui/Gm3FocalBadge';
 import { TransitionLink } from '@/components/ui/TransitionLink';
 import { navigateWithTransition, runStateViewTransition } from '@/lib/utils/view-transition';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
@@ -20,6 +21,7 @@ import {
   MusicNoteIcon,
   PlayIcon,
   PlusIcon,
+  SlidesIcon,
 } from '@/components/ui/Icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -176,6 +178,19 @@ function HomeContent() {
       return a.title.localeCompare(b.title);
     });
   }, [songs, tab, search, keyFilter, sortBy]);
+
+  const focalSongId = useMemo(() => {
+    const fiveStar = filteredSongs.find((s) => s.rating === 5 && Boolean(s.displayKey));
+    if (fiveStar) return fiveStar.id;
+    const firstFav = filteredSongs.find((s) => s.favorite && Boolean(s.displayKey));
+    return firstFav?.id ?? null;
+  }, [filteredSongs]);
+
+  const primarySetlistId = useMemo(() => {
+    const songIds = new Set(songs.map((s) => s.id));
+    const firstActive = setlists.find((sl) => sl.songIds.some((sid) => songIds.has(sid)));
+    return firstActive?.id ?? null;
+  }, [setlists, songs]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -513,6 +528,7 @@ function HomeContent() {
                   onRemove={removeEntry}
                   variant="card"
                   staggerIdx={idx < 8 ? idx : undefined}
+                  focalKey={song.id === focalSongId}
                 />
               ))}
             </div>
@@ -629,6 +645,7 @@ function HomeContent() {
                   ? formatSetlistDuration(durSummary.totalSec, durSummary.estimatedCount > 0)
                   : null;
                 const isEmpty = validSongs.length === 0;
+                const isPrimarySetlist = !isEmpty && sl.id === primarySetlistId;
                 const staggerStyle =
                   slIdx < 8 ? ({ '--stagger-idx': slIdx } as CSSProperties) : undefined;
 
@@ -644,9 +661,17 @@ function HomeContent() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <TransitionLink href={`/setlists/${sl.id}`} vtDirection="forward" className="min-w-0 flex-1">
-                        <h2 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
-                          {sl.name}
-                        </h2>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isPrimarySetlist && (
+                            <span
+                              className="w-2 h-2 rounded-full bg-[var(--accent)] flex-shrink-0"
+                              aria-hidden="true"
+                            />
+                          )}
+                          <h2 className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
+                            {sl.name}
+                          </h2>
+                        </div>
                         <p className="text-xs text-[var(--muted)] mt-1 font-mono tabular-nums">
                           {validSongs.length} {validSongs.length === 1 ? 'música' : 'músicas'}
                           {durLabel ? ` · ${durLabel}` : ''}
@@ -654,9 +679,15 @@ function HomeContent() {
                       </TransitionLink>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="font-expressive text-2xl text-[var(--muted)] pr-1">
-                          {validSongs.length}
-                        </span>
+                        {isPrimarySetlist ? (
+                          <Gm3FocalBadge size="md" tone="primary" title={`${validSongs.length} músicas`}>
+                            {validSongs.length}
+                          </Gm3FocalBadge>
+                        ) : (
+                          <span className="min-w-[36px] h-9 px-2.5 rounded-[12px] bg-[var(--surface-high)] text-[var(--muted)] font-expressive text-base tabular-nums inline-flex items-center justify-center">
+                            {validSongs.length}
+                          </span>
+                        )}
                         <SetlistCardMenu
                           setlistName={sl.name}
                           onDelete={() => setSetlistToDelete({ id: sl.id, name: sl.name })}
@@ -664,7 +695,7 @@ function HomeContent() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <TransitionLink
                         href={`/setlists/${sl.id}`}
                         vtDirection="forward"
@@ -676,15 +707,26 @@ function HomeContent() {
                       </TransitionLink>
 
                       {firstSongId && (
-                        <TransitionLink
-                          href={`/song/${firstSongId}?setlist=${sl.id}&show=1`}
-                          vtDirection="forward"
-                          className="pill-btn bg-[var(--rec-dim)] text-[var(--on-rec-container)] hover:bg-[var(--rec-fill)] hover:text-[var(--on-rec-fill)] h-10 px-4 text-xs"
-                          title="Abrir este setlist direto no Modo Show"
-                        >
-                          <PlayIcon size={13} />
-                          Modo Show
-                        </TransitionLink>
+                        <div className="flex items-center gap-1.5">
+                          <TransitionLink
+                            href={`/slides?setlist=${sl.id}`}
+                            vtDirection="forward"
+                            className="pill-btn pill-btn-tonal h-10 px-3.5 text-xs"
+                            title="Abrir setlist paginado em Slides (pedal Bluetooth e toque)"
+                          >
+                            <SlidesIcon size={14} />
+                            Slides
+                          </TransitionLink>
+                          <TransitionLink
+                            href={`/song/${firstSongId}?setlist=${sl.id}&show=1`}
+                            vtDirection="forward"
+                            className="pill-btn bg-[var(--rec-dim)] text-[var(--on-rec-container)] hover:bg-[var(--rec-fill)] hover:text-[var(--on-rec-fill)] h-10 px-3.5 text-xs"
+                            title="Abrir este setlist direto no Modo Show"
+                          >
+                            <PlayIcon size={13} />
+                            Show
+                          </TransitionLink>
+                        </div>
                       )}
                     </div>
                   </article>

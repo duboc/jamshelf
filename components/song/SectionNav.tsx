@@ -35,9 +35,12 @@ export function SectionNav({ sections, activeIdx, onJump, collapsed = false }: S
   return (
     <nav
       aria-label="Seções da música"
-      className="relative flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2"
+      className="relative flex-shrink-0 bg-transparent px-4 sm:px-6 lg:px-8 pb-2"
     >
-      <div ref={railRef} className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-6">
+      <div
+        ref={railRef}
+        className="gm3-scroll-fade-right w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-6"
+      >
         {sections.map((sec, idx) => {
           const colors = SECTION_COLORS[sec.type] || SECTION_COLORS.verse;
           const isActive = idx === activeIdx;
@@ -63,10 +66,6 @@ export function SectionNav({ sections, activeIdx, onJump, collapsed = false }: S
           );
         })}
       </div>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[var(--bg)] to-transparent"
-      />
     </nav>
   );
 }

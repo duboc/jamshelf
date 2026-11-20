@@ -7,8 +7,10 @@ import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
 import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import { formatDuration, parseDurationValue } from '@/lib/utils/chordpro-parser';
+import { isMinorKey } from '@/lib/utils/music';
 import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
+import { Gm3FocalBadge } from '@/components/ui/Gm3FocalBadge';
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -20,6 +22,7 @@ import {
   PauseIcon,
   PitchWaveIcon,
   PlayIcon,
+  SlidesIcon,
   StarIcon,
 } from '@/components/ui/Icons';
 
@@ -39,6 +42,7 @@ interface SongHeaderProps {
   onSetDisplayMode: (m: DisplayMode) => void;
   editMode: boolean;
   onEnterFocusMode: () => void;
+  onEnterSlidesMode: () => void;
   // Setlist & live
   activeSetlist: Setlist | null;
   setlistSongIdx: number;
@@ -94,6 +98,7 @@ export function SongHeader({
   onSetDisplayMode,
   editMode,
   onEnterFocusMode,
+  onEnterSlidesMode,
   activeSetlist,
   setlistSongIdx,
   totalSetlistSongs,
@@ -160,6 +165,10 @@ export function SongHeader({
   useDialogA11y(showNamePrompt, () => setShowNamePrompt(false), goLiveDialogRef);
 
   const isEditingTitle = editMode || editingIdentity;
+  const minorKey = isMinorKey(displayedKey);
+  const keyChipToneClasses = minorKey
+    ? 'bg-[var(--minor-container)] text-[var(--on-minor-container)]'
+    : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]';
 
   const handlePlayPitch = () => {
     if (!pitchTarget) return;
@@ -249,7 +258,7 @@ export function SongHeader({
       className={`flex-shrink-0 px-4 sm:px-6 lg:px-8 py-1.5 border-b transition-colors duration-[420ms] ease-out ${
         compact
           ? 'bg-[var(--surface)]/95 backdrop-blur-md border-[var(--line-subtle)]/35'
-          : 'bg-[var(--bg)] border-transparent'
+          : 'bg-transparent border-transparent'
       }`}
     >
       {/*
@@ -394,7 +403,7 @@ export function SongHeader({
                         <span
                           data-vt-song-key={compact ? song.id : undefined}
                           title={`Tom ${displayedKey}`}
-                          className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold flex-shrink-0 px-2.5 py-0.5 text-xs"
+                          className={`studio-chip ${keyChipToneClasses} font-semibold flex-shrink-0 px-2.5 py-0.5 text-xs`}
                         >
                           {displayedKey}
                         </span>
@@ -735,15 +744,20 @@ export function SongHeader({
                   }}
                   aria-expanded={metaOpen}
                   aria-haspopup="dialog"
-                  className="pill-btn bg-transparent hover:bg-[var(--surface-high)] px-1.5 h-8 group"
+                  className="pill-btn bg-transparent hover:bg-[var(--surface-high)] px-1.5 min-h-[38px] group"
                   title="Ajustar capo, andamento (BPM), compasso e duração"
                 >
                   {displayedKey && (
-                    <span
-                      data-vt-song-key={compact ? undefined : song.id}
-                      className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold"
-                    >
-                      Tom {displayedKey}
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-xs font-medium text-[var(--muted)]">Tom</span>{' '}
+                      <Gm3FocalBadge
+                        size="sm"
+                        tone={minorKey ? 'minor' : 'primary'}
+                        vtSongKey={compact ? undefined : song.id}
+                        title={`Tom ${displayedKey}`}
+                      >
+                        {displayedKey}
+                      </Gm3FocalBadge>
                     </span>
                   )}
               {song.capo > 0 && (
@@ -1044,6 +1058,23 @@ export function SongHeader({
                 >
                   <PitchWaveIcon size={14} className={pitchRinging ? 'gm3-wave-ringing' : undefined} />
                   {pitchRinging ? 'Tocando…' : 'Guia'}
+                </button>
+              )}
+
+              {/* Slideshow paginated stage mode */}
+              {!editMode && (
+                <button
+                  type="button"
+                  onClick={onEnterSlidesMode}
+                  className="pill-btn px-3 h-9 text-xs flex-shrink-0"
+                  title={
+                    activeSetlist
+                      ? 'Abrir o setlist inteiro em páginas (Slides) para iPad e pedal Bluetooth'
+                      : 'Abrir esta música em páginas (Slides) para iPad e pedal Bluetooth'
+                  }
+                >
+                  <SlidesIcon size={14} />
+                  Slides
                 </button>
               )}
 

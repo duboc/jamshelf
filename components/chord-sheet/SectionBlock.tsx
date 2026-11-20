@@ -86,17 +86,22 @@ export const SectionBlock = memo(function SectionBlock({
         style={blockStyle}
       >
         <div className="flex items-center gap-2">
-          <span
-            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: colors.bd }}
-            aria-hidden="true"
-          />
-          <span
-            className="font-display text-sm font-semibold"
-            style={{ color: colors.lb }}
+          <div
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1"
+            style={{ backgroundColor: colors.pillBg }}
           >
-            {section.label}
-          </span>
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: colors.bd }}
+              aria-hidden="true"
+            />
+            <span
+              className="font-display text-sm font-semibold"
+              style={{ color: colors.lb }}
+            >
+              {section.label}
+            </span>
+          </div>
           <span className="text-xs text-[var(--muted)]">
             · trecho instrumental
           </span>
@@ -183,9 +188,12 @@ export const SectionBlock = memo(function SectionBlock({
         </div>
       ) : (
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[var(--bg)]/55 px-3 py-1">
+          <div
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1"
+            style={{ backgroundColor: colors.pillBg }}
+          >
             <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              className="w-2 h-2 rounded-full flex-shrink-0"
               style={{ backgroundColor: colors.bd }}
               aria-hidden="true"
             />

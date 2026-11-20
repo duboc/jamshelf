@@ -31,6 +31,14 @@ const GROUPS = [
     ],
   },
   {
+    title: 'Modo Slides (iPad e pedal Bluetooth)',
+    items: [
+      { keys: 'PageDown / → / ↓ / Espaço', desc: 'Avançar página (ou ir para a próxima música)' },
+      { keys: 'PageUp / ← / ↑ / Shift+Espaço', desc: 'Voltar página (ou última página da música anterior)' },
+      { keys: 'Toque esq. / dir. ou deslize', desc: 'Virar páginas sem menus no iPad' },
+    ],
+  },
+  {
     title: 'Modo Edição',
     items: [
       { keys: 'Ctrl+Z / Ctrl+Y', desc: 'Desfazer ou refazer alterações' },

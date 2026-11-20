@@ -292,3 +292,14 @@ export function MusicNoteIcon({ size = 18, ...rest }: IconProps) {
     </svg>
   );
 }
+
+/** Clean two-page binder / slideshow deck icon. */
+export function SlidesIcon({ size = 16, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <rect x="3" y="5" width="14" height="14" rx="2.4" />
+      <path d="M17 8h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-7" />
+      <path d="M7.5 10h5M7.5 13.8h3.5" />
+    </svg>
+  );
+}

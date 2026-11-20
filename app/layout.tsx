@@ -14,8 +14,8 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-// Apply saved theme before hydration to avoid light/dark flash on load.
-const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem('jamshelf-display-mode');if(!raw)return;var t=JSON.parse(raw).state&&JSON.parse(raw).state.theme;if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+// Apply saved theme and HCT palette before hydration to avoid visual flash on load.
+const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem('jamshelf-display-mode');if(!raw)return;var st=JSON.parse(raw).state;if(!st)return;var t=st.theme;if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}var p=st.palette;if(p==='violet'||p==='emerald'||p==='terracotta'){document.documentElement.setAttribute('data-palette',p);}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
