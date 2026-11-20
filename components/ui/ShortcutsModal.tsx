@@ -2,6 +2,7 @@
 
 import { useId, useRef } from 'react';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { CloseIcon } from '@/components/ui/Icons';
 
 interface ShortcutsModalProps {
@@ -42,21 +43,23 @@ const GROUPS = [
 export function ShortcutsModal({ open, onClose }: ShortcutsModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const { mounted, closing } = useAnimatedPresence(open, 220);
   useDialogA11y(open, onClose, dialogRef);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   return (
     <div
-      className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
-      onClick={onClose}
+      className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4`}
+      onClick={closing ? undefined : onClose}
+      inert={closing || undefined}
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="gm3-card gm3-dialog-enter w-full max-w-lg max-h-[85vh] rounded-[28px] bg-[var(--surface)] flex flex-col overflow-hidden"
+        className={`gm3-card ${closing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} w-full max-w-lg max-h-[85vh] rounded-[28px] bg-[var(--surface)] flex flex-col overflow-hidden`}
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -51,7 +51,8 @@ import { CountInOverlay } from '@/components/song/CountInOverlay';
 import { useWakeLock } from '@/lib/hooks/use-wake-lock';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
 import { useScrollCollapse } from '@/lib/hooks/use-scroll-collapse';
-import { navigateWithTransition } from '@/lib/utils/view-transition';
+import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
+import { navigateWithTransition, runStateViewTransition } from '@/lib/utils/view-transition';
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/ui/Icons';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
@@ -102,7 +103,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
   const [arrivedSectionIdx, setArrivedSectionIdx] = useState<number | null>(null);
   const arrivedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const arrivedFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const jumpCancelRef = useRef<(() => void) | null>(null);
   const [chordsRefEverOpened, setChordsRefEverOpened] = useState(chordsRefOpen);
   const [editingNotes, setEditingNotes] = useState(false);
   const [headerOverlayState, setHeaderOverlayState] = useState({
@@ -144,6 +145,17 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const live = useLiveSession(activeSetlist ? activeSetlist.id : null, id, scrollStateRef);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [nameInput, setNameInput] = useState('');
+
+  const { mounted: exportMounted, closing: exportClosing } = useAnimatedPresence(showExport, 220);
+  const activeCountIn =
+    localCountIn ??
+    (live.incomingCountIn
+      ? { ...live.incomingCountIn, leaderName: live.session.leaderName }
+      : null);
+  const countInKey = activeCountIn
+    ? `${activeCountIn.nonce}:${activeCountIn.bpm}:${activeCountIn.beats}:${activeCountIn.leaderName ?? ''}`
+    : null;
+  const displayCountIn = useRetainedValue(activeCountIn, countInKey);
 
   // Keep screen awake during Show Mode, Focus Mode, Auto-scroll, or Metronome
   const wakeLock = useWakeLock(
@@ -293,16 +305,20 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     }
   }, [store.editMode]);
 
+  useEffect(() => {
+    return () => {
+      jumpCancelRef.current?.();
+      if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
+    };
+  }, []);
+
   const handleJumpToSection = useCallback((sectionIdx: number) => {
     setActiveSectionIdx(sectionIdx);
     if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
-    if (arrivedFallbackRef.current) clearTimeout(arrivedFallbackRef.current);
+    jumpCancelRef.current?.();
+    jumpCancelRef.current = null;
 
     const triggerArrival = () => {
-      if (arrivedFallbackRef.current) {
-        clearTimeout(arrivedFallbackRef.current);
-        arrivedFallbackRef.current = null;
-      }
       setArrivedSectionIdx(sectionIdx);
       if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
       arrivedTimerRef.current = setTimeout(() => setArrivedSectionIdx(null), 740);
@@ -318,23 +334,43 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       const reducedMotion =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const targetTop = Math.max(0, target.offsetTop - 16);
-      const alreadyNear = Math.abs(container.scrollTop - targetTop) < 8;
+      const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+      const targetTop = Math.min(maxScroll, Math.max(0, target.offsetTop - 16));
+      const startTop = container.scrollTop;
+      const delta = targetTop - startTop;
 
-      if (reducedMotion || alreadyNear) {
-        container.scrollTo({ top: targetTop, behavior: 'auto' });
+      if (reducedMotion || Math.abs(delta) < 8) {
+        container.scrollTop = targetTop;
         triggerArrival();
       } else {
-        const onScrollEnd = () => {
-          container.removeEventListener('scrollend', onScrollEnd);
-          triggerArrival();
+        const durationMs = Math.min(560, Math.max(360, Math.abs(delta) * 0.45));
+        const t0 = performance.now();
+        let rafId = 0;
+
+        const stop = () => {
+          if (rafId) cancelAnimationFrame(rafId);
+          container.removeEventListener('wheel', stop);
+          container.removeEventListener('touchstart', stop);
+          if (jumpCancelRef.current === stop) jumpCancelRef.current = null;
         };
-        container.addEventListener('scrollend', onScrollEnd, { once: true });
-        arrivedFallbackRef.current = setTimeout(() => {
-          container.removeEventListener('scrollend', onScrollEnd);
-          triggerArrival();
-        }, 260);
-        container.scrollTo({ top: targetTop, behavior: 'smooth' });
+
+        container.addEventListener('wheel', stop, { passive: true, once: true });
+        container.addEventListener('touchstart', stop, { passive: true, once: true });
+        jumpCancelRef.current = stop;
+
+        const step = (now: number) => {
+          const p = Math.min(1, (now - t0) / durationMs);
+          // Smooth quintic deceleration closely matching cubic-bezier(0.22, 1, 0.36, 1)
+          const eased = 1 - Math.pow(1 - p, 4);
+          container.scrollTop = startTop + delta * eased;
+          if (p < 1) {
+            rafId = requestAnimationFrame(step);
+          } else {
+            stop();
+            triggerArrival();
+          }
+        };
+        rafId = requestAnimationFrame(step);
       }
       // Move keyboard focus safely to the target section so collapsing SectionNav never drops focus to body
       target.focus({ preventScroll: true });
@@ -471,7 +507,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       }
 
       if (e.key === 'Escape' && focusMode && !modalOpen) {
-        setFocusMode(false);
+        runStateViewTransition(() => setFocusMode(false), 'morph');
         return;
       }
 
@@ -508,7 +544,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         store.toggleAutoScroll();
       } else if (e.key.toLowerCase() === 'l') {
         e.preventDefault();
-        toggleHideChords();
+        runStateViewTransition(toggleHideChords, 'morph');
       } else if (e.key.toLowerCase() === 's' && activeSetlist) {
         e.preventDefault();
         setShowSetlistDrawer((v) => !v);
@@ -622,12 +658,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       ? transposeChord(allChords[0], store.transpose + store.capo, store.useFlats)
       : '');
 
-  const activeCountIn =
-    localCountIn ??
-    (live.incomingCountIn
-      ? { ...live.incomingCountIn, leaderName: live.session.leaderName }
-      : null);
-
   const handleTriggerCountIn = () => {
     setLocalCountIn({
       nonce: Date.now(),
@@ -695,12 +725,13 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           setNameInput={setNameInput}
           setShowNamePrompt={setShowNamePrompt}
         />
-        {activeCountIn && (
+        {displayCountIn && (
           <CountInOverlay
-            key={activeCountIn.nonce}
-            bpm={activeCountIn.bpm}
-            beats={activeCountIn.beats}
-            leaderName={activeCountIn.leaderName}
+            open={Boolean(activeCountIn)}
+            nonce={displayCountIn.nonce}
+            bpm={displayCountIn.bpm}
+            beats={displayCountIn.beats}
+            leaderName={displayCountIn.leaderName}
             onComplete={closeCountIn}
             onCancel={closeCountIn}
           />
@@ -716,13 +747,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const enterVisualEdit = () => {
     const raw = exportEntry(id) ?? songToChordPro(currentSong);
-    setCalibrating(false);
-    setEditOriginText(raw);
-    setEditDraftText(raw);
-    setUndoStack([]);
-    setRedoStack([]);
-    setEditDiscardArmed(false);
-    store.setEditMode(true);
+    runStateViewTransition(() => {
+      setCalibrating(false);
+      setEditOriginText(raw);
+      setEditDraftText(raw);
+      setUndoStack([]);
+      setRedoStack([]);
+      setEditDiscardArmed(false);
+      store.setEditMode(true);
+    }, 'morph');
   };
 
   const commitDraftText = (nextText: string) => {
@@ -746,13 +779,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       updateEntry(id, editDraftText);
       flashStatus('✓ Alterações salvas');
     }
-    store.setEditMode(false);
-    setEditOriginText(null);
-    setEditDraftText(null);
-    setUndoStack([]);
-    setRedoStack([]);
-    setEditDiscardArmed(false);
-    closeOverlay();
+    runStateViewTransition(() => {
+      store.setEditMode(false);
+      setEditOriginText(null);
+      setEditDraftText(null);
+      setUndoStack([]);
+      setRedoStack([]);
+      setEditDiscardArmed(false);
+      closeOverlay();
+    }, 'morph');
   };
 
   const handleCancelVisualEdit = () => {
@@ -761,13 +796,15 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       setTimeout(() => setEditDiscardArmed(false), 6000);
       return;
     }
-    store.setEditMode(false);
-    setEditOriginText(null);
-    setEditDraftText(null);
-    setUndoStack([]);
-    setRedoStack([]);
-    setEditDiscardArmed(false);
-    closeOverlay();
+    runStateViewTransition(() => {
+      store.setEditMode(false);
+      setEditOriginText(null);
+      setEditDraftText(null);
+      setUndoStack([]);
+      setRedoStack([]);
+      setEditDiscardArmed(false);
+      closeOverlay();
+    }, 'morph');
   };
 
   function applyLineEdit(sectionIdx: number, lineIdx: number, newLine: string) {
@@ -1092,7 +1129,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           onNavigateSong={navigateInSetlist}
           onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
           onTriggerCountIn={handleTriggerCountIn}
-          onExit={() => setFocusMode(false)}
+          onExit={() => runStateViewTransition(() => setFocusMode(false), 'morph')}
         />
       ) : (
         <>
@@ -1165,9 +1202,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onSaveArtist={saveArtist}
             onPatchMeta={(key, val) => patchMeta(id, key, val)}
             displayMode={displayMode}
-            onSetDisplayMode={setDisplayMode}
+            onSetDisplayMode={(m) => runStateViewTransition(() => setDisplayMode(m), 'morph')}
             editMode={store.editMode}
-            onEnterFocusMode={() => setFocusMode(true)}
+            onEnterFocusMode={() => runStateViewTransition(() => setFocusMode(true), 'morph')}
             activeSetlist={activeSetlist}
             setlistSongIdx={setlistSongIdx}
             totalSetlistSongs={existingSetlistSongIds.length}
@@ -1270,86 +1307,92 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             onClosePicker={() => setShowSpotifyPicker(false)}
           />
 
-          {!store.editMode && (
-            <StageNotesBar
-              notes={song.notes}
-              editing={editingNotes}
-              onStartEdit={() => setEditingNotes(true)}
-              onSave={handleSaveNotes}
-              onCancel={() => setEditingNotes(false)}
-            />
-          )}
+          <StageNotesBar
+            notes={store.editMode ? '' : song.notes}
+            editing={!store.editMode && editingNotes}
+            onStartEdit={() => setEditingNotes(true)}
+            onSave={handleSaveNotes}
+            onCancel={() => setEditingNotes(false)}
+          />
 
-          {calibrating && (
-            <CalibrationBar
-              sections={song.sections}
-              elapsedSec={calElapsedSec}
-              marks={calMarks}
-              nextSectionIdx={calNextIdx}
-              onMarkNext={() => {
-                if (calNextIdx < song.sections.length) markCalibrationSection(calNextIdx);
-              }}
-              onSave={handleSaveCalibration}
-              onCancel={() => setCalibrating(false)}
-            />
-          )}
+          <CalibrationBar
+            open={calibrating}
+            sections={song.sections}
+            elapsedSec={calElapsedSec}
+            marks={calMarks}
+            nextSectionIdx={calNextIdx}
+            onMarkNext={() => {
+              if (calNextIdx < song.sections.length) markCalibrationSection(calNextIdx);
+            }}
+            onSave={handleSaveCalibration}
+            onCancel={() => setCalibrating(false)}
+          />
 
-          {/* Bidirectional Collapsible Chords Reference Strip (lazy-mounted on first open for zero initial SVG cost) */}
-          {!store.editMode && !calibrating && displayMode !== 'lyrics-only' && allChords.length > 0 && (
-            <div
-              data-chords-ref-collapsible="true"
-              data-collapsed={chordsRefOpen ? undefined : 'true'}
-              aria-hidden={!chordsRefOpen || undefined}
-              inert={!chordsRefOpen || undefined}
-              className="gm3-collapsible flex-shrink-0"
-            >
-              <div className="gm3-collapsible-inner">
-                {(chordsRefOpen || chordsRefEverOpened) && (
-                  <ChordsReference
-                    chords={allChords.map((c) => transposeChord(c, chordDisplayShift, store.useFlats))}
-                  />
-                )}
+          {/* Bidirectional Collapsible Chords Reference Strip (lazy-mounted on first open; collapses smoothly on mode switches) */}
+          {allChords.length > 0 && (() => {
+            const chordsVisible = chordsRefOpen && !store.editMode && !calibrating && displayMode !== 'lyrics-only';
+            return (
+              <div
+                data-chords-ref-collapsible="true"
+                data-collapsed={chordsVisible ? undefined : 'true'}
+                aria-hidden={!chordsVisible || undefined}
+                inert={!chordsVisible || undefined}
+                className="gm3-collapsible flex-shrink-0"
+              >
+                <div className="gm3-collapsible-inner">
+                  {(chordsVisible || chordsRefEverOpened) && (
+                    <ChordsReference
+                      chords={allChords.map((c) => transposeChord(c, chordDisplayShift, store.useFlats))}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Edit mode guidance banner (glides open/closed smoothly) */}
+          <div
+            className="gm3-collapsible flex-shrink-0"
+            data-compact-slot="true"
+            data-collapsed={!store.editMode ? 'true' : undefined}
+            aria-hidden={!store.editMode || undefined}
+            inert={!store.editMode || undefined}
+          >
+            <div className="gm3-collapsible-inner">
+              <div className="bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+                <p className="w-full rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] px-4 py-2 text-xs text-center font-medium">
+                  {store.transpose !== 0 && (
+                    <span className="font-mono font-bold mr-2">
+                      [Editando no tom original {song.originalKey || ''}]
+                    </span>
+                  )}
+                  Edite o texto direto · toque num acorde para mover ou trocar · clique em <b>+</b> no cursor para inserir · salve em <b>Salvar e sair</b>
+                </p>
               </div>
             </div>
-          )}
-
-          {/* Edit mode guidance banner */}
-          {store.editMode && (
-            <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
-              <p className="w-full rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] px-4 py-2 text-xs text-center font-medium">
-                {store.transpose !== 0 && (
-                  <span className="font-mono font-bold mr-2">
-                    [Editando no tom original {song.originalKey || ''}]
-                  </span>
-                )}
-                Edite o texto direto · toque num acorde para mover ou trocar · clique em <b>+</b> no cursor para inserir · salve em <b>Salvar e sair</b>
-              </p>
-            </div>
-          )}
+          </div>
         </>
       )}
 
-      {/* Section jump navigation bar (collapses smoothly with the top bar on scroll down) */}
-      {!store.editMode && (
-        <div
-          className="gm3-collapsible gm3-header-collapse flex-shrink-0"
-          data-collapsed={headerCompact ? 'true' : undefined}
-          aria-hidden={headerCompact || undefined}
-          inert={headerCompact || undefined}
-        >
-          <div className="gm3-collapsible-inner">
-            <SectionNav
-              sections={song.sections}
-              activeIdx={activeSectionIdx}
-              collapsed={headerCompact}
-              onJump={(idx) => {
-                if (calibrating) markCalibrationSection(idx);
-                else handleJumpToSection(idx);
-              }}
-            />
-          </div>
+      {/* Section jump navigation bar (collapses smoothly on scroll down or edit mode) */}
+      <div
+        className="gm3-collapsible gm3-header-collapse flex-shrink-0"
+        data-collapsed={headerCompact || store.editMode ? 'true' : undefined}
+        aria-hidden={headerCompact || store.editMode || undefined}
+        inert={headerCompact || store.editMode || undefined}
+      >
+        <div className="gm3-collapsible-inner">
+          <SectionNav
+            sections={song.sections}
+            activeIdx={activeSectionIdx}
+            collapsed={headerCompact || store.editMode}
+            onJump={(idx) => {
+              if (calibrating) markCalibrationSection(idx);
+              else handleJumpToSection(idx);
+            }}
+          />
         </div>
-      )}
+      </div>
 
       {/* Main chord / lyric sheet */}
       <main id="main-content" className="gm3-page-enter flex flex-1 relative min-h-0">
@@ -1391,8 +1434,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       </main>
 
       {/* Setlist Drawer */}
-      {activeSetlist && showSetlistDrawer && (
+      {activeSetlist && (
         <SetlistDrawer
+          open={showSetlistDrawer}
           setlist={activeSetlist}
           currentSongId={song.id}
           canReorder={!live.isFollowing}
@@ -1402,18 +1446,16 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {/* Visual chord editing overlay */}
-      {store.editMode && (overlaySelected || addTarget) && (
-        <EditChordOverlay
-          selected={overlaySelected}
-          addTarget={addTarget}
-          songChords={allChords}
-          onMove={handleMove}
-          onRename={handleRename}
-          onDelete={handleDelete}
-          onInsert={handleInsert}
-          onClose={closeOverlay}
-        />
-      )}
+      <EditChordOverlay
+        selected={store.editMode ? overlaySelected : null}
+        addTarget={store.editMode ? addTarget : null}
+        songChords={allChords}
+        onMove={handleMove}
+        onRename={handleRename}
+        onDelete={handleDelete}
+        onInsert={handleInsert}
+        onClose={closeOverlay}
+      />
 
       {/* Save transposed key confirmation */}
       <ConfirmDialog
@@ -1446,17 +1488,18 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       />
 
       {/* Edit raw ChordPro source modal with live split preview */}
-      {showExport && (
+      {exportMounted && (
         <div
-          className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-3 sm:p-4"
-          onClick={closeExportModal}
+          className={`${exportClosing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-3 sm:p-4`}
+          onClick={exportClosing ? undefined : closeExportModal}
+          inert={exportClosing || undefined}
         >
           <div
             ref={choModalRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="cho-modal-title"
-            className="gm3-dialog-enter bg-[var(--surface)] rounded-[28px] w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
+            className={`${exportClosing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} bg-[var(--surface)] rounded-[28px] w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden`}
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1483,7 +1526,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                       key={v.id}
                       type="button"
                       aria-pressed={choView === v.id}
-                      onClick={() => setChoView(v.id)}
+                      onClick={() => runStateViewTransition(() => setChoView(v.id), 'morph')}
                       className="gm3-connected-btn px-3 h-9 font-display text-xs font-medium cursor-pointer"
                     >
                       {v.label}
@@ -1570,29 +1613,28 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         </div>
       )}
 
-      {showEnhance && (
-        <EnhanceModal
-          songId={id}
-          onClose={() => setShowEnhance(false)}
-          onApplied={() => flashStatus('✓ Revisão aplicada')}
-        />
-      )}
+      <EnhanceModal
+        open={showEnhance}
+        songId={id}
+        onClose={() => setShowEnhance(false)}
+        onApplied={() => flashStatus('✓ Revisão aplicada')}
+      />
 
-      {showHistory && (
-        <VersionHistoryModal
-          songId={id}
-          currentText={exportEntry(id) ?? ''}
-          onClose={() => setShowHistory(false)}
-          onRestored={() => flashStatus('✓ Versão restaurada')}
-        />
-      )}
+      <VersionHistoryModal
+        open={showHistory}
+        songId={id}
+        currentText={exportEntry(id) ?? ''}
+        onClose={() => setShowHistory(false)}
+        onRestored={() => flashStatus('✓ Versão restaurada')}
+      />
 
-      {activeCountIn && (
+      {displayCountIn && (
         <CountInOverlay
-          key={activeCountIn.nonce}
-          bpm={activeCountIn.bpm}
-          beats={activeCountIn.beats}
-          leaderName={activeCountIn.leaderName}
+          open={Boolean(activeCountIn)}
+          nonce={displayCountIn.nonce}
+          bpm={displayCountIn.bpm}
+          beats={displayCountIn.beats}
+          leaderName={displayCountIn.leaderName}
           onComplete={closeCountIn}
           onCancel={closeCountIn}
         />

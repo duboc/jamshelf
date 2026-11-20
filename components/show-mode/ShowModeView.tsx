@@ -6,6 +6,8 @@ import { useDisplayStore } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
 import { useScrollCollapse } from '@/lib/hooks/use-scroll-collapse';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
+import { prefersReducedMotion, runStateViewTransition } from '@/lib/utils/view-transition';
 import { Metronome } from '@/components/metronome/Metronome';
 import { VisualPulse } from '@/components/metronome/VisualPulse';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
@@ -126,13 +128,15 @@ export function ShowModeView({
   );
   const isDark = theme === 'dark' || (theme === 'system' && systemDark);
 
-  const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const touchRef = useRef<{ x: number; y: number; t: number; horizontal: boolean } | null>(null);
+  const swipeLayerRef = useRef<HTMLDivElement>(null);
   const goLiveDialogRef = useRef<HTMLDivElement>(null);
   const titleTriggerRef = useRef<HTMLButtonElement>(null);
   const palcoTriggerRef = useRef<HTMLButtonElement>(null);
   const [showSetlist, setShowSetlist] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [pitchRinging, setPitchRinging] = useState(false);
+  const { mounted: goLiveMounted, closing: goLiveClosing } = useAnimatedPresence(showNamePrompt, 220);
 
   const {
     compact: stageCompact,
@@ -241,6 +245,16 @@ export function ShowModeView({
     onTriggerCountIn,
   ]);
 
+  const resetSwipeOffset = (animate: boolean) => {
+    const layer = swipeLayerRef.current;
+    if (!layer) return;
+    layer.style.transition =
+      animate && !prefersReducedMotion()
+        ? 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1)'
+        : 'none';
+    layer.style.transform = 'translate3d(0, 0, 0)';
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!canNavigate) return;
     const t = e.touches[0];
@@ -248,7 +262,31 @@ export function ShowModeView({
       touchRef.current = null;
       return;
     }
-    touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+    touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now(), horizontal: false };
+    const layer = swipeLayerRef.current;
+    if (layer) layer.style.transition = 'none';
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!canNavigate || !touchRef.current || prefersReducedMotion()) return;
+    const start = touchRef.current;
+    const t = e.touches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (!start.horizontal) {
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        start.horizontal = true;
+      } else {
+        return;
+      }
+    }
+    const canSlideDir = (dx < 0 && Boolean(nextSongId)) || (dx > 0 && Boolean(prevSongId));
+    const damp = canSlideDir ? 0.28 : 0.08;
+    const offset = Math.max(-48, Math.min(48, dx * damp));
+    const layer = swipeLayerRef.current;
+    if (layer) {
+      layer.style.transform = `translate3d(${offset.toFixed(1)}px, 0, 0)`;
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -264,10 +302,17 @@ export function ShowModeView({
       Math.abs(dx) < Math.abs(dy) * SWIPE_DX_DY_RATIO ||
       dt > SWIPE_MAX_DT
     ) {
+      if (start.horizontal) resetSwipeOffset(true);
       return;
     }
+    resetSwipeOffset(false);
     if (dx < 0 && nextSongId) onNavigate(nextSongId);
     else if (dx > 0 && prevSongId) onNavigate(prevSongId);
+  };
+
+  const handleTouchCancel = () => {
+    if (touchRef.current?.horizontal) resetSwipeOffset(true);
+    touchRef.current = null;
   };
 
   const secondaryStageControls = (
@@ -537,7 +582,7 @@ export function ShowModeView({
                         type="button"
                         aria-pressed={store.isAutoScrolling}
                         onClick={store.toggleAutoScroll}
-                        className={`gm3-compact-enter pill-btn w-11 h-11 text-xs flex-shrink-0 ${
+                        className={`pill-btn w-11 h-11 text-xs flex-shrink-0 ${
                           store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
                         }`}
                         title={store.isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
@@ -588,7 +633,7 @@ export function ShowModeView({
                         setStageCompact(false);
                         requestAnimationFrame(() => titleTriggerRef.current?.focus({ preventScroll: true }));
                       }}
-                      className="gm3-compact-enter gm3-icon-btn w-11 h-11 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                      className="gm3-icon-btn w-11 h-11 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
                       title="Expandir controles de palco"
                       aria-label="Expandir controles de palco"
                     >
@@ -646,7 +691,7 @@ export function ShowModeView({
               <button
                 type="button"
                 aria-pressed={chordsHidden}
-                onClick={toggleHideChords}
+                onClick={() => runStateViewTransition(toggleHideChords, 'morph')}
                 className={`pill-btn px-3 sm:px-3.5 h-11 text-xs flex-shrink-0 ${
                   chordsHidden ? 'pill-btn-primary' : 'bg-[var(--bg)]'
                 }`}
@@ -678,14 +723,24 @@ export function ShowModeView({
             </div>
           </div>
 
-          {/* Always-mounted live-session error alert (never silenced inside collapsed Palco tray) */}
-          {live.liveError && (
-            <div role="alert" className="mt-2 flex">
-              <span className="studio-chip bg-[var(--rec-dim)] text-[var(--on-rec-container)]">
-                {live.liveError}
-              </span>
+          {/* Always-mounted live-session error alert (glides open/closed smoothly) */}
+          <div
+            className="gm3-collapsible"
+            data-compact-slot="true"
+            data-collapsed={!live.liveError ? 'true' : undefined}
+            aria-hidden={!live.liveError || undefined}
+            inert={!live.liveError || undefined}
+          >
+            <div className="gm3-collapsible-inner">
+              {live.liveError && (
+                <div role="alert" className="mt-2 flex">
+                  <span className="studio-chip bg-[var(--rec-dim)] text-[var(--on-rec-container)]">
+                    {live.liveError}
+                  </span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Mobile / Tablet bidirectional collapsible stage controls tray (0fr <-> 1fr) */}
           {!isDesktopStage && (
@@ -707,17 +762,18 @@ export function ShowModeView({
       </header>
 
       {/* Go-live name modal */}
-      {showNamePrompt && (
+      {goLiveMounted && (
         <div
-          className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
-          onClick={() => setShowNamePrompt(false)}
+          className={`${goLiveClosing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4`}
+          onClick={goLiveClosing ? undefined : () => setShowNamePrompt(false)}
+          inert={goLiveClosing || undefined}
         >
           <div
             ref={goLiveDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="show-go-live-title"
-            className="gm3-dialog-enter w-full max-w-xs bg-[var(--surface)] rounded-[28px] p-6 space-y-4"
+            className={`${goLiveClosing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} w-full max-w-xs bg-[var(--surface)] rounded-[28px] p-6 space-y-4`}
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -768,9 +824,11 @@ export function ShowModeView({
         id="main-content"
         className="flex flex-1 relative min-h-0"
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
       >
-        <div key={song.id} className="gm3-page-enter flex flex-1 min-h-0 min-w-0">
+        <div ref={swipeLayerRef} key={song.id} className="gm3-page-enter flex flex-1 min-h-0 min-w-0">
           <ChordSheet
             song={song}
             displayMode={displayMode}
@@ -784,15 +842,14 @@ export function ShowModeView({
           />
         </div>
 
-        {showSetlist && (
-          <SetlistDrawer
-            setlist={activeSetlist}
-            currentSongId={song.id}
-            canReorder={canNavigate}
-            onNavigate={onNavigate}
-            onClose={() => setShowSetlist(false)}
-          />
-        )}
+        <SetlistDrawer
+          open={showSetlist}
+          setlist={activeSetlist}
+          currentSongId={song.id}
+          canReorder={canNavigate}
+          onNavigate={onNavigate}
+          onClose={() => setShowSetlist(false)}
+        />
       </main>
 
       {/* Bottom stage bar: clean Prev / Next preview without overlapping lyrics */}

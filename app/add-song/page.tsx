@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSongStore } from '@/lib/stores/song-store';
 import { processWithGemini } from '@/lib/utils/ai-import';
 import { parseChordPro, patchChordProMeta } from '@/lib/utils/chordpro-parser';
 import { normalizeSearch } from '@/lib/utils/music';
+import { navigateWithTransition, runStateViewTransition } from '@/lib/utils/view-transition';
 import type { ChordProEntry } from '@/lib/types/song';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
+import { TransitionLink } from '@/components/ui/TransitionLink';
 import { ChordSheet } from '@/components/chord-sheet/ChordSheet';
 
 type InputMode = 'paste' | 'search';
@@ -133,7 +135,7 @@ export default function AddSongPage() {
         signal: controller.signal,
         forcePaste: inputMode === 'paste',
       });
-      setPreview(entry);
+      runStateViewTransition(() => setPreview(entry), 'morph');
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Não foi possível processar a cifra.');
@@ -149,7 +151,7 @@ export default function AddSongPage() {
     setError('');
     setSpotifyResults([]);
     setSelectedSpotifyId(null);
-    setPreview(createBlankSongEntry());
+    runStateViewTransition(() => setPreview(createBlankSongEntry()), 'morph');
   };
 
   const canSave = Boolean(preview && previewSong?.title?.trim());
@@ -165,7 +167,7 @@ export default function AddSongPage() {
       text = patchChordProMeta(text, 'duration', Math.round(selectedTrack.durationMs / 1000));
     }
     const saved = addEntry({ ...preview, text });
-    router.push(`/song/${saved.id}`);
+    navigateWithTransition(router, `/song/${saved.id}`, { songId: saved.id, direction: 'forward' });
   };
 
   return (
@@ -183,13 +185,9 @@ export default function AddSongPage() {
 
           {!preview ? (
             <div className="gm3-card rounded-[24px] bg-[var(--surface)] p-6 space-y-4">
-              {/* Mode selector */}
+              {/* Mode selector with GPU sliding indicator */}
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div
-                  role="group"
-                  aria-label="Como deseja criar a cifra"
-                  className="gm3-connected-group gm3-connected-group-subtle"
-                >
+                <ConnectedGroup value={inputMode} ariaLabel="Como deseja criar a cifra" subtle>
                   <button
                     type="button"
                     aria-pressed={inputMode === 'paste'}
@@ -212,7 +210,7 @@ export default function AddSongPage() {
                   >
                     Buscar com IA
                   </button>
-                </div>
+                </ConnectedGroup>
 
                 <button
                   type="button"
@@ -234,7 +232,7 @@ export default function AddSongPage() {
                   id="raw-song-input"
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
-                  rows={inputMode === 'paste' ? 14 : 4}
+                  rows={inputMode === 'paste' ? 12 : 4}
                   placeholder={
                     inputMode === 'paste'
                       ? 'Cole aqui a cifra completa com acordes acima da letra ou já em ChordPro...'
@@ -244,14 +242,24 @@ export default function AddSongPage() {
                 />
               </div>
 
-              {error && (
-                <div
-                  role="alert"
-                  className="text-sm font-medium text-[var(--on-rec-container)] bg-[var(--rec-dim)] rounded-2xl px-4 py-3"
-                >
-                  {error}
+              <div
+                className="gm3-collapsible"
+                data-compact-slot="true"
+                data-collapsed={!error ? 'true' : undefined}
+                aria-hidden={!error || undefined}
+                inert={!error || undefined}
+              >
+                <div className="gm3-collapsible-inner">
+                  {error && (
+                    <div
+                      role="alert"
+                      className="text-sm font-medium text-[var(--on-rec-container)] bg-[var(--rec-dim)] rounded-2xl px-4 py-3"
+                    >
+                      {error}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {loading && (
@@ -279,24 +287,36 @@ export default function AddSongPage() {
             </div>
           ) : previewSong ? (
             <div className="space-y-5">
-              {/* Duplicate title warning */}
-              {duplicateSong && (
-                <div
-                  role="status"
-                  className="rounded-2xl bg-[var(--warn-dim)] px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-[var(--ink)]"
-                >
-                  <span>
-                    Já existe uma música chamada <strong>{duplicateSong.title}</strong>
-                    {duplicateSong.artist ? ` (${duplicateSong.artist})` : ''} no seu repertório.
-                  </span>
-                  <Link
-                    href={`/song/${duplicateSong.id}`}
-                    className="font-semibold text-[var(--accent-ink)] hover:underline"
-                  >
-                    Abrir existente
-                  </Link>
+              {/* Duplicate title warning (glides open/closed) */}
+              <div
+                className="gm3-collapsible"
+                data-compact-slot="true"
+                data-collapsed={!duplicateSong ? 'true' : undefined}
+                aria-hidden={!duplicateSong || undefined}
+                inert={!duplicateSong || undefined}
+              >
+                <div className="gm3-collapsible-inner">
+                  {duplicateSong && (
+                    <div
+                      role="status"
+                      className="rounded-2xl bg-[var(--warn-dim)] px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-[var(--ink)]"
+                    >
+                      <span>
+                        Já existe uma música chamada <strong>{duplicateSong.title}</strong>
+                        {duplicateSong.artist ? ` (${duplicateSong.artist})` : ''} no seu repertório.
+                      </span>
+                      <TransitionLink
+                        href={`/song/${duplicateSong.id}`}
+                        vtSongId={duplicateSong.id}
+                        vtDirection="forward"
+                        className="font-semibold text-[var(--accent-ink)] hover:underline"
+                      >
+                        Abrir existente
+                      </TransitionLink>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Metadata editor */}
               <div className="gm3-card bg-[var(--surface)] rounded-[24px] p-6 space-y-4">
@@ -441,7 +461,7 @@ export default function AddSongPage() {
                         type="button"
                         aria-pressed={selectedSpotifyId === track.id}
                         onClick={() => setSelectedSpotifyId(track.id)}
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-colors cursor-pointer ${
+                        className={`gm3-menu-item w-full flex items-center gap-3 p-2.5 text-left cursor-pointer ${
                           selectedSpotifyId === track.id
                             ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
                             : 'bg-[var(--bg)] hover:bg-[var(--surface-high)]'
@@ -503,7 +523,7 @@ export default function AddSongPage() {
         danger
         onConfirm={() => {
           setConfirmResetOpen(false);
-          setPreview(null);
+          runStateViewTransition(() => setPreview(null), 'morph');
         }}
         onCancel={() => setConfirmResetOpen(false)}
       />

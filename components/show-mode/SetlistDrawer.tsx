@@ -5,11 +5,14 @@ import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
+import { useFlipList } from '@/lib/hooks/use-flip-list';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { ArrowDownIcon, ArrowUpIcon, CloseIcon, GripIcon } from '@/components/ui/Icons';
 import type { Setlist, ParsedSong } from '@/lib/types/song';
 
 interface SetlistDrawerProps {
+  open?: boolean;
   setlist: Setlist;
   currentSongId: string;
   /** Followers get a read-only view, matching prev/next navigation rules. */
@@ -24,6 +27,7 @@ interface Entry {
 }
 
 export function SetlistDrawer({
+  open = true,
   setlist,
   currentSongId,
   canReorder,
@@ -35,8 +39,9 @@ export function SetlistDrawer({
   const listRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const [liveStatus, setLiveStatus] = useState('');
+  const { mounted, closing } = useAnimatedPresence(open, 260);
 
-  useDialogA11y(true, onClose, drawerRef);
+  useDialogA11y(open, onClose, drawerRef);
 
   const baseEntries: Entry[] = setlist.songIds
     .map((sid, storeIdx) => ({ song: getSong(sid), storeIdx }))
@@ -49,6 +54,9 @@ export function SetlistDrawer({
   });
 
   const displayEntries = drag ? moveItem(baseEntries, drag.from, drag.to) : baseEntries;
+  const orderKey = displayEntries.map((e) => e.song.id).join('|');
+  useFlipList(listRef, orderKey);
+
   const durSummary =
     displayEntries.length > 0
       ? computeSetlistDuration(displayEntries.map((e) => e.song))
@@ -58,10 +66,13 @@ export function SetlistDrawer({
     : null;
 
   useEffect(() => {
+    if (!open) return;
     listRef.current
       ?.querySelector('[data-current="true"]')
       ?.scrollIntoView({ block: 'center' });
-  }, []);
+  }, [open]);
+
+  if (!mounted) return null;
 
   const handleKeyboardReorder = (displayIdx: number, delta: -1 | 1) => {
     const targetIdx = displayIdx + delta;
@@ -75,17 +86,19 @@ export function SetlistDrawer({
   return (
     <>
       <div
-        className="gm3-backdrop-enter fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40"
-        onClick={onClose}
+        className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40`}
+        onClick={closing ? undefined : onClose}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
+        aria-hidden="true"
       />
       <aside
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="setlist-drawer-title"
-        className="gm3-drawer-left fixed inset-y-0 left-0 w-80 max-w-[88vw] z-50 flex flex-col rounded-r-[28px] bg-[var(--surface)] overflow-hidden"
+        inert={closing || undefined}
+        className={`${closing ? 'gm3-drawer-left-exit' : 'gm3-drawer-left'} fixed inset-y-0 left-0 w-80 max-w-[88vw] z-50 flex flex-col rounded-r-[28px] bg-[var(--surface)] overflow-hidden`}
         style={{ boxShadow: 'var(--shadow-md)' }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
@@ -128,6 +141,7 @@ export function SetlistDrawer({
             return (
               <div
                 key={song.id}
+                data-flip-key={song.id}
                 data-display-idx={displayIdx}
                 data-current={isCurrent || undefined}
                 data-dragging={isDragged || undefined}

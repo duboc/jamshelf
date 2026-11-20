@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { CloseIcon } from '@/components/ui/Icons';
 
 interface VersionSummary {
@@ -12,6 +13,7 @@ interface VersionSummary {
 }
 
 interface VersionHistoryModalProps {
+  open?: boolean;
   songId: string;
   currentText: string;
   onClose: () => void;
@@ -30,12 +32,14 @@ function formatRelativeTime(ts: number): string {
   return new Date(ts).toLocaleDateString('pt-BR');
 }
 
-export function VersionHistoryModal({
+function VersionHistoryModalInner({
+  open,
+  closing,
   songId,
   currentText,
   onClose,
   onRestored,
-}: VersionHistoryModalProps) {
+}: VersionHistoryModalProps & { open: boolean; closing: boolean }) {
   const { updateEntry } = useSongStore();
   const [versions, setVersions] = useState<VersionSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +50,7 @@ export function VersionHistoryModal({
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  useDialogA11y(true, onClose, dialogRef);
+  useDialogA11y(open, onClose, dialogRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,15 +118,16 @@ export function VersionHistoryModal({
 
   return (
     <div
-      className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
-      onClick={onClose}
+      className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4`}
+      onClick={closing ? undefined : onClose}
+      inert={closing || undefined}
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="history-modal-title"
-        className="gm3-dialog-enter bg-[var(--surface)] rounded-[28px] w-full max-w-xl max-h-[82vh] flex flex-col overflow-hidden"
+        className={`${closing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} bg-[var(--surface)] rounded-[28px] w-full max-w-xl max-h-[82vh] flex flex-col overflow-hidden`}
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -192,13 +197,21 @@ export function VersionHistoryModal({
                     </div>
                   </div>
 
-                  {isExpanded && (
-                    <pre className="max-h-48 overflow-auto rounded-xl bg-[var(--surface)] p-3 font-mono text-xs text-[var(--ink)] whitespace-pre-wrap leading-relaxed">
-                      {loadingPreviewId === v.versionId
-                        ? 'Carregando prévia…'
-                        : loadedTexts[v.versionId] ?? v.preview}
-                    </pre>
-                  )}
+                  <div
+                    className="gm3-collapsible"
+                    data-compact-slot="true"
+                    data-collapsed={!isExpanded ? 'true' : undefined}
+                    aria-hidden={!isExpanded || undefined}
+                    inert={!isExpanded || undefined}
+                  >
+                    <div className="gm3-collapsible-inner">
+                      <pre className="mt-2.5 max-h-48 overflow-auto rounded-xl bg-[var(--surface)] p-3 font-mono text-xs text-[var(--ink)] whitespace-pre-wrap leading-relaxed">
+                        {loadingPreviewId === v.versionId
+                          ? 'Carregando prévia…'
+                          : loadedTexts[v.versionId] ?? v.preview}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -206,4 +219,10 @@ export function VersionHistoryModal({
       </div>
     </div>
   );
+}
+
+export function VersionHistoryModal({ open = true, ...rest }: VersionHistoryModalProps) {
+  const { mounted, closing } = useAnimatedPresence(open, 220);
+  if (!mounted) return null;
+  return <VersionHistoryModalInner open={open} closing={closing} {...rest} />;
 }

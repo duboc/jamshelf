@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { CloseIcon } from '@/components/ui/Icons';
 
 interface SpotifySectionProps {
@@ -35,120 +36,156 @@ export function SpotifySection({
   onClosePicker,
 }: SpotifySectionProps) {
   const pickerRef = useRef<HTMLDivElement>(null);
+  const { mounted: pickerMounted, closing: pickerClosing } = useAnimatedPresence(showPicker, 220);
+  const showPlayerRow = Boolean(showPreview && spotifyTrackId);
+  const showSuggestionRow = Boolean(!spotifyTrackId && !suggestionDismissed && results.length > 0);
+  const { mounted: playerMounted } = useAnimatedPresence(showPlayerRow, 420);
   useDialogA11y(showPicker, onClosePicker, pickerRef);
 
   return (
     <>
-      {/* Embedded player */}
-      {showPreview && spotifyTrackId && (
-        <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
-          <div className="w-full">
-            <iframe
-              key={spotifyTrackId}
-              title="Prévia da faixa no Spotify"
-              src={`https://open.spotify.com/embed/track/${spotifyTrackId}?utm_source=generator`}
-              width="100%"
-              height="152"
-              style={{ border: 0, borderRadius: '16px' }}
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Automatic suggestion banner for unmatched songs */}
-      {!spotifyTrackId && !suggestionDismissed && results.length > 0 && (
-        <div className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
-          <div className="w-full rounded-[20px] bg-[var(--primary-container)]/55 px-4 py-2.5">
-            <div className="flex items-center gap-3">
-              {results[0].albumArt ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={results[0].albumArt}
-                  alt=""
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+      {/* Embedded player (bidirectional 0fr <-> 1fr glide) */}
+      <div
+        className="gm3-collapsible flex-shrink-0"
+        data-compact-slot="true"
+        data-collapsed={!showPlayerRow ? 'true' : undefined}
+        aria-hidden={!showPlayerRow || undefined}
+        inert={!showPlayerRow || undefined}
+      >
+        <div className="gm3-collapsible-inner">
+          {playerMounted && spotifyTrackId && (
+            <div className="bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+              <div className="w-full">
+                <iframe
+                  key={spotifyTrackId}
+                  title="Prévia da faixa no Spotify"
+                  src={`https://open.spotify.com/embed/track/${spotifyTrackId}?utm_source=generator`}
+                  width="100%"
+                  height="152"
+                  style={{ border: 0, borderRadius: '16px' }}
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy"
                 />
-              ) : (
-                <div className="w-10 h-10 rounded-lg bg-[var(--surface2)] flex-shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="field-label text-[var(--accent-ink)]">Sugestão no Spotify</div>
-                <div className="text-sm font-semibold text-[var(--ink)] truncate">
-                  {results[0].name}{' '}
-                  <span className="font-normal text-[var(--muted)]">· {results[0].artist}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => onSelect(results[0].id)}
-                  className="pill-btn pill-btn-primary px-3 py-1 text-xs"
-                >
-                  Vincular
-                </button>
-                {results.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={onToggleMoreSuggestions}
-                    className="pill-btn px-2.5 py-1 text-xs"
-                  >
-                    {showMoreSuggestions ? 'Ocultar' : `+${results.length - 1}`}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={onDismissSuggestion}
-                  title="Dispensar"
-                  aria-label="Dispensar sugestão do Spotify"
-                  className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
-                >
-                  <CloseIcon size={15} />
-                </button>
               </div>
             </div>
-
-            {showMoreSuggestions && (
-              <div className="mt-2.5 space-y-1.5 pl-13">
-                {results.slice(1).map((track) => (
-                  <button
-                    key={track.id}
-                    type="button"
-                    onClick={() => onSelect(track.id)}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl bg-[var(--surface)] hover:bg-[var(--surface-high)] text-left transition-colors cursor-pointer"
-                  >
-                    {track.albumArt ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={track.albumArt} alt="" width={32} height={32} className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-[var(--surface2)] flex-shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-[var(--ink)] truncate">{track.name}</div>
-                      <div className="text-xs text-[var(--muted)] truncate">{track.artist}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Automatic suggestion banner for unmatched songs (glides smoothly on async load & dismiss) */}
+      <div
+        className="gm3-collapsible flex-shrink-0"
+        data-compact-slot="true"
+        data-collapsed={!showSuggestionRow ? 'true' : undefined}
+        aria-hidden={!showSuggestionRow || undefined}
+        inert={!showSuggestionRow || undefined}
+      >
+        <div className="gm3-collapsible-inner">
+          {results.length > 0 && (
+            <div className="bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+              <div className="w-full rounded-[20px] bg-[var(--primary-container)]/55 px-4 py-2.5">
+                <div className="flex items-center gap-3">
+                  {results[0].albumArt ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={results[0].albumArt}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-[var(--surface2)] flex-shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="field-label text-[var(--accent-ink)]">Sugestão no Spotify</div>
+                    <div className="text-sm font-semibold text-[var(--ink)] truncate">
+                      {results[0].name}{' '}
+                      <span className="font-normal text-[var(--muted)]">· {results[0].artist}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onSelect(results[0].id)}
+                      className="pill-btn pill-btn-primary px-3 py-1 text-xs"
+                    >
+                      Vincular
+                    </button>
+                    {results.length > 1 && (
+                      <button
+                        type="button"
+                        aria-expanded={showMoreSuggestions}
+                        onClick={onToggleMoreSuggestions}
+                        className="pill-btn px-2.5 py-1 text-xs"
+                      >
+                        {showMoreSuggestions ? 'Ocultar' : `+${results.length - 1}`}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={onDismissSuggestion}
+                      title="Dispensar"
+                      aria-label="Dispensar sugestão do Spotify"
+                      className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface2)] cursor-pointer"
+                    >
+                      <CloseIcon size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                {results.length > 1 && (
+                  <div
+                    className="gm3-collapsible"
+                    data-compact-slot="true"
+                    data-collapsed={!showMoreSuggestions ? 'true' : undefined}
+                    aria-hidden={!showMoreSuggestions || undefined}
+                    inert={!showMoreSuggestions || undefined}
+                  >
+                    <div className="gm3-collapsible-inner">
+                      <div className="mt-2.5 space-y-1.5 pl-13">
+                        {results.slice(1).map((track) => (
+                          <button
+                            key={track.id}
+                            type="button"
+                            onClick={() => onSelect(track.id)}
+                            className="gm3-menu-item w-full flex items-center gap-2.5 p-2 bg-[var(--surface)] hover:bg-[var(--surface-high)] text-left cursor-pointer"
+                          >
+                            {track.albumArt ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={track.albumArt} alt="" width={32} height={32} className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-[var(--surface2)] flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-[var(--ink)] truncate">{track.name}</div>
+                              <div className="text-xs text-[var(--muted)] truncate">{track.artist}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Manual Spotify picker modal */}
-      {showPicker && (
+      {pickerMounted && (
         <div
-          className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
-          onClick={onClosePicker}
+          className={`${pickerClosing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4`}
+          onClick={pickerClosing ? undefined : onClosePicker}
+          inert={pickerClosing || undefined}
         >
           <div
             ref={pickerRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="spotify-picker-title"
-            className="gm3-dialog-enter w-full max-w-md rounded-[28px] bg-[var(--surface)] p-6 space-y-3"
+            className={`${pickerClosing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} w-full max-w-md rounded-[28px] bg-[var(--surface)] p-6 space-y-3`}
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -181,7 +218,7 @@ export function SpotifySection({
                     key={track.id}
                     type="button"
                     onClick={() => onSelect(track.id)}
-                    className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-colors cursor-pointer ${
+                    className={`gm3-menu-item w-full flex items-center gap-3 p-2.5 text-left cursor-pointer ${
                       spotifyTrackId === track.id
                         ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
                         : 'bg-[var(--bg)] hover:bg-[var(--surface-high)]'

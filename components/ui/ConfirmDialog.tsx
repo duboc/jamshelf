@@ -2,6 +2,7 @@
 
 import { useId, useRef } from 'react';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -26,21 +27,23 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const { mounted, closing } = useAnimatedPresence(open, 220);
   useDialogA11y(open, onCancel, dialogRef);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   return (
     <div
-      className="gm3-backdrop-enter fixed inset-0 z-[70] bg-black/45 flex items-center justify-center p-4"
-      onClick={onCancel}
+      className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 z-[70] bg-black/45 flex items-center justify-center p-4`}
+      onClick={closing ? undefined : onCancel}
+      inert={closing || undefined}
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="gm3-card gm3-dialog-enter w-full max-w-sm rounded-[28px] bg-[var(--surface)] p-6 space-y-5"
+        className={`gm3-card ${closing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} w-full max-w-sm rounded-[28px] bg-[var(--surface)] p-6 space-y-5`}
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >

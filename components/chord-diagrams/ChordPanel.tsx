@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { getGuitarPositions, getPianoNotes } from '@/lib/utils/chord-lookup';
 import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import { CloseIcon, PitchWaveIcon } from '@/components/ui/Icons';
 import { GuitarChordDiagram } from './GuitarChordDiagram';
 import { PianoChordDiagram } from './PianoChordDiagram';
@@ -86,6 +87,9 @@ function ChordDiagramsBody({ chord }: { chord: string }) {
 export function ChordPanel({ chord, onClose }: ChordPanelProps) {
   const panelRef = useRef<HTMLElement>(null);
   const [ringing, setRinging] = useState(false);
+  const isOpen = Boolean(chord);
+  const { mounted, closing } = useAnimatedPresence(isOpen, 260);
+  const displayChord = useRetainedValue(chord);
   const isMobileModal = useSyncExternalStore(
     subscribeMobileModal,
     getMobileModal,
@@ -94,10 +98,10 @@ export function ChordPanel({ chord, onClose }: ChordPanelProps) {
 
   // Full modal focus-trap only on mobile (< 640px) where the drawer covers the screen.
   // On desktop/tablet (>= 640px) behave as a non-modal side region so musicians can keep navigating and tapping chords.
-  useDialogA11y(Boolean(chord) && isMobileModal, onClose, panelRef);
+  useDialogA11y(isOpen && isMobileModal, onClose, panelRef);
 
   useEffect(() => {
-    if (!chord || isMobileModal) return;
+    if (!isOpen || isMobileModal) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -106,12 +110,12 @@ export function ChordPanel({ chord, onClose }: ChordPanelProps) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [chord, isMobileModal, onClose]);
+  }, [isOpen, isMobileModal, onClose]);
 
-  if (!chord) return null;
+  if (!mounted || !displayChord) return null;
 
   const handlePlay = () => {
-    if (playReferencePitch(chord, { mode: 'chord' })) {
+    if (playReferencePitch(displayChord, { mode: 'chord' })) {
       setRinging(true);
       setTimeout(() => setRinging(false), 1400);
     }
@@ -122,8 +126,8 @@ export function ChordPanel({ chord, onClose }: ChordPanelProps) {
       {/* Modal tap-to-dismiss backdrop on mobile; non-blocking side sheet on sm+ */}
       {isMobileModal && (
         <div
-          className="gm3-backdrop-enter fixed inset-0 z-40 bg-black/25"
-          onClick={onClose}
+          className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 z-40 bg-black/25`}
+          onClick={closing ? undefined : onClose}
           aria-hidden="true"
         />
       )}
@@ -132,11 +136,12 @@ export function ChordPanel({ chord, onClose }: ChordPanelProps) {
         role="dialog"
         aria-modal={isMobileModal || undefined}
         aria-labelledby="chord-panel-title"
-        className="gm3-card gm3-drawer-right fixed right-0 top-0 bottom-0 w-72 max-w-[85vw] rounded-l-[28px] bg-[var(--surface)] z-50 flex flex-col overflow-hidden"
+        inert={closing || undefined}
+        className={`gm3-card ${closing ? 'gm3-drawer-right-exit' : 'gm3-drawer-right'} fixed right-0 top-0 bottom-0 w-72 max-w-[85vw] rounded-l-[28px] bg-[var(--surface)] z-50 flex flex-col overflow-hidden`}
         style={{ boxShadow: 'var(--shadow-md)' }}
       >
         <div className="sr-only" role="status" aria-live="polite">
-          Diagrama do acorde {chord}
+          Diagrama do acorde {displayChord}
         </div>
 
         {/* Header stays mounted across chord switches so focus inside Ouvir/Fechar is never dropped */}
@@ -146,7 +151,7 @@ export function ChordPanel({ chord, onClose }: ChordPanelProps) {
               id="chord-panel-title"
               className="text-2xl font-display font-bold text-[var(--accent-ink)] leading-tight"
             >
-              {chord}
+              {displayChord}
             </h2>
             <button
               type="button"
@@ -170,7 +175,7 @@ export function ChordPanel({ chord, onClose }: ChordPanelProps) {
           </button>
         </div>
 
-        <ChordDiagramsBody key={chord} chord={chord} />
+        <ChordDiagramsBody key={displayChord} chord={displayChord} />
       </aside>
     </>
   );

@@ -310,8 +310,10 @@ export function SectionEditor({ lines, selected, onChordSelect, onAddChord, onLi
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleAddChordClick}
-          style={{ top: caretMarker.top, left: caretMarker.left }}
-          className="absolute z-20 w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] text-sm font-bold flex items-center justify-center shadow-lg transition-colors cursor-pointer"
+          style={{
+            transform: `translate3d(${caretMarker.left}px, ${caretMarker.top}px, 0) translate(-50%, -50%)`,
+          }}
+          className="gm3-panel-enter gm3-caret-add-btn absolute top-0 left-0 z-20 w-7 h-7 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-ink)] text-[var(--on-accent)] text-sm font-bold flex items-center justify-center shadow-lg cursor-pointer"
           title="Adicionar acorde aqui"
           aria-label="Adicionar acorde na posição do cursor"
         >

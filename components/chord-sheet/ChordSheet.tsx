@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import type { Song } from '@/lib/types/song';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
+import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import {
   computeEffectiveDurationSec,
   computeLinearRatePxPerSec,
@@ -83,6 +84,14 @@ export function ChordSheet({
   const [leadInLeft, setLeadInLeft] = useState(0);
   const [userPausedNotice, setUserPausedNotice] = useState(false);
   const [fitsScreenNotice, setFitsScreenNotice] = useState(false);
+
+  const showProgressBar = isAutoScrolling && leadInLeft === 0;
+  const { mounted: progressMounted, closing: progressClosing } = useAnimatedPresence(showProgressBar, 200);
+  const { mounted: fitsMounted, closing: fitsClosing } = useAnimatedPresence(fitsScreenNotice, 200);
+  const { mounted: leadInMounted, closing: leadInClosing } = useAnimatedPresence(leadInLeft > 0, 200);
+  const displayLeadIn = useRetainedValue(leadInLeft > 0 ? leadInLeft : null);
+  const showUserPaused = userPausedNotice && isAutoScrolling && leadInLeft === 0;
+  const { mounted: pausedMounted, closing: pausedClosing } = useAnimatedPresence(showUserPaused, 200);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const contentWrapRef = useRef<HTMLDivElement>(null);
@@ -258,6 +267,8 @@ export function ChordSheet({
 
     let frameId: number;
     let last = performance.now();
+    let rampStart = last;
+    let smoothSpeed = speedRef.current;
     let position = el.scrollTop;
 
     const getMarksForSong = (s: Song, dur: number): number[] | null => {
@@ -346,9 +357,10 @@ export function ChordSheet({
         return;
       }
 
-      // Re-sync once immediately after a manual pause ends
+      // Re-sync once immediately after a manual pause ends, with a gentle 600ms ease-out acceleration ramp
       if (userTouchedRef.current) {
         userTouchedRef.current = false;
+        rampStart = now;
         position = el.scrollTop;
         if (marks) {
           elapsedSec = scrollTopToMarkedElapsed(
@@ -362,8 +374,14 @@ export function ChordSheet({
         }
       }
 
+      // Exponentially damp speed changes and ease smoothly out of stillness on start/resume
+      smoothSpeed += (speedRef.current - smoothSpeed) * Math.min(1, dt * 6);
+      const rampT = Math.min(1, Math.max(0, (now - rampStart) / 600));
+      const rampFactor = 1 - Math.pow(1 - rampT, 2);
+      const effectiveDt = dt * rampFactor;
+
       if (marks) {
-        elapsedSec += dt * speedRef.current;
+        elapsedSec += effectiveDt * smoothSpeed;
         position = interpolateMarkedScroll(
           elapsedSec,
           marks,
@@ -373,8 +391,8 @@ export function ChordSheet({
           el.clientHeight
         );
       } else {
-        const pxPerSec = computeLinearRatePxPerSec(maxScroll, dur, speedRef.current);
-        position += pxPerSec * dt;
+        const pxPerSec = computeLinearRatePxPerSec(maxScroll, dur, smoothSpeed);
+        position += pxPerSec * effectiveDt;
       }
 
       if (position >= maxScroll - 0.5) {
@@ -447,19 +465,19 @@ export function ChordSheet({
     const start = el.scrollTop;
     const delta = target - start;
 
-    // Small drift -> ignore; large jump or reduced motion -> snap; medium drift -> ease smoothly over 280ms
+    // Small drift -> ignore; huge jump or reduced motion -> snap; otherwise ease smoothly scaled by distance
     if (Math.abs(delta) < 4) return;
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (Math.abs(delta) >= 420 || prefersReducedMotion) {
+    if (Math.abs(delta) >= 2000 || prefersReducedMotion) {
       el.scrollTop = target;
       syncElapsedRef.current?.(target);
       return;
     }
 
     const t0 = performance.now();
-    const durationMs = 280;
+    const durationMs = Math.min(520, Math.max(280, Math.abs(delta) * 0.45));
     const animate = (now: number) => {
       const p = Math.min(1, (now - t0) / durationMs);
       const eased = 1 - Math.pow(1 - p, 3);
@@ -490,10 +508,10 @@ export function ChordSheet({
       style={{ fontSize: `${fontSize}%` }}
     >
       {/* Thin GM3 GPU-composited progress bar while auto-scrolling (zero layout reflow / zero React re-renders) */}
-      {isAutoScrolling && leadInLeft === 0 && (
+      {progressMounted && (
         <div
           aria-hidden="true"
-          className="gm3-panel-enter sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 -mt-3 mb-4 h-[3px] bg-[var(--secondary-container)]/60 overflow-hidden"
+          className={`${progressClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 -mt-3 mb-4 h-[3px] bg-[var(--secondary-container)]/60 overflow-hidden`}
         >
           <div
             ref={progressBarRef}
@@ -504,70 +522,69 @@ export function ChordSheet({
         </div>
       )}
 
-      {/* Short-song notice when sheet already fits on screen */}
-      {fitsScreenNotice && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="gm3-panel-enter sticky top-2 z-20 flex justify-center mb-2 pointer-events-none"
-        >
-          <span className="studio-chip bg-[var(--surface)] text-[var(--muted)] shadow-sm">
-            A música já cabe inteira nesta tela
-          </span>
-        </div>
-      )}
-
-      {/* Lead-in countdown banner */}
-      {leadInLeft > 0 && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="gm3-panel-enter sticky top-2 z-20 flex justify-center mb-3 pointer-events-none"
-        >
-          <div
-            className="pointer-events-auto flex items-center gap-3 rounded-full bg-[var(--surface)] px-4 py-2 text-xs"
-            style={{ boxShadow: 'var(--shadow-md)' }}
-          >
-            <span className="font-mono font-bold text-[var(--accent-ink)] tabular-nums">
-              Rolagem em {leadInLeft}s…
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                if (leadInTimerRef.current) {
-                  clearInterval(leadInTimerRef.current);
-                  leadInTimerRef.current = null;
-                }
-                setLeadInLeft(0);
-              }}
-              className="pill-btn pill-btn-tune px-3 h-8 text-xs"
+      {/* Zero-height sticky overlay wrapper so status pills fade in/out without ever shifting lyrics */}
+      {(fitsMounted || leadInMounted || pausedMounted) && (
+        <div className="sticky top-2 z-20 h-0 overflow-visible flex flex-col items-center gap-2 pointer-events-none">
+          {fitsMounted && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`${fitsClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} pointer-events-none`}
             >
-              Iniciar já
-            </button>
-            <button
-              type="button"
-              onClick={() => setAutoScrolling(false)}
-              className="text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer text-xs px-1.5 py-1"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+              <span className="studio-chip bg-[var(--surface)] text-[var(--muted)] shadow-sm">
+                A música já cabe inteira nesta tela
+              </span>
+            </div>
+          )}
 
-      {/* Subtle manual-scroll yield indicator */}
-      {userPausedNotice && isAutoScrolling && leadInLeft === 0 && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="gm3-panel-enter sticky top-2 z-20 flex justify-center mb-2 pointer-events-none"
-        >
-          <span
-            className="studio-chip bg-[var(--surface)] text-[var(--muted)]"
-            style={{ boxShadow: 'var(--shadow-sm)' }}
-          >
-            Rolagem manual detectada · retomando daqui…
-          </span>
+          {leadInMounted && displayLeadIn !== null && (
+            <div
+              role="status"
+              aria-live="polite"
+              inert={leadInClosing || undefined}
+              className={`${leadInClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} pointer-events-auto flex items-center gap-3 rounded-full bg-[var(--surface)] px-4 py-2 text-xs`}
+              style={{ boxShadow: 'var(--shadow-md)' }}
+            >
+              <span className="font-mono font-bold text-[var(--accent-ink)] tabular-nums">
+                Rolagem em {displayLeadIn}s…
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (leadInTimerRef.current) {
+                    clearInterval(leadInTimerRef.current);
+                    leadInTimerRef.current = null;
+                  }
+                  setLeadInLeft(0);
+                }}
+                className="pill-btn pill-btn-tune px-3 h-8 text-xs"
+              >
+                Iniciar já
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoScrolling(false)}
+                className="text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer text-xs px-1.5 py-1"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {pausedMounted && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`${pausedClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} pointer-events-none`}
+            >
+              <span
+                className="studio-chip bg-[var(--surface)] text-[var(--muted)]"
+                style={{ boxShadow: 'var(--shadow-sm)' }}
+              >
+                Rolagem manual detectada · retomando daqui…
+              </span>
+            </div>
+          )}
         </div>
       )}
 

@@ -7,6 +7,7 @@ import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { TransitionLink } from '@/components/ui/TransitionLink';
+import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import { CheckIcon, HeartIcon, MoreVertIcon, StarIcon } from '@/components/ui/Icons';
 
 interface SongCardProps {
@@ -33,6 +34,9 @@ export const SongCard = memo(function SongCard({
   const [favPop, setFavPop] = useState(false);
   const [starPop, setStarPop] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { mounted: menuMounted, closing: menuClosing } = useAnimatedPresence(menuOpen, 220);
+  const { mounted: noticeMounted, closing: noticeClosing } = useAnimatedPresence(Boolean(addedNotice), 200);
+  const displayNotice = useRetainedValue(addedNotice || null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -93,11 +97,12 @@ export const SongCard = memo(function SongCard({
         <MoreVertIcon size={18} />
       </button>
 
-      {menuOpen && (
+      {menuMounted && (
         <div
           role="dialog"
           aria-label={`Ações de ${song.title}`}
-          className="gm3-card gm3-popover-top-right absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2"
+          inert={menuClosing || undefined}
+          className={`gm3-card gm3-popover-top-right ${menuClosing ? 'gm3-popover-exit' : ''} absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2`}
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           {/* Rating inside menu (accessible 36px stars with WCAG AA contrast) */}
@@ -179,9 +184,9 @@ export const SongCard = memo(function SongCard({
     </div>
   );
 
-  const confirmDialog = confirmDelete ? (
+  const confirmDialog = (
     <ConfirmDialog
-      open
+      open={confirmDelete}
       title="Excluir esta música?"
       description={
         <>
@@ -196,7 +201,7 @@ export const SongCard = memo(function SongCard({
       }}
       onCancel={() => setConfirmDelete(false)}
     />
-  ) : null;
+  );
 
   const staggerStyle =
     staggerIdx !== undefined ? ({ '--stagger-idx': staggerIdx } as CSSProperties) : undefined;
@@ -224,13 +229,13 @@ export const SongCard = memo(function SongCard({
                 >
                   {song.title}
                 </h2>
-                {addedNotice && (
+                {noticeMounted && displayNotice && (
                   <span
                     role="status"
                     aria-live="polite"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-[var(--tune)] flex-shrink-0 pt-1"
+                    className={`${noticeClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} inline-flex items-center gap-1 text-xs font-medium text-[var(--tune)] flex-shrink-0 pt-1`}
                   >
-                    <CheckIcon size={13} /> {addedNotice}
+                    <CheckIcon size={13} /> {displayNotice}
                   </span>
                 )}
               </div>
@@ -334,13 +339,13 @@ export const SongCard = memo(function SongCard({
           >
             {song.title}
           </h2>
-          {addedNotice && (
+          {noticeMounted && displayNotice && (
             <span
               role="status"
               aria-live="polite"
-              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--tune)] flex-shrink-0"
+              className={`${noticeClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} inline-flex items-center gap-1 text-xs font-medium text-[var(--tune)] flex-shrink-0`}
             >
-              <CheckIcon size={13} /> {addedNotice}
+              <CheckIcon size={13} /> {displayNotice}
             </span>
           )}
         </div>

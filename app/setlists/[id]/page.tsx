@@ -6,6 +6,8 @@ import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
 import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
+import { useRetainedValue } from '@/lib/hooks/use-animated-presence';
+import { useFlipList } from '@/lib/hooks/use-flip-list';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { normalizeSearch } from '@/lib/utils/music';
@@ -51,6 +53,8 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     storeIdx: number;
   } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trackListRef = useRef<HTMLDivElement>(null);
+  const displayUndo = useRetainedValue(undoRemoval);
 
   const setlist = setlists.find((sl) => sl.id === id);
 
@@ -81,6 +85,10 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     },
   });
 
+  const displayEntries = drag ? moveItem(baseEntries, drag.from, drag.to) : baseEntries;
+  const orderKey = displayEntries.map((e) => e.song.id).join('|');
+  useFlipList(trackListRef, orderKey);
+
   if (!setlist) {
     if (!setlistsLoaded || !songsLoaded) {
       return (
@@ -105,7 +113,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
           <p className="text-sm text-[var(--muted)]">Esse setlist não foi encontrado.</p>
           <button
             type="button"
-            onClick={() => router.push('/?tab=setlists')}
+            onClick={() => navigateWithTransition(router, '/?tab=setlists', { direction: 'back' })}
             className="pill-btn h-10 px-4 text-xs"
           >
             Voltar para Setlists
@@ -115,7 +123,6 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  const displayEntries = drag ? moveItem(baseEntries, drag.from, drag.to) : baseEntries;
   const setlistSongs = displayEntries.map((e) => e.song);
   const durationSummary = setlistSongs.length > 0 ? computeSetlistDuration(setlistSongs) : null;
   const durationLabel = durationSummary
@@ -269,97 +276,115 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
           </div>
         </section>
 
-        {/* Undo snackbar for accidental setlist track removal */}
-        {undoRemoval && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="gm3-panel-enter rounded-2xl bg-[var(--surface)] px-4 py-3 flex items-center justify-between gap-3 text-sm"
-            style={{ boxShadow: 'var(--shadow-sm)' }}
-          >
-            <span className="text-[var(--ink)]">
-              &ldquo;{undoRemoval.title}&rdquo; removida do setlist.
-            </span>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={handleUndoRemove}
-                className="pill-btn pill-btn-tonal h-9 px-4 text-xs font-semibold"
+        {/* Undo snackbar for accidental setlist track removal (glides open/closed) */}
+        <div
+          className="gm3-collapsible"
+          data-compact-slot="true"
+          data-collapsed={!undoRemoval ? 'true' : undefined}
+          aria-hidden={!undoRemoval || undefined}
+          inert={!undoRemoval || undefined}
+        >
+          <div className="gm3-collapsible-inner">
+            {displayUndo && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-2xl bg-[var(--surface)] px-4 py-3 flex items-center justify-between gap-3 text-sm"
+                style={{ boxShadow: 'var(--shadow-sm)' }}
               >
-                Desfazer
-              </button>
-              <button
-                type="button"
-                onClick={() => setUndoRemoval(null)}
-                aria-label="Dispensar aviso"
-                className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
-              >
-                <CloseIcon size={15} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Add song picker */}
-        {showAddSong && (
-          <section className="gm3-card gm3-panel-enter rounded-[24px] bg-[var(--surface)] p-5 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="field-label">Adicionar do repertório</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddSong(false);
-                  setSearch('');
-                }}
-                className="text-xs font-medium text-[var(--accent-ink)] hover:underline cursor-pointer"
-              >
-                Concluir
-              </button>
-            </div>
-            <input
-              autoFocus
-              type="text"
-              aria-label="Buscar música ou artista para incluir no setlist"
-              placeholder="Buscar música ou artista para incluir..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="studio-input w-full px-4 py-2.5 text-sm"
-            />
-            <div className="max-h-60 overflow-y-auto space-y-1">
-              {filtered.length === 0 ? (
-                <div className="text-center py-6 text-[var(--muted)] text-sm">
-                  {notInSetlist.length === 0
-                    ? 'Todas as músicas do repertório já estão neste setlist.'
-                    : 'Nenhuma música encontrada.'}
-                </div>
-              ) : (
-                filtered.map((song) => (
+                <span className="text-[var(--ink)]">
+                  &ldquo;{displayUndo.title}&rdquo; removida do setlist.
+                </span>
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <button
-                    key={song.id}
                     type="button"
-                    onClick={() => {
-                      addSongToSetlist(id, song.id);
-                      setLiveAnnouncement(`${song.title} adicionada ao setlist.`);
-                      setSearch('');
-                    }}
-                    className="gm3-menu-item w-full flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-[var(--surface-high)] text-left cursor-pointer"
+                    onClick={handleUndoRemove}
+                    className="pill-btn pill-btn-tonal h-9 px-4 text-xs font-semibold"
                   >
-                    <div className="min-w-0">
-                      <div className="text-[16px] font-display font-bold text-[var(--ink)] truncate">{song.title}</div>
-                      <div className="text-xs text-[var(--muted)] truncate">
-                        {song.artist || 'Artista não informado'}
-                        {song.displayKey ? ` · ${song.displayKey}` : ''}
-                      </div>
-                    </div>
-                    <span className="pill-btn pill-btn-tonal px-3 py-1.5 text-xs flex-shrink-0">
-                      <PlusIcon size={13} /> Incluir
-                    </span>
+                    Desfazer
                   </button>
-                ))
-              )}
-            </div>
-          </section>
-        )}
+                  <button
+                    type="button"
+                    onClick={() => setUndoRemoval(null)}
+                    aria-label="Dispensar aviso"
+                    className="gm3-icon-btn w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-high)] cursor-pointer"
+                  >
+                    <CloseIcon size={15} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Add song picker (glides open/closed without shoving track list abruptly) */}
+        <div
+          className="gm3-collapsible"
+          data-compact-slot="true"
+          data-collapsed={!showAddSong ? 'true' : undefined}
+          aria-hidden={!showAddSong || undefined}
+          inert={!showAddSong || undefined}
+        >
+          <div className="gm3-collapsible-inner">
+            <section className="gm3-card rounded-[24px] bg-[var(--surface)] p-5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="field-label">Adicionar do repertório</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddSong(false);
+                    setSearch('');
+                  }}
+                  className="text-xs font-medium text-[var(--accent-ink)] hover:underline cursor-pointer"
+                >
+                  Concluir
+                </button>
+              </div>
+              <input
+                autoFocus={showAddSong}
+                type="text"
+                aria-label="Buscar música ou artista para incluir no setlist"
+                placeholder="Buscar música ou artista para incluir..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="studio-input w-full px-4 py-2.5 text-sm"
+              />
+              <div className="max-h-60 overflow-y-auto space-y-1">
+                {filtered.length === 0 ? (
+                  <div className="text-center py-6 text-[var(--muted)] text-sm">
+                    {notInSetlist.length === 0
+                      ? 'Todas as músicas do repertório já estão neste setlist.'
+                      : 'Nenhuma música encontrada.'}
+                  </div>
+                ) : (
+                  filtered.map((song) => (
+                    <button
+                      key={song.id}
+                      type="button"
+                      onClick={() => {
+                        addSongToSetlist(id, song.id);
+                        setLiveAnnouncement(`${song.title} adicionada ao setlist.`);
+                        setSearch('');
+                      }}
+                      className="gm3-menu-item w-full flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-[var(--surface-high)] text-left cursor-pointer"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-[16px] font-display font-bold text-[var(--ink)] truncate">{song.title}</div>
+                        <div className="text-xs text-[var(--muted)] truncate">
+                          {song.artist || 'Artista não informado'}
+                          {song.displayKey ? ` · ${song.displayKey}` : ''}
+                        </div>
+                      </div>
+                      <span className="pill-btn pill-btn-tonal px-3 py-1.5 text-xs flex-shrink-0">
+                        <PlusIcon size={13} /> Incluir
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+        </div>
 
         {/* Ordered song list (GM3 Expressive segmented stack) */}
         <section className="space-y-2">
@@ -387,7 +412,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                 <span>Ordem das faixas</span>
                 <span className="hidden sm:inline">Arraste ou use ↑↓ para reordenar</span>
               </div>
-              <div className="flex flex-col gap-[2px]">
+              <div ref={trackListRef} className="flex flex-col gap-[2px]">
                 {displayEntries.map(({ song, storeIdx }, idx) => {
                   const segRadius =
                     setlistSongs.length === 1
@@ -401,6 +426,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                   return (
                     <div
                       key={song.id}
+                      data-flip-key={song.id}
                       data-display-idx={idx}
                       data-dragging={drag !== null && drag.to === idx ? 'true' : undefined}
                       className={`gm3-card gm3-list-row group flex items-center gap-3 py-3.5 px-4 sm:px-5 bg-[var(--surface)] ${segRadius} ${

@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { diffLines } from 'diff';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { CloseIcon } from '@/components/ui/Icons';
 
 interface EnhanceModalProps {
+  open?: boolean;
   songId: string;
   onClose: () => void;
   onApplied: () => void;
@@ -36,7 +38,13 @@ function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
   );
 }
 
-export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) {
+function EnhanceModalInner({
+  open,
+  closing,
+  songId,
+  onClose,
+  onApplied,
+}: EnhanceModalProps & { open: boolean; closing: boolean }) {
   const { updateEntry } = useSongStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,7 +53,7 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
   const [applying, setApplying] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  useDialogA11y(true, onClose, dialogRef);
+  useDialogA11y(open, onClose, dialogRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,15 +100,16 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
 
   return (
     <div
-      className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
-      onClick={onClose}
+      className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4`}
+      onClick={closing ? undefined : onClose}
+      inert={closing || undefined}
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="enhance-modal-title"
-        className="gm3-dialog-enter bg-[var(--surface)] rounded-[28px] w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+        className={`${closing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} bg-[var(--surface)] rounded-[28px] w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden`}
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -132,7 +141,7 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
           )}
 
           {!loading && !error && (
-            <>
+            <div className="gm3-view-enter flex-1 min-h-0 flex flex-col gap-3">
               <p className="text-xs text-[var(--muted)]">
                 Revise as alterações sugeridas. Você pode ajustar o texto proposto antes de aplicar, e uma cópia da versão atual fica salva no histórico.
               </p>
@@ -154,7 +163,7 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
                   />
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -174,4 +183,10 @@ export function EnhanceModal({ songId, onClose, onApplied }: EnhanceModalProps) 
       </div>
     </div>
   );
+}
+
+export function EnhanceModal({ open = true, ...rest }: EnhanceModalProps) {
+  const { mounted, closing } = useAnimatedPresence(open, 220);
+  if (!mounted) return null;
+  return <EnhanceModalInner open={open} closing={closing} {...rest} />;
 }

@@ -3,9 +3,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { playCountInClick } from '@/lib/utils/pitch-audio';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { VolumeIcon } from '@/components/ui/Icons';
 
 interface CountInOverlayProps {
+  open?: boolean;
+  nonce?: number;
   bpm: number;
   beats: number;
   leaderName?: string | null;
@@ -14,6 +17,8 @@ interface CountInOverlayProps {
 }
 
 export function CountInOverlay({
+  open = true,
+  nonce = 0,
   bpm,
   beats,
   leaderName,
@@ -24,14 +29,21 @@ export function CountInOverlay({
   const safeBeats = Math.max(2, Math.min(8, beats || 4));
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const { mounted, closing } = useAnimatedPresence(open, 220);
 
+  const [prevNonce, setPrevNonce] = useState(nonce);
   const [currentBeat, setCurrentBeat] = useState(1);
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   const onCancelRef = useRef(onCancel);
 
-  useDialogA11y(true, () => onCancelRef.current(), dialogRef);
+  if (open && nonce !== prevNonce) {
+    setPrevNonce(nonce);
+    setCurrentBeat(1);
+  }
+
+  useDialogA11y(open, () => onCancelRef.current(), dialogRef);
 
   useEffect(() => {
     mutedRef.current = muted;
@@ -43,6 +55,7 @@ export function CountInOverlay({
   }, [onComplete, onCancel]);
 
   useEffect(() => {
+    if (!open) return;
     const msPerBeat = (60 / safeBpm) * 1000;
     if (!mutedRef.current) playCountInClick(true);
 
@@ -59,13 +72,16 @@ export function CountInOverlay({
     }, msPerBeat);
 
     return () => clearInterval(interval);
-  }, [safeBpm, safeBeats]);
+  }, [open, nonce, safeBpm, safeBeats]);
+
+  if (!mounted) return null;
 
   return (
     <div
       data-motion-scheme="standard"
-      onClick={onCancel}
-      className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4"
+      onClick={closing ? undefined : onCancel}
+      inert={closing || undefined}
+      className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 z-[75] bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-4`}
     >
       <div
         ref={dialogRef}
@@ -73,7 +89,7 @@ export function CountInOverlay({
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
-        className="gm3-card gm3-dialog-enter w-full max-w-xs rounded-[28px] bg-[var(--surface)] px-7 py-8 text-center space-y-6"
+        className={`gm3-card ${closing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} w-full max-w-xs rounded-[28px] bg-[var(--surface)] px-7 py-8 text-center space-y-6`}
         style={{ boxShadow: 'var(--shadow-md)' }}
       >
         <div className="space-y-1">

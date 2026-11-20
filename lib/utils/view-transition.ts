@@ -1,6 +1,6 @@
 'use client';
 
-export type TransitionDirection = 'forward' | 'back' | 'next' | 'prev' | 'fade';
+export type TransitionDirection = 'forward' | 'back' | 'next' | 'prev' | 'fade' | 'theme' | 'morph';
 
 interface RouterLike {
   push: (href: string) => void;
@@ -178,5 +178,57 @@ export function navigateWithTransition(
       delete document.documentElement.dataset.vtDir;
     }
     go();
+  }
+}
+
+/**
+ * Wraps an in-page React state transition (e.g. Focus Mode, Edit Mode, reading mode,
+ * 1/2 columns, Cards/Lista, Add Song preview) in a calm native View Transition crossfade.
+ * Falls back immediately to `updateFn()` under reduced motion, SSR, unsupported browsers,
+ * or while a route navigation transition is already in flight.
+ */
+export function runStateViewTransition(
+  updateFn: () => void,
+  direction: 'morph' | 'fade' | 'theme' = 'morph'
+) {
+  if (typeof document === 'undefined' || prefersReducedMotion() || pendingResolve !== null) {
+    updateFn();
+    return;
+  }
+
+  const startVT = (
+    document as unknown as { startViewTransition?: StartViewTransitionFn }
+  ).startViewTransition;
+  if (typeof startVT !== 'function') {
+    updateFn();
+    return;
+  }
+
+  const mySeq = ++transitionSeq;
+  document.documentElement.dataset.vtDir = direction;
+
+  try {
+    const vt = startVT.call(document, () => {
+      updateFn();
+      // Never wait on rAF inside startViewTransition (Chromium pauses rAF while callback is pending).
+      // A short macrotask lets React 19 commit its render before the new snapshot is captured.
+      return new Promise<void>((resolve) => {
+        setTimeout(resolve, 20);
+      });
+    });
+
+    vt.finished
+      .catch(() => {
+        // Ignore rapid re-toggles cleanly
+      })
+      .finally(() => {
+        if (transitionSeq !== mySeq) return;
+        delete document.documentElement.dataset.vtDir;
+      });
+  } catch {
+    if (transitionSeq === mySeq) {
+      delete document.documentElement.dataset.vtDir;
+    }
+    updateFn();
   }
 }

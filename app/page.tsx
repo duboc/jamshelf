@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
@@ -8,10 +8,11 @@ import { SongCard } from '@/components/song-list/SongCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { TransitionLink } from '@/components/ui/TransitionLink';
-import { navigateWithTransition } from '@/lib/utils/view-transition';
+import { navigateWithTransition, runStateViewTransition } from '@/lib/utils/view-transition';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { normalizeSearch } from '@/lib/utils/music';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import {
   ChevronDownIcon,
   CloseIcon,
@@ -37,6 +38,7 @@ function SetlistCardMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { mounted, closing } = useAnimatedPresence(open, 220);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,11 +69,12 @@ function SetlistCardMenu({
       >
         <MoreVertIcon size={18} />
       </button>
-      {open && (
+      {mounted && (
         <div
           role="dialog"
           aria-label={`Menu do setlist ${setlistName}`}
-          className="gm3-card gm3-popover-top-right absolute right-0 top-[calc(100%+6px)] z-30 w-44 rounded-[20px] bg-[var(--surface)] p-1.5"
+          inert={closing || undefined}
+          className={`gm3-card gm3-popover-top-right ${closing ? 'gm3-popover-exit' : ''} absolute right-0 top-[calc(100%+6px)] z-30 w-44 rounded-[20px] bg-[var(--surface)] p-1.5`}
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           <button
@@ -128,6 +131,9 @@ function HomeContent() {
   const importDialogRef = useRef<HTMLDivElement>(null);
   const importTitleId = useId();
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { mounted: importMounted, closing: importClosing } = useAnimatedPresence(showImport, 220);
+  const displayToast = useRetainedValue(toastMsg || null);
+  const displayDeleteTarget = useRetainedValue(setlistToDelete);
 
   const closeImport = () => {
     setShowImport(false);
@@ -297,24 +303,34 @@ function HomeContent() {
         </div>
       </header>
 
-      {/* Tonal toast */}
-      {toastMsg && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="gm3-panel-enter rounded-2xl bg-[var(--tune-dim)] text-[var(--tune)] px-4 py-3 text-sm font-medium flex items-center justify-between gap-3"
-        >
-          <span>{toastMsg}</span>
-          <button
-            type="button"
-            onClick={() => setToastMsg('')}
-            aria-label="Fechar aviso"
-            className="gm3-icon-btn w-8 h-8 flex items-center justify-center hover:bg-black/10 cursor-pointer flex-shrink-0"
-          >
-            <CloseIcon size={15} />
-          </button>
+      {/* Tonal toast (glides open/closed without shoving cards) */}
+      <div
+        className="gm3-collapsible"
+        data-compact-slot="true"
+        data-collapsed={!toastMsg ? 'true' : undefined}
+        aria-hidden={!toastMsg || undefined}
+        inert={!toastMsg || undefined}
+      >
+        <div className="gm3-collapsible-inner">
+          {displayToast && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-2xl bg-[var(--tune-dim)] text-[var(--tune)] px-4 py-3 text-sm font-medium flex items-center justify-between gap-3"
+            >
+              <span>{displayToast}</span>
+              <button
+                type="button"
+                onClick={() => setToastMsg('')}
+                aria-label="Fechar aviso"
+                className="gm3-icon-btn w-8 h-8 flex items-center justify-center hover:bg-black/10 cursor-pointer flex-shrink-0"
+              >
+                <CloseIcon size={15} />
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Songs & Favorites */}
       {tab !== 'setlists' && (
@@ -348,16 +364,18 @@ function HomeContent() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-transparent text-[15px] text-[var(--ink)] placeholder-[var(--muted)] outline-none pr-8"
               />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  aria-label="Limpar busca"
-                  className="gm3-icon-btn absolute right-2.5 w-8 h-8 text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex items-center justify-center cursor-pointer"
-                >
-                  <CloseIcon size={16} />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Limpar busca"
+                aria-hidden={!search || undefined}
+                tabIndex={search ? 0 : -1}
+                className={`gm3-icon-btn absolute right-2.5 w-8 h-8 text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex items-center justify-center cursor-pointer transition-opacity ${
+                  search ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'
+                }`}
+              >
+                <CloseIcon size={16} />
+              </button>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -367,7 +385,10 @@ function HomeContent() {
                     aria-label="Filtrar por tom"
                     value={keyFilter}
                     data-active={keyFilter ? 'true' : undefined}
-                    onChange={(e) => setKeyFilter(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      runStateViewTransition(() => setKeyFilter(val), 'morph');
+                    }}
                     className="gm3-select appearance-none h-10 pl-4 pr-9 text-sm font-medium cursor-pointer"
                   >
                     <option value="">Todos os tons</option>
@@ -391,7 +412,10 @@ function HomeContent() {
                   aria-label="Ordenar músicas"
                   value={sortBy}
                   data-active={sortBy !== 'title' ? 'true' : undefined}
-                  onChange={(e) => setSortBy(e.target.value as SortMode)}
+                  onChange={(e) => {
+                    const val = e.target.value as SortMode;
+                    runStateViewTransition(() => setSortBy(val), 'morph');
+                  }}
                   className="gm3-select appearance-none h-10 pl-4 pr-9 text-sm font-medium cursor-pointer"
                 >
                   <option value="title">Nome (A-Z)</option>
@@ -411,7 +435,7 @@ function HomeContent() {
               <ConnectedGroup value={viewMode} ariaLabel="Modo de visualização">
                 <button
                   type="button"
-                  onClick={() => setViewMode('cards')}
+                  onClick={() => runStateViewTransition(() => setViewMode('cards'), 'morph')}
                   aria-pressed={viewMode === 'cards'}
                   className="gm3-connected-btn px-4 h-10 text-xs font-medium cursor-pointer"
                 >
@@ -419,7 +443,7 @@ function HomeContent() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode('list')}
+                  onClick={() => runStateViewTransition(() => setViewMode('list'), 'morph')}
                   aria-pressed={viewMode === 'list'}
                   className="gm3-connected-btn px-4 h-10 text-xs font-medium cursor-pointer"
                 >
@@ -436,7 +460,7 @@ function HomeContent() {
               ))}
             </div>
           ) : filteredSongs.length === 0 ? (
-            <div className="gm3-card rounded-[24px] bg-[var(--surface)] px-6 py-16 text-center flex flex-col items-center gap-3">
+            <div className="gm3-card gm3-view-enter rounded-[24px] bg-[var(--surface)] px-6 py-16 text-center flex flex-col items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] flex items-center justify-center">
                 <MusicNoteIcon size={22} />
               </div>
@@ -481,7 +505,7 @@ function HomeContent() {
               )}
             </div>
           ) : viewMode === 'cards' ? (
-            <div key="cards" className="gm3-view-enter grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
+            <div key="cards" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
               {filteredSongs.map((song, idx) => (
                 <SongCard
                   key={song.id}
@@ -493,7 +517,7 @@ function HomeContent() {
               ))}
             </div>
           ) : (
-            <div key="list" className="gm3-view-enter flex flex-col gap-[2px]">
+            <div key="list" className="flex flex-col gap-[2px]">
               {filteredSongs.map((song, idx) => {
                 const position =
                   filteredSongs.length === 1
@@ -522,44 +546,52 @@ function HomeContent() {
       {/* Setlists tonal cards */}
       {tab === 'setlists' && (
         <section key="setlists" className="gm3-page-enter space-y-4">
-          {showNewSetlist && (
-            <div className="gm3-card gm3-panel-enter rounded-[24px] bg-[var(--surface)] p-5 flex flex-wrap gap-3 items-center">
-              <input
-                autoFocus
-                type="text"
-                aria-label="Nome do novo setlist"
-                placeholder="Nome do setlist (ex.: Ensaio de Sexta, Show Bar...)"
-                value={newSetlistName}
-                onChange={(e) => setNewSetlistName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateSetlist();
-                  if (e.key === 'Escape') {
+          <div
+            className="gm3-collapsible"
+            data-compact-slot="true"
+            data-collapsed={!showNewSetlist ? 'true' : undefined}
+            aria-hidden={!showNewSetlist || undefined}
+            inert={!showNewSetlist || undefined}
+          >
+            <div className="gm3-collapsible-inner">
+              <div className="gm3-card rounded-[24px] bg-[var(--surface)] p-5 flex flex-wrap gap-3 items-center">
+                <input
+                  autoFocus={showNewSetlist}
+                  type="text"
+                  aria-label="Nome do novo setlist"
+                  placeholder="Nome do setlist (ex.: Ensaio de Sexta, Show Bar...)"
+                  value={newSetlistName}
+                  onChange={(e) => setNewSetlistName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateSetlist();
+                    if (e.key === 'Escape') {
+                      setShowNewSetlist(false);
+                      setNewSetlistName('');
+                    }
+                  }}
+                  className="studio-input flex-1 min-w-[220px] px-4 py-2.5 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateSetlist}
+                  disabled={!newSetlistName.trim()}
+                  className="pill-btn pill-btn-primary h-10 px-5 text-sm"
+                >
+                  Criar setlist
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     setShowNewSetlist(false);
                     setNewSetlistName('');
-                  }
-                }}
-                className="studio-input flex-1 min-w-[220px] px-4 py-2.5 text-sm"
-              />
-              <button
-                type="button"
-                onClick={handleCreateSetlist}
-                disabled={!newSetlistName.trim()}
-                className="pill-btn pill-btn-primary h-10 px-5 text-sm"
-              >
-                Criar setlist
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNewSetlist(false);
-                  setNewSetlistName('');
-                }}
-                className="pill-btn bg-[var(--bg)] h-10 px-4 text-sm"
-              >
-                Cancelar
-              </button>
+                  }}
+                  className="pill-btn bg-[var(--bg)] h-10 px-4 text-sm"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
-          )}
+          </div>
 
           {!setlistsLoaded && setlists.length === 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" aria-busy="true">
@@ -568,7 +600,7 @@ function HomeContent() {
               ))}
             </div>
           ) : setlists.length === 0 && !showNewSetlist ? (
-            <div className="gm3-card rounded-[24px] bg-[var(--surface)] px-6 py-16 text-center flex flex-col items-center gap-3">
+            <div className="gm3-card gm3-view-enter rounded-[24px] bg-[var(--surface)] px-6 py-16 text-center flex flex-col items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-[var(--primary-container)] text-[var(--on-primary-container)] flex items-center justify-center">
                 <MusicNoteIcon size={22} />
               </div>
@@ -587,7 +619,7 @@ function HomeContent() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-              {setlists.map((sl) => {
+              {setlists.map((sl, slIdx) => {
                 const validSongs = sl.songIds
                   .map((sid) => songs.find((s) => s.id === sid))
                   .filter((s): s is (typeof songs)[number] => s !== undefined);
@@ -597,11 +629,14 @@ function HomeContent() {
                   ? formatSetlistDuration(durSummary.totalSec, durSummary.estimatedCount > 0)
                   : null;
                 const isEmpty = validSongs.length === 0;
+                const staggerStyle =
+                  slIdx < 8 ? ({ '--stagger-idx': slIdx } as CSSProperties) : undefined;
 
                 return (
                   <article
                     key={sl.id}
-                    className={`gm3-card gm3-card-interactive group px-5 py-5 flex flex-col justify-between gap-4 ${
+                    style={staggerStyle}
+                    className={`gm3-card gm3-card-interactive ${slIdx < 8 ? 'gm3-stagger-item' : ''} group px-5 py-5 flex flex-col justify-between gap-4 ${
                       isEmpty
                         ? 'bg-[var(--surface2)] hover:bg-[var(--surface-high)]'
                         : 'bg-[var(--surface)] hover:bg-[var(--surface-high)]'
@@ -661,17 +696,18 @@ function HomeContent() {
       )}
 
       {/* Import .cho modal */}
-      {showImport && (
+      {importMounted && (
         <div
-          className="gm3-backdrop-enter fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4"
-          onClick={closeImport}
+          className={`${importClosing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 bg-black/45 z-[70] flex items-center justify-center p-4`}
+          onClick={importClosing ? undefined : closeImport}
+          inert={importClosing || undefined}
         >
           <div
             ref={importDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={importTitleId}
-            className="gm3-card gm3-dialog-enter bg-[var(--surface)] rounded-[28px] w-full max-w-2xl flex flex-col overflow-hidden"
+            className={`gm3-card ${importClosing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} bg-[var(--surface)] rounded-[28px] w-full max-w-2xl flex flex-col overflow-hidden`}
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -719,7 +755,7 @@ function HomeContent() {
               {importMsg && (
                 <div
                   role={importMsg.includes('sucesso') ? 'status' : 'alert'}
-                  className={`text-xs font-medium rounded-2xl px-4 py-2.5 ${
+                  className={`gm3-panel-enter text-xs font-medium rounded-2xl px-4 py-2.5 ${
                     importMsg.includes('sucesso')
                       ? 'bg-[var(--tune-dim)] text-[var(--tune)]'
                       : 'bg-[var(--rec-dim)] text-[var(--on-rec-container)]'
@@ -753,9 +789,9 @@ function HomeContent() {
         open={!!setlistToDelete}
         title="Excluir setlist?"
         description={
-          setlistToDelete ? (
+          displayDeleteTarget ? (
             <>
-              O setlist &ldquo;{setlistToDelete.name}&rdquo; será apagado. As músicas continuam salvas no repertório.
+              O setlist &ldquo;{displayDeleteTarget.name}&rdquo; será apagado. As músicas continuam salvas no repertório.
             </>
           ) : null
         }

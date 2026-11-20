@@ -12,6 +12,7 @@ import {
   type ThemeMode,
 } from '@/lib/stores/display-store';
 import { commitPendingViewTransition } from '@/lib/utils/view-transition';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { TransitionLink } from '@/components/ui/TransitionLink';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { QuickSearchModal } from './QuickSearchModal';
@@ -119,6 +120,7 @@ function DeviceSettingsPopover({
   } = useDisplayStore();
 
   const [open, setOpen] = useState(false);
+  const { mounted: popoverMounted, closing: popoverClosing } = useAnimatedPresence(open, 220);
   const deviceName = useSyncExternalStore(
     subscribeDeviceName,
     getDeviceNameSnapshot,
@@ -194,15 +196,16 @@ function DeviceSettingsPopover({
         )}
       </button>
 
-      {open && (
+      {popoverMounted && (
         <div
           role="dialog"
           aria-label="Ajustes deste aparelho"
+          inert={popoverClosing || undefined}
           className={`gm3-card absolute z-50 w-[min(340px,calc(100vw-24px))] max-h-[calc(100vh-110px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-5 flex flex-col gap-4 ${
             align === 'rail'
               ? 'gm3-popover-bottom-left left-0 bottom-[calc(100%+10px)]'
               : 'gm3-popover-top-right right-0 top-[calc(100%+10px)]'
-          }`}
+          } ${popoverClosing ? 'gm3-popover-exit' : ''}`}
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
           <div className="flex items-center justify-between pb-1">
@@ -720,44 +723,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             </nav>
 
-            {/* Quick setlists list when rail is expanded */}
-            {isExpandedRail && setlists.length > 0 && (
-              <div className="gm3-rail-label space-y-1.5 pt-2">
-                <div className="px-4 text-xs font-medium text-[var(--muted)]">Setlists</div>
-                <nav aria-label="Setlists fixados" className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar py-1.5">
-                  {setlists.slice(0, 6).map((sl) => {
-                    const isActive = activeSetlistId === sl.id;
-                    const validCount = sl.songIds.filter((sid) => validSongIds.has(sid)).length;
-                    return (
-                      <TransitionLink
-                        key={sl.id}
-                        href={`/setlists/${sl.id}`}
-                        vtDirection="forward"
-                        aria-current={isActive ? 'page' : undefined}
-                        data-active={isActive || undefined}
-                        className={`gm3-nav-pill gm3-nav-pill-expanded h-9 px-4 flex items-center justify-between gap-2 text-[13px] ${
-                          isActive
-                            ? 'text-[var(--on-secondary-container)] font-medium'
-                            : 'text-[var(--muted)] hover:text-[var(--ink)]'
-                        }`}
-                      >
-                        <span className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+            {/* Quick setlists list (folds smoothly when rail collapses) */}
+            {setlists.length > 0 && (
+              <div
+                className="gm3-collapsible w-full"
+                data-compact-slot="true"
+                data-collapsed={!isExpandedRail ? 'true' : undefined}
+                aria-hidden={!isExpandedRail || undefined}
+                inert={!isExpandedRail || undefined}
+              >
+                <div className="gm3-collapsible-inner">
+                  <div className="space-y-1.5 pt-2">
+                    <div className="px-4 text-xs font-medium text-[var(--muted)] whitespace-nowrap">Setlists</div>
+                    <nav aria-label="Setlists fixados" className="flex flex-col gap-0.5 max-h-48 overflow-y-auto no-scrollbar py-1.5">
+                      {setlists.slice(0, 6).map((sl) => {
+                        const isActive = activeSetlistId === sl.id;
+                        const validCount = sl.songIds.filter((sid) => validSongIds.has(sid)).length;
+                        return (
+                          <TransitionLink
+                            key={sl.id}
+                            href={`/setlists/${sl.id}`}
+                            vtDirection="forward"
+                            aria-current={isActive ? 'page' : undefined}
+                            data-active={isActive || undefined}
+                            className={`gm3-nav-pill gm3-nav-pill-expanded h-9 px-4 flex items-center justify-between gap-2 text-[13px] ${
                               isActive
-                                ? 'bg-[var(--on-secondary-container)]'
-                                : validCount === 0
-                                ? 'bg-[var(--line)]'
-                                : 'bg-[var(--muted)]'
+                                ? 'text-[var(--on-secondary-container)] font-medium'
+                                : 'text-[var(--muted)] hover:text-[var(--ink)]'
                             }`}
-                          />
-                          <span className="truncate">{sl.name}</span>
-                        </span>
-                        <span className="font-mono text-xs tabular-nums">{validCount}</span>
-                      </TransitionLink>
-                    );
-                  })}
-                </nav>
+                          >
+                            <span className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                  isActive
+                                    ? 'bg-[var(--on-secondary-container)]'
+                                    : validCount === 0
+                                    ? 'bg-[var(--line)]'
+                                    : 'bg-[var(--muted)]'
+                                }`}
+                              />
+                              <span className="truncate">{sl.name}</span>
+                            </span>
+                            <span className="font-mono text-xs tabular-nums">{validCount}</span>
+                          </TransitionLink>
+                        );
+                      })}
+                    </nav>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -828,47 +841,57 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </header>
         )}
 
-        {/* Sync error banner (retries pending local edits safely instead of overwriting them) */}
-        {syncError && (
-          <div role="alert" className="flex-shrink-0 px-4 sm:px-6 lg:px-8 pt-2.5">
-            <div className="w-full rounded-2xl bg-[var(--rec-dim)] text-[var(--on-rec-container)] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[var(--rec-dot)] flex-shrink-0" />
-                <span>{syncError}</span>
+        {/* Sync error banner (glides open/closed smoothly without layout jump) */}
+        <div
+          className="gm3-collapsible flex-shrink-0"
+          data-compact-slot="true"
+          data-collapsed={!syncError ? 'true' : undefined}
+          aria-hidden={!syncError || undefined}
+          inert={!syncError || undefined}
+        >
+          <div className="gm3-collapsible-inner">
+            {syncError && (
+              <div role="alert" className="px-4 sm:px-6 lg:px-8 pt-2.5">
+                <div className="w-full rounded-2xl bg-[var(--rec-dim)] text-[var(--on-rec-container)] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[var(--rec-dot)] flex-shrink-0" />
+                    <span>{syncError}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={retryingSync}
+                      onClick={handleRetrySync}
+                      className="pill-btn h-8 px-3.5 text-xs"
+                    >
+                      {retryingSync
+                        ? 'Enviando…'
+                        : hasPendingWrites
+                        ? 'Tentar enviar novamente'
+                        : 'Recarregar'}
+                    </button>
+                    {hasPendingWrites && (
+                      <button
+                        type="button"
+                        onClick={handleReloadFromServer}
+                        className="px-2 py-1 text-xs underline underline-offset-2 cursor-pointer"
+                      >
+                        Descartar local
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleDismissSync}
+                      className="px-2 py-1 text-xs hover:underline cursor-pointer"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  disabled={retryingSync}
-                  onClick={handleRetrySync}
-                  className="pill-btn h-8 px-3.5 text-xs"
-                >
-                  {retryingSync
-                    ? 'Enviando…'
-                    : hasPendingWrites
-                    ? 'Tentar enviar novamente'
-                    : 'Recarregar'}
-                </button>
-                {hasPendingWrites && (
-                  <button
-                    type="button"
-                    onClick={handleReloadFromServer}
-                    className="px-2 py-1 text-xs underline underline-offset-2 cursor-pointer"
-                  >
-                    Descartar local
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleDismissSync}
-                  className="px-2 py-1 text-xs hover:underline cursor-pointer"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div
           className={`flex-1 flex flex-col min-w-0 min-h-0 ${
@@ -880,19 +903,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile floating GM3 FAB + Bottom Navigation Bar */}
-      {!hideChrome && !isSongPage && (
-        <>
-          {!pathname.startsWith('/add-song') && !pathname.startsWith('/setlists/') && tabParam !== 'setlists' && (
+      {!hideChrome && !isSongPage && (() => {
+        const hideMobileFab =
+          pathname.startsWith('/add-song') ||
+          pathname.startsWith('/setlists/') ||
+          tabParam === 'setlists';
+        return (
+          <>
             <TransitionLink
               href="/add-song"
               vtDirection="forward"
               aria-label="Nova música"
-              className="md:hidden gm3-fab gm3-dialog-enter fixed right-4 bottom-20 z-30 h-14 px-5 text-sm shadow-md"
+              data-hidden={hideMobileFab ? 'true' : undefined}
+              aria-hidden={hideMobileFab || undefined}
+              tabIndex={hideMobileFab ? -1 : undefined}
+              className="md:hidden gm3-fab gm3-mobile-fab fixed right-4 bottom-20 z-30 h-14 px-5 text-sm shadow-md"
             >
               <PlusIcon size={20} />
               <span>Nova música</span>
             </TransitionLink>
-          )}
 
           <nav
             aria-label="Navegação móvel"
@@ -930,7 +959,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </nav>
         </>
-      )}
+        );
+      })()}
 
       <QuickSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

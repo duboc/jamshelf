@@ -2,6 +2,7 @@
 
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore } from '@/lib/stores/display-store';
+import { runStateViewTransition } from '@/lib/utils/view-transition';
 import { Metronome } from '@/components/metronome/Metronome';
 import {
   CheckIcon,
@@ -157,153 +158,193 @@ export function SongToolbar({
   // and becomes a sleek full-width GM3 toolbar capsule on >= lg.
   return (
     <div className="flex items-center flex-nowrap gap-1.5 sm:gap-2 flex-shrink-0 lg:col-span-3 lg:row-start-3 lg:w-full lg:rounded-2xl lg:bg-[var(--surface-high)] lg:px-3 lg:py-2 lg:overflow-x-auto lg:no-scrollbar">
-      {/* Primary Auto-scroll (first in mobile scroll right after Cifra/Show, inline on desktop) */}
-      {isFollowing ? (
-        <span className="studio-chip text-[var(--tune)] flex-shrink-0">
-          {store.isAutoScrolling ? 'Rolando (sinc.)' : 'Rolagem (sinc.)'}
-        </span>
-      ) : (
-        <button
-          type="button"
-          aria-pressed={store.isAutoScrolling}
-          onClick={store.toggleAutoScroll}
-          disabled={calibrating}
-          className={`pill-btn px-3 h-9 text-xs flex-shrink-0 lg:order-3 ${
-            store.isAutoScrolling ? 'pill-btn-tune' : ''
-          }`}
-          title="Atalho: barra de espaço"
-        >
-          {store.isAutoScrolling ? <PauseIcon size={12} /> : <PlayIcon size={12} />}
-          {store.isAutoScrolling ? 'Pausar' : 'Auto-scroll'}
-        </button>
-      )}
-
-      {/* Speed stepper + presets while scrolling */}
-      {!isFollowing && !calibrating && store.isAutoScrolling && (
-        <div className="gm3-btn-group flex-nowrap flex-shrink-0 lg:order-4">
-          <button
-            type="button"
-            onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
-            className="pill-btn w-9 h-9 font-mono text-xs"
-            aria-label="Scroll mais devagar"
-            title="Diminuir velocidade do scroll (atalho: -)"
-          >
-            -
-          </button>
-          <span
-            className="font-mono text-xs text-[var(--muted)] tabular-nums px-1 min-w-[44px] text-center"
-            title="Multiplicador de velocidade do auto-scroll"
-          >
-            {store.autoScrollSpeed.toFixed(2)}×
+      {/* Primary Auto-scroll + smooth sliding speed stepper & Save pace */}
+      <div className="inline-flex items-center flex-nowrap flex-shrink-0 lg:order-3">
+        {isFollowing ? (
+          <span className="studio-chip text-[var(--tune)] flex-shrink-0">
+            {store.isAutoScrolling ? 'Rolando (sinc.)' : 'Rolagem (sinc.)'}
           </span>
+        ) : (
           <button
             type="button"
-            onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
-            className="pill-btn w-9 h-9 font-mono text-xs"
-            aria-label="Scroll mais rápido"
-            title="Aumentar velocidade do scroll (atalho: +)"
-          >
-            +
-          </button>
-          {[
-            { label: '0.75×', value: 0.75 },
-            { label: '1.0×', value: 1 },
-            { label: '1.25×', value: 1.25 },
-          ].map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              aria-pressed={Math.abs(store.autoScrollSpeed - preset.value) < 0.04}
-              onClick={() => store.setAutoScrollSpeed(preset.value)}
-              className={`pill-btn px-2.5 h-9 font-mono text-xs ${
-                Math.abs(store.autoScrollSpeed - preset.value) < 0.04 ? 'pill-btn-tune' : ''
-              }`}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {!isFollowing && speedChanged && !calibrating && (
-        <button
-          type="button"
-          onClick={onSaveScrollSpeed}
-          className="pill-btn px-3 h-9 text-xs text-[var(--tune)] border-[var(--tune)]/50 flex-shrink-0 lg:order-4"
-          title="Salvar esta velocidade como padrão desta música"
-        >
-          Salvar ritmo
-        </button>
-      )}
-
-      {/* Transpose controls: hidden in Singer (lyrics-only) mode */}
-      {!isSingerMode && (
-        <div className="gm3-btn-group flex-shrink-0 lg:order-1">
-          <span className="field-label hidden sm:inline mr-0.5">Tom</span>
-          <button
-            type="button"
-            onClick={store.transposeDown}
-            className="pill-btn w-9 h-9 font-mono text-xs"
-            title="Baixar meio tom"
-            aria-label="Baixar meio tom"
-          >
-            -
-          </button>
-          <button
-            type="button"
-            disabled={store.transpose === 0}
-            onClick={() => store.setTranspose(0)}
-            className={`gm3-icon-btn font-mono text-xs min-w-[32px] h-9 px-1.5 text-center tabular-nums ${
-              store.transpose !== 0
-                ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--on-accent)]'
-                : 'text-[var(--ink)] cursor-default'
+            aria-pressed={store.isAutoScrolling}
+            onClick={store.toggleAutoScroll}
+            disabled={calibrating}
+            className={`pill-btn px-3 h-9 text-xs flex-shrink-0 ${
+              store.isAutoScrolling ? 'pill-btn-tune' : ''
             }`}
-            title={store.transpose !== 0 ? 'Clique para resetar transposição para 0' : 'Tom original'}
-            aria-label={
-              store.transpose !== 0
-                ? `Transposição ${transposeLabel} semitons, clique para resetar para 0`
-                : 'Transposição 0 semitons'
-            }
+            title="Atalho: barra de espaço"
           >
-            {transposeLabel}
+            {store.isAutoScrolling ? <PauseIcon size={12} /> : <PlayIcon size={12} />}
+            {store.isAutoScrolling ? 'Pausar' : 'Auto-scroll'}
           </button>
-          <button
-            type="button"
-            onClick={store.transposeUp}
-            className="pill-btn w-9 h-9 font-mono text-xs"
-            title="Subir meio tom"
-            aria-label="Subir meio tom"
+        )}
+
+        {/* Speed stepper + presets glide out smoothly when scrolling starts */}
+        {!isFollowing && !calibrating && (
+          <div
+            data-compact-slot="true"
+            data-collapsed={!store.isAutoScrolling ? 'true' : undefined}
+            aria-hidden={!store.isAutoScrolling || undefined}
+            inert={!store.isAutoScrolling || undefined}
+            className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
           >
-            +
-          </button>
-          <button
-            type="button"
-            aria-pressed={store.useFlats}
-            onClick={store.toggleFlats}
-            className={`pill-btn w-9 h-9 font-mono text-xs ${
-              store.useFlats ? 'pill-btn-primary' : ''
-            }`}
-            title="Alternar sustenidos (#) e bemóis (b)"
-            aria-label={
-              store.useFlats
-                ? 'Usando bemóis, alternar para sustenidos'
-                : 'Usando sustenidos, alternar para bemóis'
-            }
+            <div className="gm3-slot-x-inner pl-1.5">
+              <div className="gm3-btn-group flex-nowrap">
+                <button
+                  type="button"
+                  onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
+                  className="pill-btn w-9 h-9 font-mono text-xs"
+                  aria-label="Scroll mais devagar"
+                  title="Diminuir velocidade do scroll (atalho: -)"
+                >
+                  -
+                </button>
+                <span
+                  className="font-mono text-xs text-[var(--muted)] tabular-nums px-1 min-w-[44px] text-center"
+                  title="Multiplicador de velocidade do auto-scroll"
+                >
+                  {store.autoScrollSpeed.toFixed(2)}×
+                </span>
+                <button
+                  type="button"
+                  onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
+                  className="pill-btn w-9 h-9 font-mono text-xs"
+                  aria-label="Scroll mais rápido"
+                  title="Aumentar velocidade do scroll (atalho: +)"
+                >
+                  +
+                </button>
+                {[
+                  { label: '0.75×', value: 0.75 },
+                  { label: '1.0×', value: 1 },
+                  { label: '1.25×', value: 1.25 },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    aria-pressed={Math.abs(store.autoScrollSpeed - preset.value) < 0.04}
+                    onClick={() => store.setAutoScrollSpeed(preset.value)}
+                    className={`pill-btn px-2.5 h-9 font-mono text-xs ${
+                      Math.abs(store.autoScrollSpeed - preset.value) < 0.04 ? 'pill-btn-tune' : ''
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isFollowing && !calibrating && (
+          <div
+            data-compact-slot="true"
+            data-collapsed={!speedChanged ? 'true' : undefined}
+            aria-hidden={!speedChanged || undefined}
+            inert={!speedChanged || undefined}
+            className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
           >
-            {store.useFlats ? '♭' : '♯'}
-          </button>
-          {store.transpose !== 0 && (
-            <button
-              type="button"
-              onClick={onRequestSaveTranspose}
-              title="Salvar este novo tom permanentemente na música"
-              className="pill-btn px-2.5 h-9 text-xs text-[var(--accent-ink)] border-[var(--accent)]/50"
+            <div className="gm3-slot-x-inner pl-1.5">
+              <button
+                type="button"
+                onClick={onSaveScrollSpeed}
+                className="pill-btn px-3 h-9 text-xs text-[var(--tune)] border-[var(--tune)]/50 flex-shrink-0"
+                title="Salvar esta velocidade como padrão desta música"
+              >
+                Salvar ritmo
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Transpose controls: smoothly collapse in Singer (lyrics-only) mode */}
+      <div
+        data-compact-slot="true"
+        data-collapsed={isSingerMode ? 'true' : undefined}
+        aria-hidden={isSingerMode || undefined}
+        inert={isSingerMode || undefined}
+        className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0 lg:order-1"
+      >
+        <div className="gm3-slot-x-inner">
+          <div className="inline-flex items-center flex-nowrap">
+            <div className="gm3-btn-group flex-shrink-0">
+              <span className="field-label hidden sm:inline mr-0.5">Tom</span>
+              <button
+                type="button"
+                onClick={store.transposeDown}
+                className="pill-btn w-9 h-9 font-mono text-xs"
+                title="Baixar meio tom"
+                aria-label="Baixar meio tom"
+              >
+                -
+              </button>
+              <button
+                type="button"
+                disabled={store.transpose === 0}
+                onClick={() => store.setTranspose(0)}
+                className={`gm3-icon-btn font-mono text-xs min-w-[32px] h-9 px-1.5 text-center tabular-nums ${
+                  store.transpose !== 0
+                    ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--on-accent)]'
+                    : 'text-[var(--ink)] cursor-default'
+                }`}
+                title={store.transpose !== 0 ? 'Clique para resetar transposição para 0' : 'Tom original'}
+                aria-label={
+                  store.transpose !== 0
+                    ? `Transposição ${transposeLabel} semitons, clique para resetar para 0`
+                    : 'Transposição 0 semitons'
+                }
+              >
+                {transposeLabel}
+              </button>
+              <button
+                type="button"
+                onClick={store.transposeUp}
+                className="pill-btn w-9 h-9 font-mono text-xs"
+                title="Subir meio tom"
+                aria-label="Subir meio tom"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                aria-pressed={store.useFlats}
+                onClick={store.toggleFlats}
+                className={`pill-btn w-9 h-9 font-mono text-xs ${
+                  store.useFlats ? 'pill-btn-primary' : ''
+                }`}
+                title="Alternar sustenidos (#) e bemóis (b)"
+                aria-label={
+                  store.useFlats
+                    ? 'Usando bemóis, alternar para sustenidos'
+                    : 'Usando sustenidos, alternar para bemóis'
+                }
+              >
+                {store.useFlats ? '♭' : '♯'}
+              </button>
+            </div>
+            <div
+              data-compact-slot="true"
+              data-collapsed={store.transpose === 0 ? 'true' : undefined}
+              aria-hidden={store.transpose === 0 || undefined}
+              inert={store.transpose === 0 || undefined}
+              className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
             >
-              Salvar tom
-            </button>
-          )}
+              <div className="gm3-slot-x-inner pl-1.5">
+                <button
+                  type="button"
+                  onClick={onRequestSaveTranspose}
+                  title="Salvar este novo tom permanentemente na música"
+                  className="pill-btn px-2.5 h-9 text-xs text-[var(--accent-ink)] border-[var(--accent)]/50"
+                >
+                  Salvar tom
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Font size */}
       <div className="gm3-btn-group flex-shrink-0 lg:order-2">
@@ -365,8 +406,8 @@ export function SongToolbar({
         )
       )}
 
-      {/* Metronome + Tap Tempo */}
-      <div className="flex-shrink-0 lg:order-6">
+      {/* Metronome + Tap Tempo + sliding Visual pulse toggle */}
+      <div className="inline-flex items-center flex-nowrap flex-shrink-0 lg:order-6">
         <Metronome
           readOnly={isFollowing}
           beatsPerBar={beatsPerBar}
@@ -375,6 +416,27 @@ export function SongToolbar({
           onSaveBpm={onSaveBpm}
           heightClass="h-9"
         />
+        <div
+          data-compact-slot="true"
+          data-collapsed={!store.metronomeOn ? 'true' : undefined}
+          aria-hidden={!store.metronomeOn || undefined}
+          inert={!store.metronomeOn || undefined}
+          className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
+        >
+          <div className="gm3-slot-x-inner pl-1.5">
+            <button
+              type="button"
+              aria-pressed={visualPulseEnabled}
+              onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
+              className={`pill-btn px-3 h-9 text-xs flex-shrink-0 ${
+                visualPulseEnabled ? 'pill-btn-primary' : ''
+              }`}
+              title="Exibir barra rítmica discreta no topo durante o metrônomo"
+            >
+              Pulso
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Visual 1-2-3-4 count-in */}
@@ -389,27 +451,12 @@ export function SongToolbar({
         </button>
       )}
 
-      {/* Visual pulse toggle */}
-      {store.metronomeOn && (
-        <button
-          type="button"
-          aria-pressed={visualPulseEnabled}
-          onClick={() => setVisualPulseEnabled(!visualPulseEnabled)}
-          className={`pill-btn px-3 h-9 text-xs flex-shrink-0 lg:order-8 ${
-            visualPulseEnabled ? 'pill-btn-primary' : ''
-          }`}
-          title="Exibir barra rítmica discreta no topo durante o metrônomo"
-        >
-          Pulso
-        </button>
-      )}
-
       {/* 2-column stage layout toggle on wide screens */}
       {!calibrating && (
         <button
           type="button"
           aria-pressed={sheetColumns === 2}
-          onClick={() => setSheetColumns(sheetColumns === 2 ? 1 : 2)}
+          onClick={() => runStateViewTransition(() => setSheetColumns(sheetColumns === 2 ? 1 : 2), 'morph')}
           className={`hidden xl:inline-flex pill-btn px-3 h-9 text-xs flex-shrink-0 lg:order-9 ${
             sheetColumns === 2 ? 'pill-btn-tonal' : ''
           }`}
@@ -425,7 +472,7 @@ export function SongToolbar({
         {isSingerMode ? (
           <button
             type="button"
-            onClick={() => setDisplayMode('both')}
+            onClick={() => runStateViewTransition(() => setDisplayMode('both'), 'morph')}
             className="pill-btn px-3 h-9 text-xs text-[var(--accent-ink)]"
             title="Voltar a exibir os acordes acima da letra"
           >

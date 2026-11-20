@@ -134,7 +134,7 @@ export function ChordLine({
                 <button
                   type="button"
                   onClick={() => onChordSelect?.(i)}
-                  className={`px-2 py-1 rounded-lg text-[0.85em] font-bold font-mono transition-all select-none cursor-pointer ${
+                  className={`gm3-edit-chord-btn px-2 py-1 rounded-lg text-[0.85em] font-bold font-mono select-none cursor-pointer ${
                     isSelected
                       ? 'bg-[var(--accent)] text-[var(--on-accent)] ring-2 ring-[var(--accent-ink)] scale-105'
                       : 'bg-[var(--surface2)] text-[var(--accent-ink)] hover:bg-[var(--accent-dim)]'

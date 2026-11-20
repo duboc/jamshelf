@@ -6,6 +6,7 @@ import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { normalizeSearch } from '@/lib/utils/music';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { navigateWithTransition } from '@/lib/utils/view-transition';
 
 interface QuickSearchModalProps {
@@ -17,7 +18,15 @@ type SearchResult =
   | { kind: 'song'; id: string; title: string; subtitle: string; meta: string; href: string }
   | { kind: 'setlist'; id: string; title: string; subtitle: string; meta: string; href: string };
 
-function QuickSearchDialog({ onClose }: { onClose: () => void }) {
+function QuickSearchDialog({
+  open,
+  closing,
+  onClose,
+}: {
+  open: boolean;
+  closing: boolean;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const entries = useSongStore((s) => s.entries);
   const getSongs = useSongStore((s) => s.getSongs);
@@ -29,7 +38,7 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
 
-  useDialogA11y(true, onClose, dialogRef);
+  useDialogA11y(open, onClose, dialogRef);
 
   const songs = useMemo(() => {
     void entries;
@@ -108,15 +117,16 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="gm3-backdrop-enter fixed inset-0 z-[70] bg-black/45 flex items-start justify-center pt-[10vh] px-4"
-      onClick={onClose}
+      className={`${closing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 z-[70] bg-black/45 flex items-start justify-center pt-[10vh] px-4`}
+      onClick={closing ? undefined : onClose}
+      inert={closing || undefined}
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Busca rápida"
-        className="gm3-card gm3-dialog-enter w-full max-w-xl rounded-[28px] bg-[var(--surface)] overflow-hidden"
+        className={`gm3-card ${closing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} w-full max-w-xl rounded-[28px] bg-[var(--surface)] overflow-hidden`}
         style={{ boxShadow: 'var(--shadow-md)' }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
@@ -170,7 +180,7 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
                   type="button"
                   onMouseEnter={() => setActiveIdx(idx)}
                   onClick={() => selectItem(item)}
-                  className={`w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl text-left transition-colors cursor-pointer ${
+                  className={`gm3-menu-item w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left cursor-pointer ${
                     active ? 'bg-[var(--secondary-container)]/75' : 'hover:bg-[var(--surface-high)]'
                   }`}
                 >
@@ -210,6 +220,7 @@ function QuickSearchDialog({ onClose }: { onClose: () => void }) {
 }
 
 export function QuickSearchModal({ open, onClose }: QuickSearchModalProps) {
-  if (!open) return null;
-  return <QuickSearchDialog onClose={onClose} />;
+  const { mounted, closing } = useAnimatedPresence(open, 220);
+  if (!mounted) return null;
+  return <QuickSearchDialog open={open} closing={closing} onClose={onClose} />;
 }

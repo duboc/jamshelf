@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 
 const QUICK_CUE_TAGS = [
   'Drop D',
@@ -41,7 +42,7 @@ function StageNotesEditor({
   };
 
   return (
-    <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+    <div className="gm3-view-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
       <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 py-3 space-y-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="field-label text-[var(--warn-ink)] flex-shrink-0">Notas de palco</span>
@@ -109,51 +110,63 @@ export function StageNotesBar({
   onCancel,
 }: StageNotesBarProps) {
   const [expanded, setExpanded] = useState(false);
-
-  if (editing && !readOnly && onSave && onCancel) {
-    return <StageNotesEditor initialNotes={notes} onSave={onSave} onCancel={onCancel} />;
-  }
-
-  if (!notes.trim()) return null;
+  const showEditor = Boolean(editing && !readOnly && onSave && onCancel);
+  const showBar = showEditor || Boolean(notes.trim());
+  const { mounted } = useAnimatedPresence(showBar, 420);
 
   const isLong = notes.trim().length > 88;
 
   return (
-    <div className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
-      <div className="w-full rounded-2xl bg-[var(--warn-dim)] px-4 py-2.5 flex items-start sm:items-center justify-between gap-3">
-        <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
-          <span className="studio-chip bg-[var(--warn)]/25 text-[var(--warn-ink)] font-semibold flex-shrink-0">
-            Deixa
-          </span>
-          <p
-            className={`text-xs sm:text-[13px] font-medium text-[var(--ink)] leading-snug ${
-              expanded ? 'whitespace-normal' : 'line-clamp-2'
-            }`}
-          >
-            {notes}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {isLong && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              aria-expanded={expanded}
-              className="text-xs font-medium text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
-            >
-              {expanded ? 'Menos' : 'Ver tudo'}
-            </button>
-          )}
-          {!readOnly && onStartEdit && (
-            <button
-              type="button"
-              onClick={onStartEdit}
-              className="text-xs font-medium text-[var(--warn-ink)] hover:underline cursor-pointer"
-            >
-              Editar
-            </button>
-          )}
-        </div>
+    <div
+      className="gm3-collapsible flex-shrink-0"
+      data-compact-slot="true"
+      data-collapsed={!showBar ? 'true' : undefined}
+      aria-hidden={!showBar || undefined}
+      inert={!showBar || undefined}
+    >
+      <div className="gm3-collapsible-inner">
+        {mounted &&
+          (showEditor && onSave && onCancel ? (
+            <StageNotesEditor initialNotes={notes} onSave={onSave} onCancel={onCancel} />
+          ) : notes.trim() ? (
+            <div className="gm3-view-enter bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
+              <div className="w-full rounded-2xl bg-[var(--warn-dim)] px-4 py-2.5 flex items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+                  <span className="studio-chip bg-[var(--warn)]/25 text-[var(--warn-ink)] font-semibold flex-shrink-0">
+                    Deixa
+                  </span>
+                  <p
+                    className={`text-xs sm:text-[13px] font-medium text-[var(--ink)] leading-snug ${
+                      expanded ? 'whitespace-normal' : 'line-clamp-2'
+                    }`}
+                  >
+                    {notes}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {isLong && (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((v) => !v)}
+                      aria-expanded={expanded}
+                      className="text-xs font-medium text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"
+                    >
+                      {expanded ? 'Menos' : 'Ver tudo'}
+                    </button>
+                  )}
+                  {!readOnly && onStartEdit && (
+                    <button
+                      type="button"
+                      onClick={onStartEdit}
+                      className="text-xs font-medium text-[var(--warn-ink)] hover:underline cursor-pointer"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null)}
       </div>
     </div>
   );

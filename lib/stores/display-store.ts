@@ -36,6 +36,31 @@ interface DisplayStore {
   setSingleKeyShortcuts: (v: boolean) => void;
 }
 
+let themeTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+function applyThemeToDom(theme: ThemeMode, animate: boolean) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  const reduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (animate && !reduced) {
+    root.classList.add('gm3-theme-transitioning');
+    if (themeTransitionTimer) clearTimeout(themeTransitionTimer);
+    themeTransitionTimer = setTimeout(() => {
+      root.classList.remove('gm3-theme-transitioning');
+      themeTransitionTimer = null;
+    }, 380);
+  }
+
+  if (theme === 'dark' || theme === 'light') {
+    root.setAttribute('data-theme', theme);
+  } else {
+    root.removeAttribute('data-theme');
+  }
+}
+
 // Per-device preferences persisted across reloads. Kept separate from
 // player-store so live-session sync (which only reads/writes player-store)
 // never overwrites a singer's or guitarist's local display choices.
@@ -52,7 +77,10 @@ export const useDisplayStore = create<DisplayStore>()(
       visualPulseEnabled: false,
       setVisualPulseEnabled: (v) => set({ visualPulseEnabled: v }),
       theme: 'system',
-      setTheme: (t) => set({ theme: t }),
+      setTheme: (t) => {
+        applyThemeToDom(t, true);
+        set({ theme: t });
+      },
       fontSize: 100,
       setFontSize: (sz) => set({ fontSize: Math.max(70, Math.min(180, sz)) }),
       chordsRefOpen: false,

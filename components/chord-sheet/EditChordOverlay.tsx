@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -56,6 +57,8 @@ function parseChordParts(chord: string): { root: string; suffix: string; bass: s
 }
 
 function OverlayInner({
+  open,
+  closing,
   selected,
   addTarget,
   songChords = [],
@@ -64,11 +67,17 @@ function OverlayInner({
   onDelete,
   onInsert,
   onClose,
-}: EditChordOverlayProps) {
+}: EditChordOverlayProps & { open: boolean; closing: boolean }) {
   const isAdd = addTarget !== null && selected === null;
   const isEdit = selected !== null;
+  const targetKey = selected
+    ? `edit-${selected.sectionIdx}-${selected.lineIdx}`
+    : addTarget
+    ? `add-${addTarget.sectionIdx}-${addTarget.lineIdx}-${addTarget.charPos}`
+    : '';
 
   // In add mode jump straight to picker so inserting takes 1 tap!
+  const [prevTargetKey, setPrevTargetKey] = useState(targetKey);
   const [mode, setMode] = useState<'main' | 'change'>(isAdd ? 'change' : 'main');
   const [useFlats, setUseFlats] = useState(false);
 
@@ -78,6 +87,16 @@ function OverlayInner({
   const [pickedBass, setPickedBass] = useState(parsed.bass);
   const [customInput, setCustomInput] = useState(selected?.chord ?? '');
   const [showBassPicker, setShowBassPicker] = useState(Boolean(parsed.bass));
+
+  if (open && targetKey && targetKey !== prevTargetKey) {
+    setPrevTargetKey(targetKey);
+    setMode(isAdd ? 'change' : 'main');
+    setPickedRoot(parsed.root);
+    setPickedSuffix(parsed.suffix);
+    setPickedBass(parsed.bass);
+    setCustomInput(selected?.chord ?? '');
+    setShowBassPicker(Boolean(parsed.bass));
+  }
 
   // Keep latest selected + onMove in refs so hold-to-repeat stays accurate as segIdx changes
   const selectedRef = useRef(selected);
@@ -92,7 +111,7 @@ function OverlayInner({
   const pointerMovedRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  useDialogA11y(true, onClose, dialogRef);
+  useDialogA11y(open, onClose, dialogRef);
 
   const stopHold = () => {
     if (holdTimeoutRef.current) {
@@ -123,6 +142,7 @@ function OverlayInner({
 
   // Keyboard shortcuts while overlay is open
   useEffect(() => {
+    if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const inInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
@@ -149,7 +169,7 @@ function OverlayInner({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mode, onClose, onDelete]);
+  }, [open, mode, onClose, onDelete]);
 
   const noteList = useFlats ? FLAT_NOTES : NOTES;
   const builtChord = `${pickedRoot}${pickedSuffix}${pickedBass ? `/${pickedBass}` : ''}`;
@@ -185,24 +205,27 @@ function OverlayInner({
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Fechar editor de acorde"
-        onClick={onClose}
-        className="fixed inset-0 z-40 bg-transparent border-0 p-0 cursor-default"
-      />
+      {!closing && (
+        <button
+          type="button"
+          aria-label="Fechar editor de acorde"
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-transparent border-0 p-0 cursor-default"
+        />
+      )}
 
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-chord-dialog-title"
-        className="gm3-sheet-enter fixed bottom-0 inset-x-0 md:bottom-4 md:max-w-xl md:mx-auto z-50 rounded-t-[28px] md:rounded-[28px] bg-[var(--surface)] max-h-[78vh] overflow-y-auto"
+        inert={closing || undefined}
+        className={`${closing ? 'gm3-sheet-exit' : 'gm3-sheet-enter'} fixed bottom-0 inset-x-0 md:bottom-4 md:max-w-xl md:mx-auto z-50 rounded-t-[28px] md:rounded-[28px] bg-[var(--surface)] max-h-[78vh] overflow-y-auto`}
         style={{ boxShadow: 'var(--shadow-md)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="w-full">
           {mode === 'main' && isEdit && selected && (
-            <div className="px-5 py-4 space-y-3">
+            <div key="main" className="gm3-view-enter px-5 py-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div id="edit-chord-dialog-title" className="flex items-center gap-2">
                   <span className="field-label">Acorde selecionado</span>
@@ -317,7 +340,7 @@ function OverlayInner({
           )}
 
           {mode === 'change' && (
-            <div className="px-5 py-4 space-y-3">
+            <div key="change" className="gm3-view-enter px-5 py-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <span id="edit-chord-dialog-title" className="text-sm font-semibold text-[var(--ink)]">
                   {isAdd ? 'Inserir acorde' : 'Trocar acorde'}:{' '}
@@ -458,29 +481,37 @@ function OverlayInner({
                     </button>
                   )}
                 </div>
-                {showBassPicker && (
-                  <div className="grid grid-cols-6 gap-1">
-                    {noteList.map((bass) => (
-                      <button
-                        key={`bass-${bass}`}
-                        type="button"
-                        aria-pressed={pickedBass === bass}
-                        onClick={() => {
-                          const nextBass = pickedBass === bass ? '' : bass;
-                          setPickedBass(nextBass);
-                          setCustomInput(`${pickedRoot}${pickedSuffix}${nextBass ? `/${nextBass}` : ''}`);
-                        }}
-                        className={`h-8 rounded-xl text-xs font-bold font-mono transition-colors cursor-pointer ${
-                          pickedBass === bass
-                            ? 'bg-[var(--secondary-container)] text-[var(--on-secondary-container)]'
-                            : 'bg-[var(--bg)] text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
-                        }`}
-                      >
-                        /{bass}
-                      </button>
-                    ))}
+                <div
+                  className="gm3-collapsible"
+                  data-compact-slot="true"
+                  data-collapsed={!showBassPicker ? 'true' : undefined}
+                  aria-hidden={!showBassPicker || undefined}
+                  inert={!showBassPicker || undefined}
+                >
+                  <div className="gm3-collapsible-inner">
+                    <div className="grid grid-cols-6 gap-1 pt-1">
+                      {noteList.map((bass) => (
+                        <button
+                          key={`bass-${bass}`}
+                          type="button"
+                          aria-pressed={pickedBass === bass}
+                          onClick={() => {
+                            const nextBass = pickedBass === bass ? '' : bass;
+                            setPickedBass(nextBass);
+                            setCustomInput(`${pickedRoot}${pickedSuffix}${nextBass ? `/${nextBass}` : ''}`);
+                          }}
+                          className={`pill-btn h-8 text-xs font-bold font-mono ${
+                            pickedBass === bass
+                              ? 'pill-btn-tonal'
+                              : 'bg-[var(--bg)] text-[var(--muted)] hover:bg-[var(--surface-high)] hover:text-[var(--ink)]'
+                          }`}
+                        >
+                          /{bass}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Confirm / Back */}
@@ -511,10 +542,27 @@ function OverlayInner({
 }
 
 export function EditChordOverlay(props: EditChordOverlayProps) {
-  const { selected, addTarget } = props;
-  if (!selected && !addTarget) return null;
-  const key = selected
-    ? `edit-${selected.sectionIdx}-${selected.lineIdx}`
-    : `add-${addTarget!.sectionIdx}-${addTarget!.lineIdx}-${addTarget!.charPos}`;
-  return <OverlayInner key={key} {...props} />;
+  const isOpen = Boolean(props.selected || props.addTarget);
+  const { mounted, closing } = useAnimatedPresence(isOpen, 240);
+  const targetKey = props.selected
+    ? `e:${props.selected.sectionIdx}:${props.selected.lineIdx}:${props.selected.segIdx}:${props.selected.chord}`
+    : props.addTarget
+    ? `a:${props.addTarget.sectionIdx}:${props.addTarget.lineIdx}:${props.addTarget.charPos}`
+    : null;
+  const retained = useRetainedValue(
+    isOpen ? { selected: props.selected, addTarget: props.addTarget } : null,
+    targetKey
+  );
+
+  if (!mounted || !retained) return null;
+
+  return (
+    <OverlayInner
+      {...props}
+      open={isOpen}
+      closing={closing}
+      selected={retained.selected}
+      addTarget={retained.addTarget}
+    />
+  );
 }

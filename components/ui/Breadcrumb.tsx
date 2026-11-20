@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { navigateWithTransition } from '@/lib/utils/view-transition';
+import { navigateWithTransition, runStateViewTransition } from '@/lib/utils/view-transition';
 import { TransitionLink } from './TransitionLink';
 
 export interface BreadcrumbItem {
@@ -31,7 +31,7 @@ export function Breadcrumb({ items, onBack, rightSlot, vtSongId }: BreadcrumbPro
         direction: 'back',
       });
     } else {
-      router.back();
+      runStateViewTransition(() => router.back(), 'fade');
     }
   };
 

@@ -190,48 +190,58 @@ export function Metronome({
     savedTempo !== undefined &&
     (bpm !== savedTempo || !tempoConfirmed);
 
-  const beatIndicator = metronomeOn && (
-    <div className="flex items-center gap-2">
-      {audioBlocked ? (
-        <button
-          type="button"
-          onClick={handleUnlockAudio}
-          className="pill-btn pill-btn-tonal px-2.5 h-8 text-xs"
-          title="O navegador pausou o áudio automático; toque para liberar o som do metrônomo"
-        >
-          <VolumeIcon size={14} muted />
-          Ativar áudio
-        </button>
-      ) : (
-        <>
-          <div className="flex gap-1.5" aria-hidden="true">
-            {Array.from({ length: beatsPerBar }, (_, b) => (
-              <div
-                key={b}
-                className={`gm3-beat-dot w-3 h-3 ${
-                  beat === b
-                    ? b === 0
-                      ? 'bg-[var(--accent)] scale-125'
-                      : 'bg-[var(--tune-dot)] scale-115'
-                    : 'bg-[var(--line)] scale-100'
-                }`}
-              />
-            ))}
-          </div>
-          <span
-            key={beat}
-            className="gm3-beat-pop font-expressive text-sm text-[var(--accent)] w-4 text-center tabular-nums"
-          >
-            {beat + 1}
-          </span>
-        </>
-      )}
+  const beatIndicator = (
+    <div
+      data-compact-slot="true"
+      data-collapsed={!metronomeOn ? 'true' : undefined}
+      aria-hidden={!metronomeOn || undefined}
+      inert={!metronomeOn || undefined}
+      className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
+    >
+      <div className="gm3-slot-x-inner pl-1.5">
+        <div className="flex items-center gap-2">
+          {audioBlocked ? (
+            <button
+              type="button"
+              onClick={handleUnlockAudio}
+              className="pill-btn pill-btn-tonal px-2.5 h-8 text-xs"
+              title="O navegador pausou o áudio automático; toque para liberar o som do metrônomo"
+            >
+              <VolumeIcon size={14} muted />
+              Ativar áudio
+            </button>
+          ) : (
+            <>
+              <div className="flex gap-1.5" aria-hidden="true">
+                {Array.from({ length: beatsPerBar }, (_, b) => (
+                  <div
+                    key={b}
+                    className={`gm3-beat-dot w-3 h-3 ${
+                      beat === b
+                        ? b === 0
+                          ? 'bg-[var(--accent)] scale-125'
+                          : 'bg-[var(--tune-dot)] scale-115'
+                        : 'bg-[var(--line)] scale-100'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span
+                key={beat}
+                className="gm3-beat-pop font-expressive text-sm text-[var(--accent)] w-4 text-center tabular-nums"
+              >
+                {beat + 1}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 
   if (readOnly) {
     return (
-      <div data-motion-scheme="standard" className="flex items-center gap-2">
+      <div data-motion-scheme="standard" className="inline-flex items-center">
         <span className="studio-chip text-[var(--muted)]">
           {metronomeOn ? `${bpm} BPM · sinc.` : 'Metrônomo sinc.'}
         </span>
@@ -241,72 +251,90 @@ export function Metronome({
   }
 
   return (
-    <div data-motion-scheme="standard" className="gm3-btn-group flex-shrink-0">
-      <button
-        type="button"
-        aria-pressed={metronomeOn}
-        onClick={() => {
-          if (!metronomeOn) {
-            if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-            audioCtxRef.current.resume().catch(() => {});
-          }
-          setMetronomeOn(!metronomeOn);
-        }}
-        className={`pill-btn px-3 ${heightClass} text-xs ${
-          metronomeOn ? 'pill-btn-primary' : buttonClass
-        }`}
-        title="Ligar ou desligar metrônomo com precisão Web Audio (atalho: M)"
-      >
-        {metronomeOn ? `Parar (${bpm})` : `Metrônomo · ${!tempoConfirmed ? '~' : ''}${bpm}`}
-      </button>
-
-      <button
-        type="button"
-        data-active={tapActive || undefined}
-        onClick={handleTapTempo}
-        className={`pill-btn px-2.5 ${heightClass} text-xs font-mono ${
-          tapActive ? 'pill-btn-tonal' : buttonClass
-        }`}
-        title="Bata no ritmo 2 ou mais vezes para detectar o BPM"
-      >
-        <span key={tapPulse} className={tapPulse > 0 ? 'gm3-beat-pop inline-block' : 'inline-block'}>
-          Tap
-        </span>
-      </button>
-
-      {metronomeOn && (
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setBpm(bpm - 2)}
-            className={`pill-btn w-8 ${heightClass} font-mono text-xs ${buttonClass}`}
-            aria-label="Diminuir BPM"
-            title="-2 BPM"
-          >
-            -
-          </button>
-          <button
-            type="button"
-            onClick={() => setBpm(bpm + 2)}
-            className={`pill-btn w-8 ${heightClass} font-mono text-xs ${buttonClass}`}
-            aria-label="Aumentar BPM"
-            title="+2 BPM"
-          >
-            +
-          </button>
-        </div>
-      )}
-
-      {bpmDirty && (
+    <div data-motion-scheme="standard" className="inline-flex items-center flex-shrink-0">
+      <div className="gm3-btn-group flex-shrink-0">
         <button
           type="button"
-          onClick={() => onSaveBpm(bpm)}
-          className={`pill-btn pill-btn-tonal px-2.5 ${heightClass} text-xs`}
-          title={`Salvar ${bpm} BPM nesta música`}
+          aria-pressed={metronomeOn}
+          onClick={() => {
+            if (!metronomeOn) {
+              if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+              audioCtxRef.current.resume().catch(() => {});
+            }
+            setMetronomeOn(!metronomeOn);
+          }}
+          className={`pill-btn px-3 ${heightClass} text-xs ${
+            metronomeOn ? 'pill-btn-primary' : buttonClass
+          }`}
+          title="Ligar ou desligar metrônomo com precisão Web Audio (atalho: M)"
         >
-          Salvar {bpm} BPM
+          {metronomeOn ? `Parar (${bpm})` : `Metrônomo · ${!tempoConfirmed ? '~' : ''}${bpm}`}
         </button>
-      )}
+
+        <button
+          type="button"
+          data-active={tapActive || undefined}
+          onClick={handleTapTempo}
+          className={`pill-btn px-2.5 ${heightClass} text-xs font-mono ${
+            tapActive ? 'pill-btn-tonal' : buttonClass
+          }`}
+          title="Bata no ritmo 2 ou mais vezes para detectar o BPM"
+        >
+          <span key={tapPulse} className={tapPulse > 0 ? 'gm3-beat-pop inline-block' : 'inline-block'}>
+            Tap
+          </span>
+        </button>
+      </div>
+
+      <div
+        data-compact-slot="true"
+        data-collapsed={!metronomeOn ? 'true' : undefined}
+        aria-hidden={!metronomeOn || undefined}
+        inert={!metronomeOn || undefined}
+        className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
+      >
+        <div className="gm3-slot-x-inner pl-1">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setBpm(bpm - 2)}
+              className={`pill-btn w-8 ${heightClass} font-mono text-xs ${buttonClass}`}
+              aria-label="Diminuir BPM"
+              title="-2 BPM"
+            >
+              -
+            </button>
+            <button
+              type="button"
+              onClick={() => setBpm(bpm + 2)}
+              className={`pill-btn w-8 ${heightClass} font-mono text-xs ${buttonClass}`}
+              aria-label="Aumentar BPM"
+              title="+2 BPM"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        data-compact-slot="true"
+        data-collapsed={!bpmDirty ? 'true' : undefined}
+        aria-hidden={!bpmDirty || undefined}
+        inert={!bpmDirty || undefined}
+        className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
+      >
+        <div className="gm3-slot-x-inner pl-1">
+          <button
+            type="button"
+            onClick={() => onSaveBpm?.(bpm)}
+            className={`pill-btn pill-btn-tonal px-2.5 ${heightClass} text-xs`}
+            title={`Salvar ${bpm} BPM nesta música`}
+          >
+            Salvar {bpm} BPM
+          </button>
+        </div>
+      </div>
 
       {beatIndicator}
     </div>

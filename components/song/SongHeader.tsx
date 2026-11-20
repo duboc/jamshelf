@@ -5,6 +5,7 @@ import type { ParsedSong, Setlist } from '@/lib/types/song';
 import { useDisplayStore, type DisplayMode } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
+import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
 import { formatDuration, parseDurationValue } from '@/lib/utils/chordpro-parser';
 import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
@@ -150,6 +151,12 @@ export function SongHeader({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const goLiveDialogRef = useRef<HTMLDivElement>(null);
 
+  const { mounted: moreMounted, closing: moreClosing } = useAnimatedPresence(moreOpen, 220);
+  const { mounted: metaMounted, closing: metaClosing } = useAnimatedPresence(metaOpen, 220);
+  const { mounted: goLiveMounted, closing: goLiveClosing } = useAnimatedPresence(showNamePrompt, 220);
+  const { mounted: statusMounted, closing: statusClosing } = useAnimatedPresence(Boolean(statusMsg), 200);
+  const displayStatus = useRetainedValue(statusMsg || null);
+
   useDialogA11y(showNamePrompt, () => setShowNamePrompt(false), goLiveDialogRef);
 
   const isEditingTitle = editMode || editingIdentity;
@@ -273,7 +280,7 @@ export function SongHeader({
                 <button
                   type="button"
                   onClick={onBack}
-                  className="gm3-compact-enter group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                  className="group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
                   title="Voltar"
                   aria-label="Voltar"
                 >
@@ -419,13 +426,13 @@ export function SongHeader({
                 </>
               )}
 
-              {statusMsg && (
+              {statusMounted && displayStatus && (
                 <span
                   role="status"
                   aria-live="polite"
-                  className="font-mono text-xs text-[var(--tune)] font-semibold flex-shrink-0 ml-1.5 sr-only sm:not-sr-only"
+                  className={`${statusClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} font-mono text-xs text-[var(--tune)] font-semibold flex-shrink-0 ml-1.5 sr-only sm:not-sr-only`}
                 >
-                  {statusMsg}
+                  {displayStatus}
                 </span>
               )}
             </div>
@@ -448,7 +455,7 @@ export function SongHeader({
                   type="button"
                   aria-pressed={isAutoScrolling}
                   onClick={onToggleAutoScroll}
-                  className={`gm3-compact-enter pill-btn h-9 w-9 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
+                  className={`pill-btn h-9 w-9 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
                     isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
                   }`}
                   title={isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
@@ -503,11 +510,12 @@ export function SongHeader({
               <ChevronDownIcon size={14} className="gm3-chevron" />
             </button>
 
-            {moreOpen && (
+            {moreMounted && (
               <div
                 role="dialog"
                 aria-label="Mais ações da música"
-                className="gm3-popover-top-right absolute right-0 top-[calc(100%+8px)] z-50 w-[min(280px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] py-2"
+                inert={moreClosing || undefined}
+                className={`gm3-popover-top-right ${moreClosing ? 'gm3-popover-exit' : ''} absolute right-0 top-[calc(100%+8px)] z-50 w-[min(280px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] py-2`}
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 {/* Rating */}
@@ -671,7 +679,7 @@ export function SongHeader({
                     onExpandHeader();
                     requestAnimationFrame(() => metaTriggerRef.current?.focus({ preventScroll: true }));
                   }}
-                  className="gm3-compact-enter gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                  className="gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
                   title="Mostrar todos os controles da música"
                   aria-label="Expandir cabeçalho e controles"
                 >
@@ -689,7 +697,7 @@ export function SongHeader({
           aria-hidden={compact || undefined}
           inert={compact || undefined}
         >
-          <div className={metaOpen ? 'gm3-collapsible-inner-open' : 'gm3-collapsible-inner'}>
+          <div className={metaMounted ? 'gm3-collapsible-inner-open' : 'gm3-collapsible-inner'}>
             <div className="pt-1 lg:pt-1.5 pb-1 px-1 -mx-1 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 sm:pl-1">
               {isEditingTitle ? (
                 <input
@@ -769,11 +777,12 @@ export function SongHeader({
               </button>
             )}
 
-            {metaOpen && (
+            {metaMounted && (
               <div
                 role="dialog"
                 aria-label="Ajustes musicais da faixa"
-                className="gm3-popover-top-left absolute left-0 top-[calc(100%+8px)] z-50 w-[min(296px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3"
+                inert={metaClosing || undefined}
+                className={`gm3-popover-top-left ${metaClosing ? 'gm3-popover-exit' : ''} absolute left-0 top-[calc(100%+8px)] z-50 w-[min(296px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3`}
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 <div className="field-label">Propriedades da música</div>
@@ -1169,17 +1178,18 @@ export function SongHeader({
       </div>
 
       {/* Centered Go-Live name prompt modal (never clips inside horizontal scroll strip) */}
-      {showNamePrompt && (
+      {goLiveMounted && (
         <div
-          className="gm3-backdrop-enter fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4"
-          onClick={() => setShowNamePrompt(false)}
+          className={`${goLiveClosing ? 'gm3-backdrop-exit' : 'gm3-backdrop-enter'} fixed inset-0 z-[75] bg-black/45 flex items-center justify-center p-4`}
+          onClick={goLiveClosing ? undefined : () => setShowNamePrompt(false)}
+          inert={goLiveClosing || undefined}
         >
           <div
             ref={goLiveDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="song-go-live-title"
-            className="gm3-dialog-enter w-full max-w-xs bg-[var(--surface)] rounded-[28px] p-6 space-y-4"
+            className={`${goLiveClosing ? 'gm3-dialog-exit' : 'gm3-dialog-enter'} w-full max-w-xs bg-[var(--surface)] rounded-[28px] p-6 space-y-4`}
             style={{ boxShadow: 'var(--shadow-md)' }}
             onClick={(e) => e.stopPropagation()}
           >

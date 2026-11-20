@@ -72,7 +72,7 @@ export function FocusDock({
   return (
     <>
       {/* Minimal top bar so singer/musician always knows song title & can exit in one tap */}
-      <div data-motion-scheme="standard" className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-2.5 pb-1.5">
+      <div data-motion-scheme="standard" className="gm3-panel-enter flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pt-2.5 pb-1.5">
         <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 py-2 space-y-1.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
@@ -185,27 +185,37 @@ export function FocusDock({
             </button>
           )}
 
-          {!isFollowing && store.isAutoScrolling && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
-                className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
-                aria-label="Diminuir velocidade"
-              >
-                -
-              </button>
-              <span className="font-mono text-xs text-[var(--muted)] tabular-nums px-0.5">
-                {store.autoScrollSpeed.toFixed(1)}×
-              </span>
-              <button
-                type="button"
-                onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
-                className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
-                aria-label="Aumentar velocidade"
-              >
-                +
-              </button>
+          {!isFollowing && (
+            <div
+              data-compact-slot="true"
+              data-collapsed={!store.isAutoScrolling ? 'true' : undefined}
+              aria-hidden={!store.isAutoScrolling || undefined}
+              inert={!store.isAutoScrolling || undefined}
+              className="gm3-slot-x gm3-slot-x-toolbar flex-shrink-0"
+            >
+              <div className="gm3-slot-x-inner">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
+                    className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
+                    aria-label="Diminuir velocidade"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono text-xs text-[var(--muted)] tabular-nums px-0.5">
+                    {store.autoScrollSpeed.toFixed(1)}×
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
+                    className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
+                    aria-label="Aumentar velocidade"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
