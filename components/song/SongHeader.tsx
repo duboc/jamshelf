@@ -239,10 +239,10 @@ export function SongHeader({
     <section
       ref={headerRef}
       data-compact={compact ? 'true' : undefined}
-      className={`flex-shrink-0 px-4 sm:px-6 lg:px-8 border-b transition-colors duration-200 ${
+      className={`flex-shrink-0 px-4 sm:px-6 lg:px-8 py-1.5 border-b transition-colors duration-[420ms] ease-out ${
         compact
-          ? 'bg-[var(--surface)]/95 backdrop-blur-md border-[var(--line-subtle)]/35 py-1.5'
-          : 'bg-[var(--bg)] border-transparent pt-1 pb-2'
+          ? 'bg-[var(--surface)]/95 backdrop-blur-md border-[var(--line-subtle)]/35'
+          : 'bg-[var(--bg)] border-transparent'
       }`}
     >
       {/*
@@ -255,41 +255,51 @@ export function SongHeader({
           Row 1: Setlist stepper + Title/Subtitle (col 1) | Action pills (col 2) | Favorite & Mais (col 3)
           Row 2: Dedicated full-width GM3 toolbar capsule spanning cols 1-3
         - Compact (scrolled down):
-          Row 2 & Row 3 smoothly collapse to 0fr (with inner spacing folding smoothly too),
-          leaving a single ~52px GM3 bar with Back, Title, Key, Auto-scroll, Mais, and Expand.
+          Row 2 & Row 3 glide smoothly to 0fr over 480ms while Row 1 slots glide smoothly open via gm3-slot-x
+          and the title scales smoothly via GPU transform (zero frame-0 layout snaps).
       */}
       <div className="w-full grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 lg:gap-x-3 gap-y-0 items-center">
-        {/* Col 1, Row 1: Inline Back (compact) + Setlist stepper (sm+) + Title + Key (compact) */}
-        <div className={`col-start-1 row-start-1 min-w-0 flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
-          {compact && onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="gm3-compact-enter group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
-              title="Voltar"
-              aria-label="Voltar"
+        {/* Col 1, Row 1: Inline Back slot (compact) + Setlist stepper (sm+) + Title + Key slot (compact) */}
+        <div className="col-start-1 row-start-1 min-w-0 flex items-center">
+          {onBack && (
+            <div
+              data-compact-slot="true"
+              data-collapsed={compact ? undefined : 'true'}
+              aria-hidden={!compact || undefined}
+              inert={!compact || undefined}
+              className="gm3-slot-x flex-shrink-0"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                aria-hidden="true"
-                className="transition-transform group-hover:-translate-x-0.5"
-              >
-                <path
-                  d="M13 8H3.5M7.5 3.8 3.3 8l4.2 4.2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+              <div className="gm3-slot-x-inner pr-2">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="gm3-compact-enter group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                  title="Voltar"
+                  aria-label="Voltar"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                    className="transition-transform group-hover:-translate-x-0.5"
+                  >
+                    <path
+                      d="M13 8H3.5M7.5 3.8 3.3 8l4.2 4.2"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
           )}
 
           {activeSetlist && (
-            <div className="hidden sm:inline-flex gm3-btn-group flex-shrink-0">
+            <div className="hidden sm:inline-flex gm3-btn-group flex-shrink-0 mr-2.5">
               <button
                 type="button"
                 onClick={() => prevSongId && onNavigateSong(prevSongId)}
@@ -322,7 +332,7 @@ export function SongHeader({
           )}
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-center min-w-0">
               {isEditingTitle ? (
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <input
@@ -362,37 +372,50 @@ export function SongHeader({
                 <>
                   <h1
                     data-vt-song-title={song.id}
-                    className={`font-display font-bold leading-tight text-[var(--ink)] ${
-                      compact
-                        ? 'text-[17px] sm:text-[19px] truncate'
-                        : 'text-xl sm:text-[26px] line-clamp-2 lg:truncate'
-                    }`}
+                    className="gm3-title-morph font-display font-bold text-xl sm:text-[24px] leading-tight text-[var(--ink)] truncate"
                   >
                     {titleInput || song.title}
                   </h1>
-                  {compact && displayedKey && (
-                    <span
-                      data-vt-song-key={song.id}
-                      className="gm3-compact-enter studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold flex-shrink-0 px-2 py-0.5 text-[11px]"
+                  {displayedKey && (
+                    <div
+                      data-compact-slot="true"
+                      data-collapsed={compact ? undefined : 'true'}
+                      aria-hidden={!compact || undefined}
+                      className="gm3-slot-x flex-shrink-0"
                     >
-                      <span className="hidden sm:inline">Tom </span>
-                      {displayedKey}
-                    </span>
+                      <div className="gm3-slot-x-inner pl-1.5">
+                        <span
+                          data-vt-song-key={compact ? song.id : undefined}
+                          title={`Tom ${displayedKey}`}
+                          className="studio-chip bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold flex-shrink-0 px-2.5 py-0.5 text-xs"
+                        >
+                          {displayedKey}
+                        </span>
+                      </div>
+                    </div>
                   )}
-                  {!compact && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingIdentity(true);
-                        requestAnimationFrame(() => titleInputRef.current?.focus());
-                      }}
-                      className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
-                      title="Editar título e artista"
-                      aria-label="Editar título e artista"
-                    >
-                      <EditIcon size={14} />
-                    </button>
-                  )}
+                  <div
+                    data-expanded-slot="true"
+                    data-collapsed={compact ? 'true' : undefined}
+                    aria-hidden={compact || undefined}
+                    inert={compact || undefined}
+                    className="gm3-slot-x flex-shrink-0"
+                  >
+                    <div className="gm3-slot-x-inner pl-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingIdentity(true);
+                          requestAnimationFrame(() => titleInputRef.current?.focus());
+                        }}
+                        className="gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                        title="Editar título e artista"
+                        aria-label="Editar título e artista"
+                      >
+                        <EditIcon size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </>
               )}
 
@@ -400,7 +423,7 @@ export function SongHeader({
                 <span
                   role="status"
                   aria-live="polite"
-                  className="font-mono text-xs text-[var(--tune)] font-semibold flex-shrink-0 sr-only sm:not-sr-only"
+                  className="font-mono text-xs text-[var(--tune)] font-semibold flex-shrink-0 ml-1.5 sr-only sm:not-sr-only"
                 >
                   {statusMsg}
                 </span>
@@ -409,45 +432,62 @@ export function SongHeader({
           </div>
         </div>
 
-        {/* Auto-scroll (compact) + Favorite + Mais + Expand (compact): pinned top-right (never inside overflow-hidden) */}
-        <div className="col-start-2 row-start-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 flex items-center gap-1.5 flex-shrink-0 justify-end">
-          {compact && !isFollowing && !editMode && onToggleAutoScroll && (
-            <button
-              ref={compactAutoScrollRef}
-              type="button"
-              aria-pressed={isAutoScrolling}
-              onClick={onToggleAutoScroll}
-              className={`gm3-compact-enter pill-btn h-9 w-9 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
-                isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
-              }`}
-              title={isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
-              aria-label={isAutoScrolling ? 'Pausar auto-scroll' : 'Iniciar auto-scroll'}
+        {/* Auto-scroll slot (compact) + Favorite + Mais + Expand slot (compact): pinned top-right (never inside overflow-hidden) */}
+        <div className="col-start-2 row-start-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 flex items-center flex-shrink-0 justify-end">
+          {!isFollowing && !editMode && onToggleAutoScroll && (
+            <div
+              data-compact-slot="true"
+              data-collapsed={compact ? undefined : 'true'}
+              aria-hidden={!compact || undefined}
+              inert={!compact || undefined}
+              className="gm3-slot-x flex-shrink-0"
             >
-              {isAutoScrolling ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
-              <span className="hidden sm:inline">{isAutoScrolling ? 'Pausar' : 'Rolar'}</span>
-            </button>
+              <div className="gm3-slot-x-inner pr-1.5">
+                <button
+                  ref={compactAutoScrollRef}
+                  type="button"
+                  aria-pressed={isAutoScrolling}
+                  onClick={onToggleAutoScroll}
+                  className={`gm3-compact-enter pill-btn h-9 w-9 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
+                    isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
+                  }`}
+                  title={isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
+                  aria-label={isAutoScrolling ? 'Pausar auto-scroll' : 'Iniciar auto-scroll'}
+                >
+                  {isAutoScrolling ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
+                  <span className="hidden sm:inline">{isAutoScrolling ? 'Pausar' : 'Rolar'}</span>
+                </button>
+              </div>
+            </div>
           )}
 
-          <button
-            type="button"
-            aria-pressed={song.favorite}
-            onClick={() => {
-              if (!song.favorite) {
-                setFavPop(true);
-                setTimeout(() => setFavPop(false), 380);
-              }
-              onPatchMeta('favorite', song.favorite ? 'false' : 'true');
-            }}
-            className={`pill-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-9 h-9 ${
-              compact ? 'hidden sm:inline-flex bg-[var(--bg)]' : ''
-            } ${
-              song.favorite ? 'text-[var(--rec)] border-[var(--rec)]/40' : 'text-[var(--muted)]'
-            }`}
-            title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
-            aria-label={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
+          <div
+            data-collapsed={compact ? 'true' : undefined}
+            className="gm3-slot-x-mobile flex-shrink-0"
           >
-            <HeartIcon size={17} filled={song.favorite} />
-          </button>
+            <div className="gm3-slot-x-inner pr-1.5">
+              <button
+                type="button"
+                aria-pressed={song.favorite}
+                onClick={() => {
+                  if (!song.favorite) {
+                    setFavPop(true);
+                    setTimeout(() => setFavPop(false), 380);
+                  }
+                  onPatchMeta('favorite', song.favorite ? 'false' : 'true');
+                }}
+                className={`pill-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-9 h-9 ${
+                  compact ? 'bg-[var(--bg)]' : ''
+                } ${
+                  song.favorite ? 'text-[var(--rec)] border-[var(--rec)]/40' : 'text-[var(--muted)]'
+                }`}
+                title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
+                aria-label={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
+              >
+                <HeartIcon size={17} filled={song.favorite} />
+              </button>
+            </div>
+          </div>
 
           <div ref={moreRef} className="relative">
             <button
@@ -616,25 +656,35 @@ export function SongHeader({
             )}
           </div>
 
-          {compact && onExpandHeader && (
-            <button
-              type="button"
-              onClick={() => {
-                onExpandHeader();
-                requestAnimationFrame(() => metaTriggerRef.current?.focus({ preventScroll: true }));
-              }}
-              className="gm3-compact-enter gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
-              title="Mostrar todos os controles da música"
-              aria-label="Expandir cabeçalho e controles"
+          {onExpandHeader && (
+            <div
+              data-compact-slot="true"
+              data-collapsed={compact ? undefined : 'true'}
+              aria-hidden={!compact || undefined}
+              inert={!compact || undefined}
+              className="gm3-slot-x flex-shrink-0"
             >
-              <ChevronDownIcon size={16} />
-            </button>
+              <div className="gm3-slot-x-inner pl-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onExpandHeader();
+                    requestAnimationFrame(() => metaTriggerRef.current?.focus({ preventScroll: true }));
+                  }}
+                  className="gm3-compact-enter gm3-icon-btn w-9 h-9 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                  title="Mostrar todos os controles da música"
+                  aria-label="Expandir cabeçalho e controles"
+                >
+                  <ChevronDownIcon size={16} />
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
         {/* Row 2 (full width on < lg, col 1 on >= lg): Calm Artist + Musical Metadata line */}
         <div
-          className="gm3-collapsible col-span-2 row-start-2 lg:col-span-1 lg:col-start-1 lg:row-start-2 min-w-0"
+          className="gm3-collapsible gm3-header-collapse col-span-2 row-start-2 lg:col-span-1 lg:col-start-1 lg:row-start-2 min-w-0"
           data-collapsed={compact ? 'true' : undefined}
           aria-hidden={compact || undefined}
           inert={compact || undefined}

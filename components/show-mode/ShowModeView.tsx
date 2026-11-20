@@ -472,18 +472,12 @@ export function ShowModeView({
     >
       <VisualPulse />
 
-      {/* Stage header (collapses Row 2 on mobile/tablet scroll down to maximize lyric visibility) */}
+      {/* Stage header (collapses Row 2 smoothly on mobile/tablet scroll down to maximize lyric visibility) */}
       <header
         data-compact={stageCompact ? 'true' : undefined}
-        className={`flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 ${
-          stageCompact ? 'pt-2 pb-1.5' : 'pt-3 pb-2.5'
-        }`}
+        className="flex-shrink-0 bg-[var(--bg)] px-4 sm:px-6 lg:px-8 py-2.5"
       >
-        <div
-          className={`w-full rounded-[20px] bg-[var(--surface)] px-4 sm:px-5 ${
-            stageCompact ? 'py-1.5' : 'py-2.5'
-          }`}
-        >
+        <div className="w-full rounded-[20px] bg-[var(--surface)] px-4 sm:px-5 py-2">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-0 lg:gap-2.5">
             <div className="flex items-center justify-between gap-2 min-w-0 lg:contents">
               <button
@@ -499,7 +493,7 @@ export function ShowModeView({
                   data-show-subtitle-collapsible="true"
                   data-collapsed={stageCompact ? 'true' : undefined}
                   aria-hidden={stageCompact || undefined}
-                  className="gm3-collapsible"
+                  className="gm3-collapsible gm3-header-collapse"
                 >
                   <div className="gm3-collapsible-inner">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] truncate">
@@ -511,21 +505,17 @@ export function ShowModeView({
                     </div>
                   </div>
                 </div>
-                <div className="flex items-baseline gap-2.5 min-w-0">
+                <div className="gm3-title-morph flex items-baseline gap-2.5 min-w-0">
                   <h1
                     data-vt-song-title={song.id}
-                    className={`font-display font-bold text-[var(--ink)] truncate leading-tight ${
-                      stageCompact ? 'text-[17px] sm:text-xl' : 'text-xl sm:text-2xl'
-                    }`}
+                    className="font-display font-bold text-xl sm:text-2xl text-[var(--ink)] truncate leading-tight"
                   >
                     {song.title}
                   </h1>
                   {displayedKey && !chordsHidden && (
                     <span
                       data-vt-song-key={song.id}
-                      className={`font-expressive text-[var(--accent)] flex-shrink-0 ${
-                        stageCompact ? 'text-base' : 'text-lg'
-                      }`}
+                      className="font-expressive text-lg text-[var(--accent)] flex-shrink-0"
                     >
                       {displayedKey}
                     </span>
@@ -533,34 +523,49 @@ export function ShowModeView({
                 </div>
               </button>
 
-              <div className="flex items-center gap-1.5 flex-shrink-0 lg:order-3">
-                {stageCompact && canNavigate && (
-                  <button
-                    type="button"
-                    aria-pressed={store.isAutoScrolling}
-                    onClick={store.toggleAutoScroll}
-                    className={`gm3-compact-enter lg:hidden pill-btn w-11 h-11 text-xs flex-shrink-0 ${
-                      store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
-                    }`}
-                    title={store.isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
-                    aria-label={store.isAutoScrolling ? 'Pausar auto-scroll' : 'Iniciar auto-scroll'}
+              <div className="flex items-center flex-shrink-0 lg:order-3">
+                {canNavigate && (
+                  <div
+                    data-compact-slot="true"
+                    data-collapsed={stageCompact ? undefined : 'true'}
+                    aria-hidden={!stageCompact || undefined}
+                    inert={!stageCompact || undefined}
+                    className="gm3-slot-x lg:hidden flex-shrink-0"
                   >
-                    {store.isAutoScrolling ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
-                  </button>
+                    <div className="gm3-slot-x-inner pr-1.5">
+                      <button
+                        type="button"
+                        aria-pressed={store.isAutoScrolling}
+                        onClick={store.toggleAutoScroll}
+                        className={`gm3-compact-enter pill-btn w-11 h-11 text-xs flex-shrink-0 ${
+                          store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
+                        }`}
+                        title={store.isAutoScrolling ? 'Pausar auto-scroll (Espaço)' : 'Iniciar auto-scroll (Espaço)'}
+                        aria-label={store.isAutoScrolling ? 'Pausar auto-scroll' : 'Iniciar auto-scroll'}
+                      >
+                        {store.isAutoScrolling ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
+                      </button>
+                    </div>
+                  </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                  className={`pill-btn bg-[var(--bg)] w-11 h-11 ${
-                    stageCompact ? 'hidden sm:inline-flex' : ''
-                  }`}
-                  title={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro (palco)'}
-                  aria-label={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
+                <div
+                  data-collapsed={stageCompact ? 'true' : undefined}
+                  className="gm3-slot-x-mobile flex-shrink-0"
                 >
-                  <span key={isDark ? 'sun' : 'moon'} className="gm3-icon-swap inline-flex">
-                    {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
-                  </span>
-                </button>
+                  <div className="gm3-slot-x-inner pr-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                      className="pill-btn bg-[var(--bg)] w-11 h-11"
+                      title={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro (palco)'}
+                      aria-label={isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
+                    >
+                      <span key={isDark ? 'sun' : 'moon'} className="gm3-icon-swap inline-flex">
+                        {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+                      </span>
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={onExit}
@@ -569,20 +574,28 @@ export function ShowModeView({
                 >
                   Sair
                 </button>
-                {stageCompact && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStageCompact(false);
-                      requestAnimationFrame(() => titleTriggerRef.current?.focus({ preventScroll: true }));
-                    }}
-                    className="gm3-compact-enter lg:hidden gm3-icon-btn w-11 h-11 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
-                    title="Expandir controles de palco"
-                    aria-label="Expandir controles de palco"
-                  >
-                    <ChevronDownIcon size={17} />
-                  </button>
-                )}
+                <div
+                  data-compact-slot="true"
+                  data-collapsed={stageCompact ? undefined : 'true'}
+                  aria-hidden={!stageCompact || undefined}
+                  inert={!stageCompact || undefined}
+                  className="gm3-slot-x lg:hidden flex-shrink-0"
+                >
+                  <div className="gm3-slot-x-inner pl-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStageCompact(false);
+                        requestAnimationFrame(() => titleTriggerRef.current?.focus({ preventScroll: true }));
+                      }}
+                      className="gm3-compact-enter gm3-icon-btn w-11 h-11 flex items-center justify-center bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                      title="Expandir controles de palco"
+                      aria-label="Expandir controles de palco"
+                    >
+                      <ChevronDownIcon size={17} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

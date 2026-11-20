@@ -1097,7 +1097,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       ) : (
         <>
           <div
-            className="gm3-collapsible flex-shrink-0"
+            className="gm3-collapsible gm3-header-collapse flex-shrink-0"
             data-collapsed={headerCompact ? 'true' : undefined}
             aria-hidden={headerCompact || undefined}
             inert={headerCompact || undefined}
@@ -1332,7 +1332,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {/* Section jump navigation bar (collapses smoothly with the top bar on scroll down) */}
       {!store.editMode && (
         <div
-          className="gm3-collapsible flex-shrink-0"
+          className="gm3-collapsible gm3-header-collapse flex-shrink-0"
           data-collapsed={headerCompact ? 'true' : undefined}
           aria-hidden={headerCompact || undefined}
           inert={headerCompact || undefined}

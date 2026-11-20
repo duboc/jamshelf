@@ -11,12 +11,12 @@ interface UseScrollCollapseOptions {
   resetKey: string;
 }
 
-const COLLAPSE_SCROLL_TOP_MIN = 56;
-const COLLAPSE_DOWN_DELTA = 32;
-const EXPAND_UP_DELTA = 22;
+const COLLAPSE_SCROLL_TOP_MIN = 88;
+const COLLAPSE_DOWN_DELTA = 56;
+const EXPAND_UP_DELTA = 36;
 const TOP_RESTORE_PX = 20;
 const MIN_OVERFLOW_TO_COLLAPSE = 180;
-const TRANSITION_LOCKOUT_MS = 380;
+const TRANSITION_LOCKOUT_MS = 540;
 
 /**
  * Hysteresis-guarded scroll-direction collapse hook for GM3 Top App Bars.
