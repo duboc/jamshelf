@@ -77,7 +77,7 @@ const HEIGHT_SAFETY_PX = 4;
 const MIN_FONT_SIZE = 70;
 const MAX_FONT_SIZE = 180;
 const AUTO_FIT_MAX_FONT = 166;
-const AUTO_FIT_MIN_FONT = 86;
+const AUTO_FIT_MIN_FONT = 84;
 
 const EMPTY_STROKES: InkStroke[] = [];
 const EMPTY_NOTES: TextNote[] = [];
@@ -330,9 +330,10 @@ interface DeckLayoutState {
 interface MeasureProbeState {
   key: string;
   scale: number;
-  phase: 'refine' | 'stepdown';
+  phase: 'shrink1' | 'shrink2' | 'grow1' | 'stepdown' | 'lock';
   targetPages: number;
-  intent: 'shrink-orphan' | 'grow-fill';
+  baselinePages: number;
+  baselineGrow: number | null;
 }
 
 interface ResolvedAnchorHit {
@@ -601,13 +602,13 @@ export function SlideshowView({
     [shiftedSections, displayMode]
   );
 
-  // Landscape tablets (>= 900px) & wide landscape phones (>= 720px, aspect > 1.3) support 2-column spreads
+  // Landscape tablets (>= 900px), wide portrait tablets (>= 960px, e.g. iPad Pro 13"), & wide landscape phones support 2 columns
   const canUseTwoCols =
     stageBox.width >= 900 || (stageBox.width >= 720 && stageBox.width > stageBox.height * 1.3);
   const effectiveCols: 1 | 2 = useMemo(() => {
     if (!canUseTwoCols) return 1;
     if (colsPref === 1 || colsPref === 2) return colsPref;
-    return stageBox.width > stageBox.height ? 2 : 1;
+    return stageBox.width > stageBox.height || stageBox.width >= 960 ? 2 : 1;
   }, [canUseTwoCols, colsPref, stageBox.width, stageBox.height]);
 
   const colGapPx = stageBox.width >= 1280 ? 16 : COL_GAP_PX;
@@ -695,21 +696,25 @@ export function SlideshowView({
         const wrapRect = linesWrap.getBoundingClientRect();
         const chromeHeight = Math.ceil(secRect.height - wrapRect.height) + 2;
         const lineHeights: number[] = [];
+        const textRange = typeof document !== 'undefined' ? document.createRange() : null;
         lineEls.forEach((lineEl, idx) => {
           const lr = lineEl.getBoundingClientRect();
           const lh = Math.ceil(lr.height);
           lineHeights.push(lh + (idx > 0 ? lineGap : 0));
 
-          if (displayMode === 'both') {
-            const inner = lineEl.firstElementChild as HTMLElement | null;
-            if (inner && inner.children.length > 0) {
-              let segSum = 0;
+          const inner = lineEl.firstElementChild as HTMLElement | null;
+          if (inner) {
+            let lineW = 0;
+            if (inner.children.length > 0) {
               for (let c = 0; c < inner.children.length; c++) {
-                segSum += inner.children[c].getBoundingClientRect().width;
+                lineW += inner.children[c].getBoundingClientRect().width;
               }
-              if (segSum > 0) {
-                lineWidthRatios.push(segSum / innerCardWidth);
-              }
+            } else if (textRange && inner.textContent && inner.textContent.trim().length > 0) {
+              textRange.selectNodeContents(inner);
+              lineW = textRange.getBoundingClientRect().width;
+            }
+            if (lineW > 0) {
+              lineWidthRatios.push(lineW / innerCardWidth);
             }
           }
         });
@@ -731,7 +736,8 @@ export function SlideshowView({
         effectiveCols,
         cardGapPx
       );
-      const stats = computeSlideFillStats(nextPages, usableHeight);
+      const stats = computeSlideFillStats(nextPages, usableHeight, effectiveCols);
+      const minAutoFont = stageBox.width >= 768 ? AUTO_FIT_MIN_FONT : 86;
 
       const computeGrowCandidate = () => {
         // On ultra-short landscape phones (< 360px stage height) with many pages, keep font compact rather than inflating turns
@@ -747,12 +753,12 @@ export function SlideshowView({
         const rawVertFactor = targetFill / Math.max(0.28, effectiveFill);
         const vertFactor = 1 + (rawVertFactor - 1) * 0.88;
         const horizCap =
-          displayMode === 'both' && p90WidthRatio > 0.05
-            ? Math.min(1.56, 0.99 / p90WidthRatio)
+          p90WidthRatio > 0.05
+            ? Math.min(displayMode === 'both' ? 1.56 : 1.52, 0.99 / p90WidthRatio)
             : displayMode === 'lyrics-only'
             ? 1.52
             : 1.48;
-        const maxFactor = effectiveCols === 2 && stageBox.width >= 1280 ? 1.46 : 1.54;
+        const maxFactor = effectiveCols === 2 && stageBox.width >= 1280 ? 1.48 : 1.56;
         const boundedFactor = Math.max(1, Math.min(maxFactor, Math.min(vertFactor, horizCap)));
         const candidate = Math.min(
           AUTO_FIT_MAX_FONT,
@@ -763,58 +769,99 @@ export function SlideshowView({
 
       if (fitMode === 'auto') {
         if (!activeProbe) {
-          // Pass 1 (100% baseline): fold sparse orphan last pages (< 36% fill) OR scale up to maximize space
-          if (stats.pageCount > 1 && stats.lastSlideFill < 0.36) {
-            const tryDown = Math.max(AUTO_FIT_MIN_FONT, baseFontSize - 10);
-            if (tryDown < baseFontSize) {
+          // Pass 1 (100% baseline): check whether a gentle shrink folds a light trailing page cleanly.
+          // Note: spillPages can be <= 0 after penultimate-to-last balancing if total content fits in pageCount - 1!
+          const pageEquiv = stats.totalCapacityFill * stats.pageCount;
+          const spillPages = pageEquiv - (stats.pageCount - 1);
+          const hasFoldableTail =
+            stats.pageCount > 1 &&
+            (stats.lastSlideTotalFill < 0.38 ||
+              stats.lastSlideFill < 0.40 ||
+              spillPages < 0.30);
+
+          const baselineGrow = computeGrowCandidate();
+
+          if (hasFoldableTail) {
+            const excess = Math.max(0.05, spillPages);
+            const neededRatio = (stats.pageCount - 1) / (stats.pageCount - 1 + excess * 1.25);
+            const shrink1 = Math.max(
+              minAutoFont,
+              Math.min(94, Math.floor((baseFontSize * Math.sqrt(neededRatio)) / 2) * 2)
+            );
+            if (shrink1 < baseFontSize) {
               setMeasureProbe({
                 key: layoutKey,
-                scale: tryDown,
-                phase: 'refine',
+                scale: shrink1,
+                phase: 'shrink1',
                 targetPages: stats.pageCount - 1,
-                intent: 'shrink-orphan',
+                baselinePages: stats.pageCount,
+                baselineGrow,
               });
               return;
             }
           }
 
-          const growCandidate = computeGrowCandidate();
-          if (growCandidate) {
+          if (baselineGrow) {
             setMeasureProbe({
               key: layoutKey,
-              scale: growCandidate,
-              phase: 'refine',
+              scale: baselineGrow,
+              phase: 'grow1',
               targetPages: stats.pageCount,
-              intent: 'grow-fill',
+              baselinePages: stats.pageCount,
+              baselineGrow,
             });
             return;
           }
-        } else if (activeProbe.phase === 'refine') {
-          if (activeProbe.intent === 'shrink-orphan') {
-            if (nextPages.length > activeProbe.targetPages) {
-              // Couldn't eliminate orphan page -> try growing to fill remaining pages cleanly instead
-              const fallbackGrow = computeGrowCandidate();
+        } else if (activeProbe.phase === 'shrink1') {
+          if (nextPages.length > activeProbe.targetPages) {
+            if (activeProbe.scale > minAutoFont) {
               setMeasureProbe({
-                key: layoutKey,
-                scale: fallbackGrow ?? baseFontSize,
-                phase: 'stepdown',
-                targetPages: activeProbe.targetPages + 1,
-                intent: 'shrink-orphan',
+                ...activeProbe,
+                scale: minAutoFont,
+                phase: 'shrink2',
               });
               return;
             }
-          } else if (nextPages.length > activeProbe.targetPages) {
-            // Grow candidate wrapped onto an extra page -> step back halfway between baseline and candidate
+            // Even minAutoFont couldn't eliminate the trailing page -> return to clean baseline (or baselineGrow)
+            const fallbackScale = activeProbe.baselineGrow ?? baseFontSize;
+            setMeasureProbe({
+              ...activeProbe,
+              scale: fallbackScale,
+              phase: activeProbe.baselineGrow ? 'grow1' : 'lock',
+              targetPages: activeProbe.baselinePages,
+            });
+            return;
+          }
+        } else if (activeProbe.phase === 'shrink2') {
+          if (nextPages.length > activeProbe.targetPages) {
+            const fallbackScale = activeProbe.baselineGrow ?? baseFontSize;
+            setMeasureProbe({
+              ...activeProbe,
+              scale: fallbackScale,
+              phase: activeProbe.baselineGrow ? 'grow1' : 'lock',
+              targetPages: activeProbe.baselinePages,
+            });
+            return;
+          }
+        } else if (activeProbe.phase === 'grow1') {
+          if (nextPages.length > activeProbe.targetPages) {
             const stepDown = Math.max(
               baseFontSize,
               Math.floor(((baseFontSize + activeProbe.scale) / 2) / 2) * 2
             );
             setMeasureProbe({
-              key: layoutKey,
+              ...activeProbe,
               scale: stepDown,
-              phase: 'stepdown',
-              targetPages: activeProbe.targetPages,
-              intent: 'grow-fill',
+              phase: stepDown > baseFontSize ? 'stepdown' : 'lock',
+            });
+            return;
+          }
+        } else if (activeProbe.phase === 'stepdown') {
+          if (nextPages.length > activeProbe.targetPages && activeProbe.scale > baseFontSize) {
+            setMeasureProbe({
+              ...activeProbe,
+              scale: baseFontSize,
+              phase: 'lock',
             });
             return;
           }
