@@ -78,6 +78,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const spotifyOpenParam = searchParams.get('spotify_open') === '1';
+  const spotifyErrorParam = searchParams.get('spotify_error');
 
   const entries = useSongStore((s) => s.entries);
   const songsLoaded = useSongStore((s) => s.isLoaded);
@@ -105,7 +107,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const [showEnhance, setShowEnhance] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSetlistDrawer, setShowSetlistDrawer] = useState(false);
-  const [showSpotifyPreview, setShowSpotifyPreview] = useState(false);
+  const [showSpotifyPreview, setShowSpotifyPreview] = useState(
+    spotifyOpenParam || Boolean(spotifyErrorParam)
+  );
+  const [spotifyOauthError, setSpotifyOauthError] = useState<string | null>(spotifyErrorParam);
   const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
   const [spotifyResults, setSpotifyResults] = useState<SpotifyTrackResult[]>([]);
   const [spotifyLoading, setSpotifyLoading] = useState(false);
@@ -271,11 +276,25 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     }
   }, [syncedId, syncedTitle, syncedArtist]);
 
+  // Clean transient Spotify OAuth query parameters after reading them
+  useEffect(() => {
+    if (!spotifyOpenParam && !spotifyErrorParam) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('spotify_open');
+    url.searchParams.delete('spotify_error');
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`
+    );
+  }, [spotifyOpenParam, spotifyErrorParam]);
+
   // Reset transient player state cleanly when switching songs
   const songIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!storedSong) return;
     if (songIdRef.current !== storedSong.id) {
+      const isInitialLoad = songIdRef.current === null;
       songIdRef.current = storedSong.id;
       store.resetForSong(storedSong.tempo, storedSong.capo, storedSong.scrollSpeed, storedSong.displayKey);
       setActiveSectionIdx(0);
@@ -292,7 +311,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       clearReplaceAllToast();
       lastMoveMetaRef.current = null;
       setCalibrating(false);
-      setShowSpotifyPreview(false);
+      if (!isInitialLoad) {
+        setShowSpotifyPreview(false);
+        setSpotifyOauthError(null);
+      }
       setSpotifySuggestionDismissed(false);
       setEditingIdentity(false);
       setHeaderScrolled(false);
@@ -1367,6 +1389,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     }
     setShowSpotifyPicker(false);
     setShowMoreSuggestions(false);
+    setShowSpotifyPreview(true);
     flashStatus(track?.durationMs && !song.duration ? 'Spotify e duração vinculados' : 'Spotify vinculado');
   };
 
@@ -1655,12 +1678,16 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       {/* Explicit transient overlays/strips (only visible when user opens them) */}
       <SpotifySection
         spotifyTrackId={song.spotifyTrackId}
+        songTitle={song.title}
+        songArtist={song.artist}
         showPreview={showSpotifyPreview}
         showPicker={showSpotifyPicker}
         results={spotifyResults}
         loading={spotifyLoading}
         suggestionDismissed={spotifySuggestionDismissed}
         showMoreSuggestions={showMoreSuggestions}
+        oauthError={spotifyOauthError}
+        onDismissOauthError={() => setSpotifyOauthError(null)}
         onSelect={handleSelectSpotify}
         onClear={handleClearSpotify}
         onDismissSuggestion={() => setSpotifySuggestionDismissed(true)}
