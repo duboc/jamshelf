@@ -1,0 +1,30 @@
+{
+  "name": "jamshelf-aurora",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:next": "AURORA_OUT=../public/aurora-app AURORA_BASE=/aurora-app/ tsc --noEmit && AURORA_OUT=../public/aurora-app AURORA_BASE=/aurora-app/ vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "diff": "8.0.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zustand": "5.0.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/diff": "^7.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "4.6.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5.8.0",
+    "vite": "7.0.6"
+  }
+}

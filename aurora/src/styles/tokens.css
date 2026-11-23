@@ -1,0 +1,288 @@
+/* Authoral Jamshelf Stage UI tonal token system using CSS light-dark().
+   Built with public-safe open-source typography and Material Symbols Rounded. */
+
+@layer theme {
+  :root {
+    color-scheme: light dark;
+
+    /* Tonal canvas and surface elevation ladder (neutral light & cool-ink dark separation) */
+    --ui-canvas: light-dark(#eef1f6, #0e1116);
+    --ui-surface-low: light-dark(#f6f8fb, #141820);
+    --ui-surface-card: light-dark(#ffffff, #1b2029);
+    --ui-surface-mid: light-dark(#e7ebf2, #232934);
+    --ui-surface-high: light-dark(#dce2ec, #2b3240);
+    --ui-surface-highest: light-dark(#cfd7e4, #353d4d);
+
+    /* Harmonized accent and tonal container roles */
+    --ui-primary: light-dark(#1452c7, #9cc2ff);
+    --ui-on-primary: light-dark(#ffffff, #062b66);
+    --ui-primary-container: light-dark(#cde0ff, #1d4382);
+    --ui-on-primary-container: light-dark(#09357e, #e0ecff);
+
+    --ui-secondary: light-dark(#3b5984, #a9c4eb);
+    --ui-on-secondary: light-dark(#ffffff, #142c4c);
+    --ui-secondary-container: light-dark(#d6e4fb, #243652);
+    --ui-on-secondary-container: light-dark(#122e54, #dce8fc);
+
+    --ui-positive: light-dark(#156b32, #72d992);
+    --ui-on-positive: light-dark(#ffffff, #073818);
+    --ui-positive-container: light-dark(#c7f0d4, #124626);
+    --ui-on-positive-container: light-dark(#0c4c22, #cef5da);
+
+    --ui-danger: light-dark(#b42720, #f4b7b4);
+    --ui-on-danger: light-dark(#ffffff, #5f1410);
+    --ui-danger-container: light-dark(#fadddb, #731d19);
+    --ui-on-danger-container: light-dark(#861d18, #fde2e0);
+
+    --ui-inverse-surface: light-dark(#24272c, #e5e8ed);
+    --ui-inverse-on-surface: light-dark(#f4f6f9, #1b1e23);
+    --ui-inverse-primary: light-dark(#9cc2ff, #1452c7);
+
+    --ui-ink: light-dark(#161a20, #e9edf3);
+    --ui-ink-muted: light-dark(#444c59, #b2bac7);
+    --ui-outline: light-dark(#6d7788, #758094);
+    --ui-outline-subtle: light-dark(#c3cde0, #343d4d);
+
+    /* Musical semantic roles */
+    --ui-warn-bg: light-dark(#fef0c7, #3d2e08);
+    --ui-warn-ink: light-dark(#7a4d00, #fcd76a);
+    --ui-warn-icon: light-dark(#bd7200, #fcd76a);
+    --ui-minor-bg: light-dark(#e9edf3, #293344);
+    --ui-minor-ink: light-dark(#374151, #d1e1f8);
+    --ui-chorus-surface: light-dark(#f2f7ff, #182336);
+    --ui-key-white: light-dark(#ffffff, #e6e9ef);
+    --ui-key-black: light-dark(#1a1d22, #0f1115);
+
+    /* Luminous WebGL2 edge shader seeds (vivid enough for both white and dark cards) */
+    --ui-glow-primary: light-dark(#1a6aff, #6ca8ff);
+    --ui-glow-secondary: light-dark(#7a6eff, #9f8eff);
+    --ui-glow-tertiary: light-dark(#19a6e8, #4ad9a8);
+
+    /* Bridge legacy CSS custom properties for shared lib utilities */
+    --surface: var(--ui-surface-card);
+    --surface-high: var(--ui-surface-high);
+    --surface2: var(--ui-surface-highest);
+    --bg: var(--ui-canvas);
+    --ink: var(--ui-ink);
+    --muted: var(--ui-ink-muted);
+    --line: var(--ui-outline);
+    --line-subtle: var(--ui-outline-subtle);
+    --accent: var(--ui-primary);
+    --accent-ink: var(--ui-on-primary-container);
+    --primary-container: var(--ui-primary-container);
+    --on-primary-container: var(--ui-on-primary-container);
+    --tune: var(--ui-positive);
+    --warn-icon: var(--ui-warn-icon);
+    --flat: var(--ui-outline);
+    --chorus-tint: var(--ui-chorus-surface);
+    --key-white: var(--ui-key-white);
+    --key-black: var(--ui-key-black);
+    --warn-dim: var(--ui-warn-bg);
+    --warn-ink: var(--ui-warn-ink);
+    --tune-dim: var(--ui-positive-container);
+    --rec-dim: var(--ui-danger-container);
+    --on-rec-container: var(--ui-on-danger-container);
+
+    /* Slide handwritten & text annotation tokens */
+    --note-ink-amber: light-dark(#9a4406, #fcd34d);
+    --note-hi-amber: light-dark(rgba(251, 191, 36, 0.34), rgba(251, 191, 36, 0.24));
+    --note-ink-primary: var(--ui-primary);
+    --note-hi-primary: light-dark(rgba(21, 88, 214, 0.22), rgba(156, 194, 255, 0.22));
+    --note-chip-primary-bg: var(--ui-primary-container);
+    --note-chip-primary-fg: var(--ui-on-primary-container);
+    --note-ink-tune: var(--ui-positive);
+    --note-hi-tune: light-dark(rgba(21, 107, 50, 0.24), rgba(114, 217, 146, 0.22));
+    --note-ink-rec: var(--ui-danger);
+    --note-hi-rec: light-dark(rgba(180, 39, 32, 0.22), rgba(244, 183, 180, 0.24));
+
+    /* Corner scale (numeric pill enables smooth spring border-radius morphs) */
+    --ui-radius-xs: 4px;
+    --ui-radius-sm: 8px;
+    --ui-radius-md: 12px;
+    --ui-radius-lg: 16px;
+    --ui-radius-xl: 22px;
+    --ui-radius-2xl: 28px;
+    --ui-radius-pill: 24px;
+    --ui-radius-full: 9999px;
+
+    /* Public open-source font families */
+    --ui-font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --ui-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ui-font-icon: 'Material Symbols Rounded';
+
+    /* Motion primitives: durations */
+    --ui-motion-duration-none: 0ms;
+    --ui-motion-duration-press: 100ms;
+    --ui-motion-duration-effect-fast: 150ms;
+    --ui-motion-duration-effect-default: 200ms;
+    --ui-motion-duration-effect-slow: 300ms;
+    --ui-motion-duration-settle: 240ms;
+    --ui-motion-duration-fast: 350ms;
+    --ui-motion-duration-default: 500ms;
+
+    /* Motion primitives: spring & effect curves (zero-bounce standard for stage) */
+    --ui-motion-ease-kinetic: cubic-bezier(0.4, 1.38, 0.22, 0.96);
+    --ui-motion-ease-expressive-fast: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+    --ui-motion-ease-expressive-default: cubic-bezier(0.38, 1.21, 0.22, 1);
+    --ui-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ui-motion-ease-effect-fast: cubic-bezier(0.31, 0.94, 0.34, 1);
+    --ui-motion-ease-effect-default: cubic-bezier(0.34, 0.8, 0.34, 1);
+    --ui-motion-ease-effect-slow: cubic-bezier(0.34, 0.88, 0.34, 1);
+    --ui-motion-ease-anticipate-medium: cubic-bezier(0.63, -0.5, 0, 1);
+
+    /* Semantic motion shorthands */
+    --ui-motion-kinetic: var(--ui-motion-duration-default) var(--ui-motion-ease-kinetic);
+    --ui-motion-expressive-fast: var(--ui-motion-duration-fast) var(--ui-motion-ease-expressive-fast);
+    --ui-motion-expressive-default: var(--ui-motion-duration-default) var(--ui-motion-ease-expressive-default);
+    --ui-motion-standard-fast: var(--ui-motion-duration-fast) var(--ui-motion-ease-standard);
+    --ui-motion-standard-default: var(--ui-motion-duration-default) var(--ui-motion-ease-standard);
+    --ui-motion-settle: var(--ui-motion-duration-settle) var(--ui-motion-ease-standard);
+    --ui-motion-effect-fast: var(--ui-motion-duration-effect-fast) var(--ui-motion-ease-effect-fast);
+    --ui-motion-effect-default: var(--ui-motion-duration-effect-default) var(--ui-motion-ease-effect-default);
+    --ui-motion-effect-slow: var(--ui-motion-duration-effect-slow) var(--ui-motion-ease-effect-slow);
+    --ui-motion-anticipate-medium: var(--ui-motion-duration-default) var(--ui-motion-ease-anticipate-medium);
+
+    /* Legacy motion aliases kept for compatibility */
+    --ui-motion-spring-fast: var(--ui-motion-expressive-fast);
+    --ui-motion-spring-default: var(--ui-motion-expressive-default);
+
+    /* Light-only gentle card lift + overlay elevation */
+    --ui-elevation-card: light-dark(0 1px 2px rgba(15, 23, 42, 0.06), none);
+    --ui-elevation-overlay: 0 12px 32px rgba(6, 10, 18, 0.26), 0 2px 8px rgba(6, 10, 18, 0.12);
+  }
+
+  /* Live-stage precision scope: remap expressive springs to zero-bounce standard curves */
+  [data-motion-scheme='standard'] {
+    --ui-motion-expressive-fast: var(--ui-motion-standard-fast);
+    --ui-motion-expressive-default: var(--ui-motion-standard-default);
+    --ui-motion-kinetic: var(--ui-motion-standard-default);
+  }
+
+  @supports (transition-timing-function: linear(0, 1)) {
+    :root {
+      --ui-motion-ease-expressive-fast: linear(
+        0, 0.012, 0.048, 0.105, 0.181, 0.272, 0.373, 0.479, 0.585, 0.686,
+        0.778, 0.858, 0.924, 0.975, 1.011, 1.034, 1.045, 1.047, 1.042,
+        1.033, 1.023, 1.013, 1.005, 1, 0.997, 0.997, 0.998, 0.999, 1
+      );
+      --ui-motion-ease-expressive-default: linear(
+        0, 0.008, 0.031, 0.068, 0.118, 0.18, 0.251, 0.33, 0.413, 0.498,
+        0.582, 0.663, 0.739, 0.808, 0.869, 0.92, 0.962, 0.994, 1.017,
+        1.031, 1.038, 1.039, 1.035, 1.028, 1.02, 1.012, 1.005, 1, 0.998,
+        0.998, 0.999, 1
+      );
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --ui-motion-duration-press: var(--ui-motion-duration-none);
+      --ui-motion-duration-settle: var(--ui-motion-duration-none);
+      --ui-motion-duration-fast: var(--ui-motion-duration-none);
+      --ui-motion-duration-default: var(--ui-motion-duration-none);
+      --ui-motion-duration-effect-fast: 120ms;
+      --ui-motion-duration-effect-default: 150ms;
+      --ui-motion-duration-effect-slow: 150ms;
+      --ui-motion-ease-kinetic: linear;
+      --ui-motion-ease-expressive-fast: linear;
+      --ui-motion-ease-expressive-default: linear;
+      --ui-motion-ease-standard: linear;
+      --ui-motion-ease-effect-fast: linear;
+      --ui-motion-ease-effect-default: linear;
+      --ui-motion-ease-effect-slow: linear;
+      --ui-motion-ease-anticipate-medium: linear;
+    }
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  /* Optional accent palettes preserving musical semantics */
+  :root[data-palette='violet'] {
+    --ui-primary: light-dark(#5b3ec8, #cbbdff);
+    --ui-on-primary: light-dark(#ffffff, #2d117e);
+    --ui-primary-container: light-dark(#e3d7ff, #3e288f);
+    --ui-on-primary-container: light-dark(#240d74, #ece5ff);
+    --ui-secondary: light-dark(#5e4f8c, #cbc0f2);
+    --ui-secondary-container: light-dark(#e4dbf9, #322a4d);
+    --ui-on-secondary-container: light-dark(#32245c, #e7dfff);
+    --ui-inverse-primary: light-dark(#cbbdff, #5b3ec8);
+    --ui-chorus-surface: light-dark(#f2edff, #211c33);
+    --ui-glow-primary: light-dark(#6d4aff, #9e86ff);
+    --ui-glow-secondary: light-dark(#a084ff, #c7b8ff);
+  }
+
+  :root[data-palette='emerald'] {
+    --ui-primary: light-dark(#0f6d43, #7adca9);
+    --ui-on-primary: light-dark(#ffffff, #003820);
+    --ui-primary-container: light-dark(#c0f2d6, #0d4b30);
+    --ui-on-primary-container: light-dark(#003820, #d4f9e4);
+    --ui-secondary: light-dark(#2d6152, #99cfc0);
+    --ui-secondary-container: light-dark(#cdeae0, #1b3830);
+    --ui-on-secondary-container: light-dark(#0c3a2f, #cfece3);
+    --ui-inverse-primary: light-dark(#7adca9, #0f6d43);
+    --ui-chorus-surface: light-dark(#eaf8f0, #14271f);
+    --ui-glow-primary: light-dark(#0e9651, #5ad695);
+    --ui-glow-secondary: light-dark(#22b1e8, #74d9c0);
+  }
+
+  :root[data-palette='terracotta'] {
+    --ui-primary: light-dark(#9a4522, #ffb598);
+    --ui-on-primary: light-dark(#ffffff, #591c00);
+    --ui-primary-container: light-dark(#ffd4c4, #6d2e14);
+    --ui-on-primary-container: light-dark(#5c1d00, #ffe2d6);
+    --ui-secondary: light-dark(#77574b, #e7bdb0);
+    --ui-secondary-container: light-dark(#f4dad0, #422e27);
+    --ui-on-secondary-container: light-dark(#44291f, #f6e0d8);
+    --ui-inverse-primary: light-dark(#ffb598, #9a4522);
+    --ui-chorus-surface: light-dark(#fbf0eb, #291d18);
+    --ui-glow-primary: light-dark(#d65322, #ff8f66);
+    --ui-glow-secondary: light-dark(#f29b79, #ffc299);
+  }
+}
+
+@theme {
+  --color-primary: var(--ui-primary);
+  --color-on-primary: var(--ui-on-primary);
+  --color-primary-container: var(--ui-primary-container);
+  --color-on-primary-container: var(--ui-on-primary-container);
+  --color-secondary: var(--ui-secondary);
+  --color-on-secondary: var(--ui-on-secondary);
+  --color-secondary-container: var(--ui-secondary-container);
+  --color-on-secondary-container: var(--ui-on-secondary-container);
+  --color-tertiary: var(--ui-positive);
+  --color-on-tertiary: var(--ui-on-positive);
+  --color-tertiary-container: var(--ui-positive-container);
+  --color-on-tertiary-container: var(--ui-on-positive-container);
+  --color-error: var(--ui-danger);
+  --color-on-error: var(--ui-on-danger);
+  --color-error-container: var(--ui-danger-container);
+  --color-on-error-container: var(--ui-on-danger-container);
+  --color-inverse-surface: var(--ui-inverse-surface);
+  --color-inverse-on-surface: var(--ui-inverse-on-surface);
+  --color-inverse-primary: var(--ui-inverse-primary);
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface-card);
+  --color-surface-container-low: var(--ui-surface-low);
+  --color-surface-container: var(--ui-surface-mid);
+  --color-surface-container-high: var(--ui-surface-high);
+  --color-surface-container-highest: var(--ui-surface-highest);
+  --color-on-surface: var(--ui-ink);
+  --color-on-surface-variant: var(--ui-ink-muted);
+  --color-outline: var(--ui-outline);
+  --color-outline-variant: var(--ui-outline-subtle);
+  --color-warn-bg: var(--ui-warn-bg);
+  --color-warn-ink: var(--ui-warn-ink);
+  --color-warn-icon: var(--ui-warn-icon);
+  --color-minor-bg: var(--ui-minor-bg);
+  --color-minor-ink: var(--ui-minor-ink);
+  --color-chorus-surface: var(--ui-chorus-surface);
+  --font-brand: var(--ui-font-sans);
+  --font-plain: var(--ui-font-sans);
+  --font-mono: var(--ui-font-mono);
+}

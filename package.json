@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "dev:aurora": "npm --prefix aurora run dev",
+    "build:aurora": "(test -d aurora/node_modules || npm --prefix aurora install --include=dev --no-audit --no-fund) && npm --prefix aurora run build:next",
+    "build": "npm run build:aurora && next build",
     "start": "next start",
     "lint": "eslint",
     "emulators": "firebase emulators:start",

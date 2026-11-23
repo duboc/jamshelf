@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Jamshelf</title>
+    <meta name="description" content="Cifras, letras, setlists e ensaio ao vivo para banda" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200"
+    />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('jamshelf-theme') || localStorage.getItem('aurora-theme');
+          if (saved === 'dark' || saved === 'light') {
+            document.documentElement.style.colorScheme = saved;
+            document.documentElement.dataset.theme = saved;
+          }
+          var raw = localStorage.getItem('jamshelf-display-mode');
+          if (raw) {
+            var st = JSON.parse(raw).state;
+            if (!saved && st && (st.theme === 'dark' || st.theme === 'light')) {
+              document.documentElement.style.colorScheme = st.theme;
+              document.documentElement.dataset.theme = st.theme;
+            }
+            if (st && st.palette && st.palette !== 'blue') {
+              document.documentElement.dataset.palette = st.palette;
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
