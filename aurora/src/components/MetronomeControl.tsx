@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { usePrefersReducedMotion } from '../aurora/energy';
-import { AuroraButton, GsIcon } from '../aurora/primitives';
+import { AuroraButton, UiIcon } from '../aurora/primitives';
 
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD_SEC = 0.12;
@@ -167,7 +167,7 @@ export function MetronomeControl({
             onClick={() => setBpm(bpm - 2)}
             className="dock-stepper-btn"
           >
-            <GsIcon name="remove" size={20} />
+            <UiIcon name="remove" size={20} />
           </button>
           <button
             type="button"
@@ -176,7 +176,7 @@ export function MetronomeControl({
             onClick={() => setBpm(bpm + 2)}
             className="dock-stepper-btn"
           >
-            <GsIcon name="add" size={20} />
+            <UiIcon name="add" size={20} />
           </button>
           <AuroraButton
             color={tapActive ? 'tonal' : 'text'}
@@ -250,7 +250,7 @@ export function VisualBeatStrip({ beatsPerBar = 4 }: { beatsPerBar?: number }) {
       data-motion-scheme="standard"
       className="stage-toast flex items-center justify-center gap-2.5 py-2 px-4 rounded-full bg-surface-container-high"
     >
-      <GsIcon name="music_note" size={20} className="text-primary" />
+      <UiIcon name="music_note" size={20} className="text-primary" />
       {safeMode ? (
         <span className="typescale-label-sm font-mono tabular-nums text-on-surface">
           Compasso {(beat % total) + 1}/{total}

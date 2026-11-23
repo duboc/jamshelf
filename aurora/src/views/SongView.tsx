@@ -47,7 +47,7 @@ import {
   AuroraSegmented,
   AuroraSheet,
   AuroraThinkingSteps,
-  GsIcon,
+  UiIcon,
   copyText,
   useModalA11y,
 } from '../aurora/primitives';
@@ -1745,7 +1745,7 @@ export function SongView({ songId }: { songId: string }) {
                     : 'bg-primary-container text-on-primary-container border-none'
                 }`}
               >
-                <GsIcon name="volume_up" size={20} />
+                <UiIcon name="volume_up" size={20} />
                 <span
                   key={shiftTracker.dir === 'none' ? 'init' : `${store.transpose}-${store.useFlats}`}
                   data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
@@ -1778,7 +1778,7 @@ export function SongView({ songId }: { songId: string }) {
                   title="Abrir lista do setlist (S)"
                   className="key-ref-pill px-1.5 sm:px-2.5 rounded-full bg-surface hover:bg-surface-container text-on-surface border border-outline-variant inline-flex items-center gap-0.5 sm:gap-1 font-mono typescale-label-sm tabular-nums cursor-pointer"
                 >
-                  <GsIcon name="queue_music" size={20} />
+                  <UiIcon name="queue_music" size={20} />
                   <span>
                     {currentIdx + 1}/{setlistSongs.length}
                   </span>
@@ -1850,7 +1850,7 @@ export function SongView({ songId }: { songId: string }) {
             </AuroraLink>
             {activeSetlist && (
               <>
-                <GsIcon name="chevron_right" size={20} />
+                <UiIcon name="chevron_right" size={20} />
                 <AuroraLink
                   href={`/setlists/${activeSetlist.id}`}
                   className="stage-breadcrumb-link truncate"
@@ -1859,7 +1859,7 @@ export function SongView({ songId }: { songId: string }) {
                 </AuroraLink>
               </>
             )}
-            <GsIcon name="chevron_right" size={20} />
+            <UiIcon name="chevron_right" size={20} />
             <span className="text-on-surface truncate">{displayTitle}</span>
           </div>
 
@@ -2025,7 +2025,7 @@ export function SongView({ songId }: { songId: string }) {
                         : 'bg-primary-container text-on-primary-container'
                     }`}
                   >
-                    <GsIcon name="volume_up" size={20} />
+                    <UiIcon name="volume_up" size={20} />
                     <span
                       key={shiftTracker.dir === 'none' ? 'init' : `${store.transpose}-${store.useFlats}`}
                       data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
@@ -2042,7 +2042,7 @@ export function SongView({ songId }: { songId: string }) {
                 )}
                 {song.rating > 0 && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-warn-bg text-warn-ink typescale-label-sm tabular-nums">
-                    <GsIcon name="star" size={20} filled className="text-warn-icon" />
+                    <UiIcon name="star" size={20} filled className="text-warn-icon" />
                     <span>{song.rating}</span>
                   </span>
                 )}
@@ -2067,7 +2067,7 @@ export function SongView({ songId }: { songId: string }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-tertiary-container text-on-tertiary-container typescale-label-sm">
-                    <GsIcon name="edit_note" size={20} />
+                    <UiIcon name="edit_note" size={20} />
                     <span>
                       {store.transpose !== 0
                         ? 'Modo edição visual (tom original)'
@@ -2234,7 +2234,7 @@ export function SongView({ songId }: { songId: string }) {
                           onClick={() => store.transposeDown()}
                           className="dock-stepper-btn"
                         >
-                          <GsIcon name="remove" size={20} />
+                          <UiIcon name="remove" size={20} />
                         </button>
                         <button
                           type="button"
@@ -2258,7 +2258,7 @@ export function SongView({ songId }: { songId: string }) {
                           onClick={() => store.transposeUp()}
                           className="dock-stepper-btn"
                         >
-                          <GsIcon name="add" size={20} />
+                          <UiIcon name="add" size={20} />
                         </button>
                       </div>
                     </div>
@@ -2349,7 +2349,7 @@ export function SongView({ songId }: { songId: string }) {
                     onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.15)}
                     className="dock-stepper-btn"
                   >
-                    <GsIcon name="remove" size={20} />
+                    <UiIcon name="remove" size={20} />
                   </button>
                   <span className="typescale-body-sm font-mono tabular-nums text-on-surface-variant min-w-[30px] text-center">
                     {store.autoScrollSpeed.toFixed(1)}x
@@ -2362,7 +2362,7 @@ export function SongView({ songId }: { songId: string }) {
                     onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.15)}
                     className="dock-stepper-btn"
                   >
-                    <GsIcon name="add" size={20} />
+                    <UiIcon name="add" size={20} />
                   </button>
                   {speedChanged && !live.isFollowing && (
                     <AuroraButton
@@ -2391,7 +2391,7 @@ export function SongView({ songId }: { songId: string }) {
                     onClick={() => store.transposeDown()}
                     className="dock-stepper-btn"
                   >
-                    <GsIcon name="remove" size={20} />
+                    <UiIcon name="remove" size={20} />
                   </button>
                   <button
                     type="button"
@@ -2419,7 +2419,7 @@ export function SongView({ songId }: { songId: string }) {
                     onClick={() => store.transposeUp()}
                     className="dock-stepper-btn"
                   >
-                    <GsIcon name="add" size={20} />
+                    <UiIcon name="add" size={20} />
                   </button>
                   <button
                     type="button"
@@ -2468,7 +2468,7 @@ export function SongView({ songId }: { songId: string }) {
                     onClick={() => setFontSize(fontSize - 10)}
                     className="dock-stepper-btn"
                   >
-                    <GsIcon name="text_decrease" size={20} />
+                    <UiIcon name="text_decrease" size={20} />
                   </button>
                   <span className="typescale-body-sm font-mono tabular-nums text-on-surface-variant px-0.5">
                     {fontSize}%
@@ -2481,7 +2481,7 @@ export function SongView({ songId }: { songId: string }) {
                     onClick={() => setFontSize(fontSize + 10)}
                     className="dock-stepper-btn"
                   >
-                    <GsIcon name="text_increase" size={20} />
+                    <UiIcon name="text_increase" size={20} />
                   </button>
                   <span className="w-px h-5 bg-outline-variant mx-0.5" aria-hidden="true" />
                   <button
@@ -2493,7 +2493,7 @@ export function SongView({ songId }: { songId: string }) {
                     onClick={() => setSheetColumns(sheetColumns === 2 ? 1 : 2)}
                     className="dock-stepper-btn"
                   >
-                    <GsIcon name="view_column_2" size={20} />
+                    <UiIcon name="view_column_2" size={20} />
                   </button>
                 </div>
 
@@ -2596,7 +2596,7 @@ export function SongView({ songId }: { songId: string }) {
           }`}
         >
           <span className="inline-flex items-center gap-2 typescale-label-lg min-w-0">
-            <GsIcon name="sensors" size={20} />
+            <UiIcon name="sensors" size={20} />
             <span className="truncate">
               {live.liveError
                 ? live.liveError
@@ -2717,7 +2717,7 @@ export function SongView({ songId }: { songId: string }) {
         >
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-2 typescale-label-lg">
-              <GsIcon name="sticky_note_2" size={20} />
+              <UiIcon name="sticky_note_2" size={20} />
               <span>Notas de palco</span>
             </span>
             {!editingNotes && (

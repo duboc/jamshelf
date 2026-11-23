@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deploy the GM3 Aurora UI as a separate Cloud Run service ("jamshelf-aurora")
+# Deploy the Aurora UI as a separate Cloud Run service ("jamshelf-aurora")
 # sharing the same Jamshelf backend (/api/*, Firestore, GCS, Gemini, Spotify).
 # Does NOT touch the production "jamshelf" service.
 

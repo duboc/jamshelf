@@ -15,7 +15,7 @@ import {
   AuroraIconButton,
   AuroraSegmented,
   AuroraSheet,
-  GsIcon,
+  UiIcon,
   JamshelfBrandMark,
 } from '../aurora/primitives';
 import { getDisplayTitleAndArtist, getEffectiveKey } from '../utils/song-display';
@@ -36,7 +36,6 @@ export function applyColorScheme(theme: ThemeMode) {
     root.dataset.theme = theme;
     try {
       localStorage.setItem('jamshelf-theme', theme);
-      localStorage.setItem('aurora-theme', theme);
     } catch {
       // ignore
     }
@@ -45,7 +44,6 @@ export function applyColorScheme(theme: ThemeMode) {
     delete root.dataset.theme;
     try {
       localStorage.removeItem('jamshelf-theme');
-      localStorage.removeItem('aurora-theme');
     } catch {
       // ignore
     }
@@ -406,7 +404,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                     : 'w-14 h-14 min-h-[56px] p-0 justify-center'
                 }`}
               >
-                <GsIcon name="add" size={24} />
+                <UiIcon name="add" size={24} />
                 {railExpanded && <span className="rail-label-enter">Nova música</span>}
               </AuroraLink>
             </div>
@@ -425,7 +423,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                       className="stage-nav-pill w-full justify-between px-3.5 min-h-[46px]"
                     >
                       <span className="inline-flex items-center gap-3 min-w-0">
-                        <GsIcon name={item.icon} size={22} filled={active} />
+                        <UiIcon name={item.icon} size={22} filled={active} />
                         <span className="rail-label-enter typescale-label-lg truncate">
                           {item.label}
                         </span>
@@ -445,7 +443,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                     className="stage-rail-dest w-full"
                   >
                     <span className="stage-rail-indicator">
-                      <GsIcon name={item.icon} size={22} filled={active} />
+                      <UiIcon name={item.icon} size={22} filled={active} />
                     </span>
                     <span className="rail-compact-enter typescale-label-sm truncate max-w-full">
                       {item.label}
@@ -463,7 +461,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                   className="stage-nav-pill w-full mt-3 justify-between px-3.5 min-h-[46px] bg-surface-container"
                 >
                   <span className="inline-flex items-center gap-3 min-w-0">
-                    <GsIcon name="search" size={22} />
+                    <UiIcon name="search" size={22} />
                     <span className="rail-label-enter typescale-body-md">Busca rápida</span>
                   </span>
                   <kbd className="rail-label-enter font-mono typescale-body-sm text-on-surface-variant px-1.5 py-0.5 rounded bg-surface">
@@ -479,7 +477,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                   className="stage-rail-dest w-full mt-2"
                 >
                   <span className="stage-rail-indicator">
-                    <GsIcon name="search" size={22} />
+                    <UiIcon name="search" size={22} />
                   </span>
                   <span className="rail-compact-enter typescale-label-sm">Buscar</span>
                 </button>
@@ -497,7 +495,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                   className="stage-nav-pill w-full justify-start gap-3 px-3.5 min-h-[44px]"
                 >
                   <span key={isDark ? 'sun' : 'moon'} className="theme-icon-spin">
-                    <GsIcon name={isDark ? 'light_mode' : 'dark_mode'} size={22} />
+                    <UiIcon name={isDark ? 'light_mode' : 'dark_mode'} size={22} />
                   </span>
                   <span className="rail-label-enter typescale-label-lg">
                     {isDark ? 'Tema claro' : 'Tema escuro'}
@@ -509,7 +507,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                   className="stage-nav-pill w-full justify-between px-3.5 min-h-[44px]"
                 >
                   <span className="inline-flex items-center gap-3">
-                    <GsIcon name="keyboard" size={22} />
+                    <UiIcon name="keyboard" size={22} />
                     <span className="rail-label-enter typescale-label-lg">Atalhos</span>
                   </span>
                   <kbd className="rail-label-enter font-mono typescale-body-sm text-on-surface-variant px-1.5 py-0.5 rounded bg-surface">
@@ -526,7 +524,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                       {deviceInitial}
                     </span>
                   ) : (
-                    <GsIcon name="tune" size={22} />
+                    <UiIcon name="tune" size={22} />
                   )}
                   <span className="rail-label-enter typescale-label-lg truncate">
                     {deviceName.trim() || 'Preferências'}
@@ -601,7 +599,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
           >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
               <span className="typescale-body-sm text-on-surface-variant inline-flex items-center gap-2">
-                <GsIcon name="cloud_off" size={20} />
+                <UiIcon name="cloud_off" size={20} />
                 <span>{syncError}</span>
               </span>
               <div className="flex items-center gap-1">
@@ -648,7 +646,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                 className="stage-rail-dest flex-1"
               >
                 <span className="stage-rail-indicator">
-                  <GsIcon name={item.icon} size={22} filled={active} />
+                  <UiIcon name={item.icon} size={22} filled={active} />
                 </span>
                 <span className="typescale-label-sm">{item.label}</span>
               </AuroraLink>
@@ -796,7 +794,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                               {eff.key}
                             </span>
                           )}
-                          <GsIcon
+                          <UiIcon
                             name="subdirectory_arrow_left"
                             size={18}
                             className={`hidden sm:inline-flex text-on-surface-variant transition-opacity ${
@@ -842,7 +840,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                         }`}
                       >
                         <span className="inline-flex items-center gap-2.5 min-w-0">
-                          <GsIcon
+                          <UiIcon
                             name="queue_music"
                             size={20}
                             className="text-on-surface-variant flex-shrink-0"
@@ -855,7 +853,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                           <span className="typescale-body-sm text-on-surface-variant">
                             {countLabel}
                           </span>
-                          <GsIcon
+                          <UiIcon
                             name="subdirectory_arrow_left"
                             size={18}
                             className={`hidden sm:inline-flex text-on-surface-variant transition-opacity ${
@@ -963,7 +961,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                     />
                     <span className="typescale-label-lg truncate">{p.label}</span>
                     {active && (
-                      <GsIcon name="check" size={20} className="icon-pop-in ml-auto text-primary flex-shrink-0" />
+                      <UiIcon name="check" size={20} className="icon-pop-in ml-auto text-primary flex-shrink-0" />
                     )}
                   </button>
                 );
@@ -1060,7 +1058,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                   : 'stage-btn-outlined border-outline'
               }`}
             >
-              <GsIcon name={visualPulseEnabled ? 'check_circle' : 'radio_button_unchecked'} size={20} />
+              <UiIcon name={visualPulseEnabled ? 'check_circle' : 'radio_button_unchecked'} size={20} />
               <span aria-hidden="true">{visualPulseEnabled ? 'Ativo' : 'Desligado'}</span>
             </button>
           </div>
@@ -1087,7 +1085,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                   : 'stage-btn-outlined border-outline'
               }`}
             >
-              <GsIcon name={singleKeyShortcuts ? 'check_circle' : 'radio_button_unchecked'} size={20} />
+              <UiIcon name={singleKeyShortcuts ? 'check_circle' : 'radio_button_unchecked'} size={20} />
               <span aria-hidden="true">{singleKeyShortcuts ? 'Ativo' : 'Desligado'}</span>
             </button>
           </div>

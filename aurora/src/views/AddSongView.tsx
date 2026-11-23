@@ -13,7 +13,7 @@ import {
   AuroraSegmented,
   AuroraSuggestionGroup,
   AuroraThinkingSteps,
-  GsIcon,
+  UiIcon,
   type ThinkingStepItem,
 } from '../aurora/primitives';
 import { AuroraLink, navigate, useRoute } from '../router';
@@ -346,7 +346,7 @@ export function AddSongView() {
         <AuroraLink href="/" className="stage-breadcrumb-link">
           Repertório
         </AuroraLink>
-        <GsIcon name="chevron_right" size={20} />
+        <UiIcon name="chevron_right" size={20} />
         <span className="text-on-surface">Nova música</span>
       </nav>
 
@@ -515,7 +515,7 @@ export function AddSongView() {
                     Arquivo ChordPro (.cho)
                   </label>
                   <label className="stage-btn stage-btn-tonal typescale-label-lg cursor-pointer focus-within:outline-2 focus-within:outline-primary focus-within:outline-offset-2">
-                    <GsIcon name="folder_open" size={20} />
+                    <UiIcon name="folder_open" size={20} />
                     <span>Carregar do aparelho</span>
                     <input
                       type="file"
@@ -730,7 +730,7 @@ export function AddSongView() {
                           selected ? 'bg-secondary-container text-on-secondary-container border-transparent' : ''
                         }`}
                       >
-                        <GsIcon name="headphones" size={20} />
+                        <UiIcon name="headphones" size={20} />
                         <span>
                           {track.name} · {track.artist}
                         </span>

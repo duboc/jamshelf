@@ -45,7 +45,7 @@ next-env.d.ts
 *-debug.log
 .firebase/
 
-# GM3 Aurora Vite frontend build outputs
+# Aurora Vite frontend build outputs
 /aurora/node_modules/
 /aurora/dist/
 /aurora/package-lock.json

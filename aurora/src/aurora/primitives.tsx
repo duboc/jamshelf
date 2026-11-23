@@ -138,7 +138,7 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function GsIcon({
+export function UiIcon({
   name,
   size = 22,
   filled = false,
@@ -162,7 +162,7 @@ export function GsIcon({
 }
 
 /**
- * Authoral Jamshelf emblem: two overlapping rounded sheets with a treble-inspired
+ * Jamshelf emblem: two overlapping rounded sheets with a treble-inspired
  * double note silhouette.
  */
 export function JamshelfBrandMark({ size = 32 }: { size?: number }) {
@@ -207,9 +207,9 @@ export function AuroraButton({
       className={`stage-btn stage-btn-${color} typescale-label-lg ${className}`.trim()}
       {...rest}
     >
-      {icon && <GsIcon name={icon} size={20} filled={iconFilled} />}
+      {icon && <UiIcon name={icon} size={20} filled={iconFilled} />}
       <span>{children}</span>
-      {trailingIcon && <GsIcon name={trailingIcon} size={20} />}
+      {trailingIcon && <UiIcon name={trailingIcon} size={20} />}
     </button>
   );
 }
@@ -253,7 +253,7 @@ export function AuroraIconButton({
       className={`stage-icon-btn ${className}`.trim()}
       {...rest}
     >
-      <GsIcon
+      <UiIcon
         key={popKey > 0 ? `pop-${popKey}` : 'rest'}
         name={icon}
         size={22}
@@ -283,7 +283,7 @@ export function AuroraChip({
       className={`stage-chip typescale-label-lg ${className}`.trim()}
       {...rest}
     >
-      {icon && <GsIcon name={icon} size={20} filled={selected} />}
+      {icon && <UiIcon name={icon} size={20} filled={selected} />}
       <span>{children}</span>
     </button>
   );
@@ -411,7 +411,7 @@ export function AuroraSegmented<T extends string>({
             onClick={() => onChange(opt.value)}
             className="stage-segmented-btn typescale-label-lg"
           >
-            {opt.icon && <GsIcon name={opt.icon} size={20} filled={active} />}
+            {opt.icon && <UiIcon name={opt.icon} size={20} filled={active} />}
             {opt.shortLabel ? (
               <>
                 <span className="sm:hidden">{opt.shortLabel}</span>
@@ -460,7 +460,7 @@ function ActiveSpinnerIcon({ className = '' }: { className?: string }) {
 
   return (
     <span ref={iconWrapRef} className={`inline-flex leading-none ${className}`.trim()}>
-      <GsIcon name="progress_activity" size={20} />
+      <UiIcon name="progress_activity" size={20} />
     </span>
   );
 }
@@ -478,7 +478,7 @@ export function AuroraProcessingIndicator({
       aria-live="polite"
       className="stage-toast inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface"
     >
-      <GsIcon
+      <UiIcon
         name="auto_awesome"
         size={20}
         filled={state === 'processing' || state === 'responding'}
@@ -544,10 +544,10 @@ export function AuroraThinkingSteps({
         className="w-full min-h-[48px] px-4 py-2.5 flex items-center justify-between gap-3 text-left text-on-surface hover:bg-surface-container-high cursor-pointer border-none bg-transparent transition-colors"
       >
         <span className="inline-flex items-center gap-2 typescale-label-lg text-on-surface-variant">
-          <GsIcon name="auto_awesome" size={20} className="text-primary" />
+          <UiIcon name="auto_awesome" size={20} className="text-primary" />
           <span>{summary}</span>
         </span>
-        <GsIcon
+        <UiIcon
           name="expand_more"
           size={22}
           className={`text-on-surface-variant tx-chevron ${expanded ? 'tx-chevron-open' : ''}`.trim()}
@@ -559,7 +559,7 @@ export function AuroraThinkingSteps({
             {steps.map((step, i) => (
               <li key={i} role="listitem" className="flex items-start gap-2.5">
                 {step.done ? (
-                  <GsIcon
+                  <UiIcon
                     key="done"
                     name="check_circle"
                     size={20}
@@ -601,7 +601,7 @@ export function AuroraSuggestionGroup({
           onClick={() => onSelect(item.prompt)}
           className="suggestion-pill typescale-label-lg"
         >
-          {item.icon && <GsIcon name={item.icon} size={20} className="text-primary" />}
+          {item.icon && <UiIcon name={item.icon} size={20} className="text-primary" />}
           <span>{item.label}</span>
         </button>
       ))}

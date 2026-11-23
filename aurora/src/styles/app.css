@@ -33,7 +33,7 @@
 }
 
 @layer md {
-  /* Authoral Jamshelf type ramp */
+  /* Jamshelf type ramp */
   .typescale-display-sm {
     font-family: var(--ui-font-sans);
     font-size: clamp(1.75rem, 2.8vw, 2.25rem);
@@ -1044,7 +1044,7 @@
     }
   }
 
-  /* Authoral Luminous WebGL2 Stage with Aurora Kinetic entrance */
+  /* Luminous WebGL2 stage container */
   .luminous-stage {
     position: relative;
     overflow: hidden;

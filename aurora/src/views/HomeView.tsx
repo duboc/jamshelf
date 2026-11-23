@@ -14,7 +14,7 @@ import {
   AuroraIconButton,
   AuroraSegmented,
   AuroraSheet,
-  GsIcon,
+  UiIcon,
   copyText,
 } from '../aurora/primitives';
 import { getDisplayTitleAndArtist, getEffectiveKey } from '../utils/song-display';
@@ -109,7 +109,7 @@ function SongCardItem({
               className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-warn-bg text-warn-ink typescale-label-sm mr-1 tabular-nums"
               aria-label={`Avaliação ${song.rating} de 5`}
             >
-              <GsIcon name="star" size={20} filled className="text-warn-icon" />
+              <UiIcon name="star" size={20} filled className="text-warn-icon" />
               <span>{song.rating}</span>
             </span>
           )}
@@ -179,7 +179,7 @@ function SongCardItem({
               className="inline-flex items-center gap-0.5 text-warn-ink typescale-label-sm tabular-nums"
               aria-label={`Avaliação ${song.rating} de 5`}
             >
-              <GsIcon name="star" size={20} filled className="text-warn-icon" />
+              <UiIcon name="star" size={20} filled className="text-warn-icon" />
               <span>{song.rating}</span>
             </span>
           )}
@@ -482,7 +482,7 @@ export function HomeView() {
                 href="/add-song"
                 className="md:hidden stage-btn stage-btn-primary-tonal typescale-label-lg px-2.5 gap-1 no-underline"
               >
-                <GsIcon name="add" size={20} />
+                <UiIcon name="add" size={20} />
                 <span>Nova</span>
               </AuroraLink>
               <div className="hidden sm:flex items-center gap-2">
@@ -540,7 +540,7 @@ export function HomeView() {
           <section aria-label="Lista de músicas" className="@container space-y-3.5">
             <div className="flex flex-col @[820px]:flex-row @[820px]:items-center gap-2.5">
               <div className="relative flex-1 flex items-center rounded-full bg-surface border border-outline focus-within:border-primary focus-within:ring-2 focus-within:ring-primary px-4 min-h-[44px] transition-colors">
-                <GsIcon name="search" size={20} className="text-on-surface-variant mr-2.5" />
+                <UiIcon name="search" size={20} className="text-on-surface-variant mr-2.5" />
                 <label htmlFor="library-filter-input" className="sr-only">
                   Filtrar repertório por título, artista ou tom
                 </label>
@@ -664,7 +664,7 @@ export function HomeView() {
             ) : filteredSongs.length === 0 ? (
               <div className="panel-settle stage-card px-6 py-14 text-center flex flex-col items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center">
-                  <GsIcon name="music_note" size={24} />
+                  <UiIcon name="music_note" size={24} />
                 </div>
                 <h2 className="typescale-title-lg text-on-surface m-0">
                   {search || keyFilter
@@ -799,7 +799,7 @@ export function HomeView() {
           ) : setlists.length === 0 ? (
             <div className="stage-card px-6 py-14 text-center flex flex-col items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center">
-                <GsIcon name="queue_music" size={24} />
+                <UiIcon name="queue_music" size={24} />
               </div>
               <h2 className="typescale-title-lg text-on-surface m-0">Nenhum setlist criado ainda</h2>
               <p className="typescale-body-md text-on-surface-variant max-w-md m-0">
@@ -890,14 +890,14 @@ export function HomeView() {
                           href={`/slides?setlist=${sl.id}`}
                           className="stage-btn stage-btn-tonal typescale-label-lg no-underline"
                         >
-                          <GsIcon name="slideshow" size={20} />
+                          <UiIcon name="slideshow" size={20} />
                           <span>Slides</span>
                         </AuroraLink>
                         <AuroraLink
                           href={`/song/${firstId}?setlist=${sl.id}&show=1`}
                           className="stage-btn stage-btn-filled typescale-label-lg no-underline"
                         >
-                          <GsIcon name="play_arrow" size={20} />
+                          <UiIcon name="play_arrow" size={20} />
                           <span>Modo show</span>
                         </AuroraLink>
                       </div>
@@ -1068,7 +1068,7 @@ export function HomeView() {
               Cole abaixo ou carregue um arquivo de texto .cho
             </span>
             <label className="stage-btn stage-btn-tonal typescale-label-lg cursor-pointer focus-within:outline-2 focus-within:outline-primary focus-within:outline-offset-2">
-              <GsIcon name="folder_open" size={20} />
+              <UiIcon name="folder_open" size={20} />
               <span>Carregar arquivo</span>
               <input
                 type="file"

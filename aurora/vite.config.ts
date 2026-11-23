@@ -4,14 +4,14 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
-const allowedHosts: true | string[] = process.env.AURORA_ALLOWED_HOSTS
+const allowedHosts = process.env.AURORA_ALLOWED_HOSTS
   ? process.env.AURORA_ALLOWED_HOSTS.split(',').map((h) => h.trim()).filter(Boolean)
-  : true;
+  : undefined;
 const apiTarget = process.env.JAMSHELF_API_URL || 'http://127.0.0.1:3000';
 
 /**
- * Optional local-only mock API for isolated UI hillclimbing without touching
- * real Firestore/GCS (enabled strictly via AURORA_MOCK_API=1 during `vite`).
+ * Optional local-only mock API for isolated UI development without touching
+ * Firestore/GCS (enabled strictly via AURORA_MOCK_API=1 during `vite`).
  */
 function localMockApiPlugin(): Plugin {
   return {

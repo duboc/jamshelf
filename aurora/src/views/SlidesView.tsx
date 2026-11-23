@@ -29,7 +29,7 @@ import {
   AuroraIconButton,
   AuroraSegmented,
   AuroraSheet,
-  GsIcon,
+  UiIcon,
 } from '../aurora/primitives';
 import { getDisplayTitleAndArtist, getEffectiveKey } from '../utils/song-display';
 import { navigate, useRoute } from '../router';
@@ -628,7 +628,7 @@ export function SlidesView() {
               onClick={() => setTranspose((v) => v - 1)}
               className="dock-stepper-btn"
             >
-              <GsIcon name="remove" size={20} />
+              <UiIcon name="remove" size={20} />
             </button>
             <button
               type="button"
@@ -652,7 +652,7 @@ export function SlidesView() {
               onClick={() => setTranspose((v) => v + 1)}
               className="dock-stepper-btn"
             >
-              <GsIcon name="add" size={20} />
+              <UiIcon name="add" size={20} />
             </button>
           </div>
 

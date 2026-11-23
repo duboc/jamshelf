@@ -6,7 +6,7 @@ import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autos
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { isMinorKey, normalizeSearch } from '@/lib/utils/music';
 import type { ParsedSong } from '@/lib/types/song';
-import { AuroraButton, AuroraCollapsible, AuroraIconButton, GsIcon } from '../aurora/primitives';
+import { AuroraButton, AuroraCollapsible, AuroraIconButton, UiIcon } from '../aurora/primitives';
 import { getDisplayTitleAndArtist, getEffectiveKey } from '../utils/song-display';
 import { AuroraLink, navigate } from '../router';
 
@@ -216,7 +216,7 @@ export function SetlistView({ setlistId }: { setlistId: string }) {
         <AuroraLink href="/?tab=setlists" className="stage-breadcrumb-link">
           Setlists
         </AuroraLink>
-        <GsIcon name="chevron_right" size={20} />
+        <UiIcon name="chevron_right" size={20} />
         <span className="text-on-surface truncate">{setlist.name}</span>
       </nav>
 
@@ -295,7 +295,7 @@ export function SetlistView({ setlistId }: { setlistId: string }) {
             </span>
             {liveStatus.leaderId && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-error-container text-on-error-container typescale-label-sm">
-                <GsIcon name="sensors" size={20} />
+                <UiIcon name="sensors" size={20} />
                 <span>{liveStatus.leaderName || 'Banda'} ao vivo</span>
               </span>
             )}
@@ -427,7 +427,7 @@ export function SetlistView({ setlistId }: { setlistId: string }) {
       {orderedEntries.length === 0 ? (
         <div className="rounded-[24px] bg-surface-container-low px-6 py-14 text-center flex flex-col items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center">
-            <GsIcon name="queue_music" size={24} />
+            <UiIcon name="queue_music" size={24} />
           </div>
           <h2 className="typescale-title-lg text-on-surface m-0">Setlist vazio</h2>
           <p className="typescale-body-md text-on-surface-variant max-w-md m-0">

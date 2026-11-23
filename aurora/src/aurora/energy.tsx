@@ -7,17 +7,12 @@ import {
   type ReactNode,
 } from 'react';
 
-export const ENERGY_STATES = [
-  'idle',
-  'anticipating',
-  'receiving',
-  'processing',
-  'responding',
-] as const;
-
-export type EnergyState = (typeof ENERGY_STATES)[number];
-
-const mountedStages = new Set<symbol>();
+export type EnergyState =
+  | 'idle'
+  | 'anticipating'
+  | 'receiving'
+  | 'processing'
+  | 'responding';
 
 export function usePrefersReducedMotion(): boolean {
   const query = '(prefers-reduced-motion: reduce)';
@@ -44,7 +39,7 @@ void main() {
 }
 `;
 
-// Authoral alpha-composited WebGL2 luminous perimeter shader.
+// Alpha-composited WebGL2 luminous perimeter shader.
 // Uses continuous CPU-integrated phase and smoothed spread so state transitions
 // never teleport or flicker across 60Hz and 120Hz displays.
 const FRAG_SRC = `#version 300 es
@@ -205,9 +200,9 @@ export interface AuroraEnergyProps {
 }
 
 /**
- * Authoral WebGL2 luminous stage container.
- * Uses alpha compositing over CSS surfaces with delta-time exponential smoothing,
- * enforces at most one mounted luminous stage per screen, and respects reduced motion.
+ * WebGL2 luminous stage container.
+ * Uses alpha compositing over CSS surfaces with delta-time exponential smoothing
+ * and respects prefers-reduced-motion.
  */
 export function AuroraEnergy({ state, className = '', style, children }: AuroraEnergyProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -218,24 +213,6 @@ export function AuroraEnergy({ state, className = '', style, children }: AuroraE
   const kickRef = useRef<(() => void) | null>(null);
   stateRef.current = effectiveState;
   reducedRef.current = reduced;
-
-  useEffect(() => {
-    const id = Symbol('luminous-stage');
-    mountedStages.add(id);
-    const peak = Math.max(
-      mountedStages.size,
-      Number(document.documentElement.dataset.energyPeak ?? 0)
-    );
-    document.documentElement.dataset.energyPeak = String(peak);
-    if (mountedStages.size > 1) {
-      console.error(
-        `[jamshelf] ${mountedStages.size} luminous stages mounted simultaneously. Only one is allowed.`
-      );
-    }
-    return () => {
-      mountedStages.delete(id);
-    };
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;

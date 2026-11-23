@@ -9,7 +9,7 @@ import {
   AuroraButton,
   AuroraDialog,
   AuroraIconButton,
-  GsIcon,
+  UiIcon,
 } from '../aurora/primitives';
 
 export interface SpotifyTrack {
@@ -50,7 +50,7 @@ export function CalibrationBanner({
       <div className="min-w-0 space-y-0.5">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="inline-flex items-center gap-1.5 font-mono typescale-title-md tabular-nums">
-            <GsIcon name="radio_button_checked" size={20} className="text-error" />
+            <UiIcon name="radio_button_checked" size={20} className="text-error" />
             <span>{formatDuration(elapsedSec)}</span>
           </span>
           <span className="typescale-label-sm font-mono tabular-nums">
@@ -265,7 +265,7 @@ export function SpotifyPanel({
                       {track.durationMs ? ` · ${formatDuration(Math.round(track.durationMs / 1000))}` : ''}
                     </div>
                   </div>
-                  <GsIcon name="check_circle" size={22} className="text-primary flex-shrink-0" />
+                  <UiIcon name="check_circle" size={22} className="text-primary flex-shrink-0" />
                 </button>
               ))}
             </div>

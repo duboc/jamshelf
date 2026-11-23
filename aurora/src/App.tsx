@@ -18,7 +18,7 @@ export function App() {
     void (async () => {
       await useDisplayStore.persist.rehydrate();
       try {
-        const override = localStorage.getItem('jamshelf-theme') || localStorage.getItem('aurora-theme');
+        const override = localStorage.getItem('jamshelf-theme');
         if (override === 'dark' || override === 'light') {
           useDisplayStore.getState().setTheme(override);
           applyColorScheme(override);
