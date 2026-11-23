@@ -2604,3 +2604,82 @@
     background: var(--surface-high);
   }
 }
+
+/* Native GM3 range slider (Spotify Web Playback SDK seek & volume) */
+.gm3-range {
+  --slider-track-size: 5px;
+  --slider-thumb-size: 14px;
+  --slider-track-color: var(--surface2);
+  --slider-fill-color: var(--accent);
+  --slider-thumb-color: var(--accent);
+  --slider-progress: 0%;
+
+  -webkit-appearance: none;
+  appearance: none;
+  inline-size: 100%;
+  block-size: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.gm3-range:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gm3-range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* WebKit / Blink */
+.gm3-range::-webkit-slider-runnable-track {
+  block-size: var(--slider-track-size);
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--slider-fill-color) var(--slider-progress),
+    var(--slider-track-color) var(--slider-progress)
+  );
+}
+
+.gm3-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  inline-size: var(--slider-thumb-size);
+  block-size: var(--slider-thumb-size);
+  margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
+  border: 0;
+  border-radius: 50%;
+  background: var(--slider-thumb-color);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Firefox */
+.gm3-range::-moz-range-track {
+  block-size: var(--slider-track-size);
+  border: 0;
+  border-radius: 999px;
+  background: var(--slider-track-color);
+}
+
+.gm3-range::-moz-range-progress {
+  block-size: var(--slider-track-size);
+  border-radius: 999px;
+  background: var(--slider-fill-color);
+}
+
+.gm3-range::-moz-range-thumb {
+  inline-size: var(--slider-thumb-size);
+  block-size: var(--slider-thumb-size);
+  border: 0;
+  border-radius: 50%;
+  background: var(--slider-thumb-color);
+  box-shadow: var(--shadow-sm);
+}

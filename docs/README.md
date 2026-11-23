@@ -80,5 +80,7 @@ No test framework is currently configured.
 | -------- | ----------- |
 | [Architecture](./ARCHITECTURE.md) | Data model, stores, routes, components, algorithms, and design system |
 | [Gemini Integration](./GEMINI-INTEGRATION.md) | AI import setup, API format, prompt engineering, and error handling |
+| [Spotify Integration](./SPOTIFY-INTEGRATION.md) | Track matching, playback flow, and API overview |
+| [Spotify Web Playback SDK Setup](./SPOTIFY-WEB-PLAYBACK-SETUP.md) | Step-by-step guide to creating Client ID, Client Secret, and Redirect URIs |
 | [Runbook](./RUNBOOK.md) | Deployment, data management, and troubleshooting |
 | [Onboarding](./ONBOARDING.md) | New contributor guide with setup, workflows, and common tasks |

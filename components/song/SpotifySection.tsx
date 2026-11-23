@@ -5,15 +5,20 @@ import type { SpotifyTrackResult } from '@/lib/spotify';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
 import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { CloseIcon } from '@/components/ui/Icons';
+import { SpotifyWebPlayer } from './SpotifyWebPlayer';
 
 interface SpotifySectionProps {
   spotifyTrackId: string | null;
+  songTitle?: string;
+  songArtist?: string;
   showPreview: boolean;
   showPicker: boolean;
   results: SpotifyTrackResult[];
   loading: boolean;
   suggestionDismissed: boolean;
   showMoreSuggestions: boolean;
+  oauthError?: string | null;
+  onDismissOauthError?: () => void;
   onSelect: (trackId: string) => void;
   onClear: () => void;
   onDismissSuggestion: () => void;
@@ -23,12 +28,16 @@ interface SpotifySectionProps {
 
 export function SpotifySection({
   spotifyTrackId,
+  songTitle,
+  songArtist,
   showPreview,
   showPicker,
   results,
   loading,
   suggestionDismissed,
   showMoreSuggestions,
+  oauthError = null,
+  onDismissOauthError,
   onSelect,
   onClear,
   onDismissSuggestion,
@@ -40,11 +49,12 @@ export function SpotifySection({
   const showPlayerRow = Boolean(showPreview && spotifyTrackId);
   const showSuggestionRow = Boolean(!spotifyTrackId && !suggestionDismissed && results.length > 0);
   const { mounted: playerMounted } = useAnimatedPresence(showPlayerRow, 420);
+  const matchedTrack = spotifyTrackId ? results.find((r) => r.id === spotifyTrackId) ?? null : null;
   useDialogA11y(showPicker, onClosePicker, pickerRef);
 
   return (
     <>
-      {/* Embedded player (bidirectional 0fr <-> 1fr glide) */}
+      {/* Custom Web Playback SDK player (bidirectional 0fr <-> 1fr glide) */}
       <div
         className="gm3-collapsible flex-shrink-0"
         data-compact-slot="true"
@@ -56,15 +66,14 @@ export function SpotifySection({
           {playerMounted && spotifyTrackId && (
             <div className="bg-[var(--bg)] px-4 sm:px-6 lg:px-8 pb-2">
               <div className="w-full">
-                <iframe
+                <SpotifyWebPlayer
                   key={spotifyTrackId}
-                  title="Prévia da faixa no Spotify"
-                  src={`https://open.spotify.com/embed/track/${spotifyTrackId}?utm_source=generator`}
-                  width="100%"
-                  height="152"
-                  style={{ border: 0, borderRadius: '16px' }}
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
+                  spotifyTrackId={spotifyTrackId}
+                  songTitle={songTitle}
+                  songArtist={songArtist}
+                  matchedTrack={matchedTrack}
+                  oauthError={oauthError}
+                  onDismissOauthError={onDismissOauthError}
                 />
               </div>
             </div>

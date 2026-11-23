@@ -2,14 +2,20 @@
 
 ## Overview
 
-Jamshelf can attach a real Spotify track to a song when it's added, so the song viewer can show Spotify's own embedded player — a free 30-second preview for anyone, and a one-tap handoff into the visitor's own Spotify account for full playback. The integration is server-side via `/api/spotify/search`, using Spotify's Client Credentials flow (app-level access, no user login).
+Jamshelf can attach a real Spotify track to a song when it's added or from the song viewer, giving musicians two playback options:
+
+1. **Custom Web Playback SDK player (full track)** — authenticates the listener's Spotify Premium account via OAuth 2.0 Authorization Code flow and streams the full track directly in the browser with Play/Pause, seek bar, `-10s` / `+10s` jumps, **A-B loop** rehearsal markers, and volume controls.
+2. **Simple Spotify Embed fallback** — a zero-login embedded player (30-second preview for visitors, or full track handoff into the listener's Spotify app), always 1 click away.
+
+Track matching is server-side via `/api/spotify/search` using Spotify's Client Credentials flow.
 
 ## Setup & Configuration
 
-1. Create a free app at the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Copy its Client ID and Client Secret into `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` in your `.env` file — see `.env.example` at the repo root.
+For step-by-step instructions on creating a Spotify app, obtaining `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET`, registering `127.0.0.1` Redirect URIs, and configuring Development Mode users, see:
 
-If these aren't set, Spotify matching is silently skipped — adding songs still works exactly as before.
+- **[Spotify Web Playback SDK Setup](./SPOTIFY-WEB-PLAYBACK-SETUP.md)**
+
+If `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` aren't set, Spotify matching is silently skipped — adding songs still works exactly as before, and tracks linked manually with `{spotify: <id>}` can still play via the simple embed.
 
 ## User Flow
 
