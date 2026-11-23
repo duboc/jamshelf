@@ -378,7 +378,7 @@ export function AddSongView() {
                   }
                 }}
                 options={[
-                  { value: 'search', label: 'Buscar com IA', shortLabel: 'IA', icon: 'auto_awesome' },
+                  { value: 'search', label: 'Buscar com IA', shortLabel: 'IA', icon: 'wand_stars' },
                   { value: 'paste', label: 'Colar cifra', shortLabel: 'Colar', icon: 'content_paste' },
                   { value: 'file', label: 'Importar .cho', shortLabel: '.cho', icon: 'upload_file' },
                 ]}
@@ -413,16 +413,15 @@ export function AddSongView() {
                   type="text"
                   value={searchQuery}
                   onFocus={() => {
-                    if (!loading && !listening && energy.state === 'idle') {
-                      energy.bloom('anticipating', 2400);
+                    if (!loading && !listening && energy.state === 'anticipating') {
+                      energy.rest();
                     }
                   }}
                   onChange={(e) => {
-                    const nextVal = e.target.value;
-                    if (!searchQuery.trim() && nextVal.trim() && !loading && !listening) {
-                      energy.bloom('anticipating', 2200);
+                    if (!loading && !listening && energy.state === 'anticipating') {
+                      energy.rest();
                     }
-                    setSearchQuery(nextVal);
+                    setSearchQuery(e.target.value);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !loading) void handleProcess();
@@ -451,7 +450,7 @@ export function AddSongView() {
                     )}
                     <AuroraButton
                       color="filled"
-                      icon="auto_awesome"
+                      icon="wand_stars"
                       disabled={loading || !searchQuery.trim()}
                       onClick={() => void handleProcess()}
                     >
@@ -475,13 +474,18 @@ export function AddSongView() {
                   rows={10}
                   value={pastedSheet}
                   onFocus={() => {
-                    if (!loading && !listening && energy.state === 'idle') {
-                      energy.bloom('anticipating', 2400);
+                    if (!loading && !listening && energy.state === 'anticipating') {
+                      energy.rest();
                     }
                   }}
-                  onChange={(e) => setPastedSheet(e.target.value)}
+                  onChange={(e) => {
+                    if (!loading && !listening && energy.state === 'anticipating') {
+                      energy.rest();
+                    }
+                    setPastedSheet(e.target.value);
+                  }}
                   placeholder="Cole cifras de qualquer site ou bloco de notas..."
-                  className="stage-field font-mono text-xs resize-y"
+                  className="stage-field font-mono text-base lg:text-sm resize-y"
                 />
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-outline-variant/45">
                   <span className="typescale-body-sm text-on-surface-variant">
@@ -495,7 +499,7 @@ export function AddSongView() {
                     )}
                     <AuroraButton
                       color="filled"
-                      icon="auto_awesome"
+                      icon="wand_stars"
                       disabled={loading || !pastedSheet.trim()}
                       onClick={() => void handleProcess()}
                     >
@@ -538,7 +542,7 @@ export function AddSongView() {
                   value={choText}
                   onChange={(e) => setChoText(e.target.value)}
                   placeholder={`{title: Minha música}\n{artist: Artista}\n{key: G}\n\n[Verso 1]\n[G]Letra aqui`}
-                  className="stage-field font-mono text-xs resize-y"
+                  className="stage-field font-mono text-base lg:text-sm resize-y"
                 />
                 {choStatus && (
                   <div

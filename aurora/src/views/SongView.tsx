@@ -2845,7 +2845,7 @@ export function SongView({ songId }: { songId: string }) {
                       }}
                       className="stage-list-row w-full min-h-[44px] px-3 rounded-xl border-none bg-transparent hover:bg-surface-container-high text-on-surface typescale-body-md flex items-center gap-2.5 text-left cursor-pointer"
                     >
-                      <UiIcon name="auto_awesome" size={20} className="text-on-surface-variant" />
+                      <UiIcon name="wand_stars" size={20} className="text-on-surface-variant" />
                       <span>Revisar letra e acordes com IA</span>
                     </button>
 

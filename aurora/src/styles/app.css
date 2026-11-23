@@ -147,12 +147,20 @@
     direction: ltr;
     user-select: none;
     -webkit-font-smoothing: antialiased;
-    font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings:
+      'FILL' 0,
+      'wght' var(--ui-icon-wght, 300),
+      'GRAD' 0,
+      'opsz' var(--ui-icon-opsz, 24);
     transition: font-variation-settings var(--ui-motion-effect-fast);
   }
 
   .ui-icon[data-filled='true'] {
-    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings:
+      'FILL' 1,
+      'wght' var(--ui-icon-wght, 300),
+      'GRAD' 0,
+      'opsz' var(--ui-icon-opsz, 24);
   }
 }
 

@@ -579,7 +579,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                   className="stage-nav-pill w-full justify-start gap-3 px-3.5 min-h-[44px]"
                 >
                   <span key={isDark ? 'sun' : 'moon'} className="theme-icon-spin">
-                    <UiIcon name={isDark ? 'light_mode' : 'dark_mode'} size={22} />
+                    <UiIcon name={isDark ? 'sunny' : 'nightlight'} size={22} />
                   </span>
                   <span className="rail-label-enter typescale-label-lg">
                     {isDark ? 'Tema claro' : 'Tema escuro'}
@@ -618,7 +618,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
             ) : (
               <div className="rail-compact-enter flex flex-col items-center gap-1">
                 <AuroraIconButton
-                  icon={isDark ? 'light_mode' : 'dark_mode'}
+                  icon={isDark ? 'sunny' : 'nightlight'}
                   label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
                   onClick={toggleThemeQuick}
                 />
@@ -659,7 +659,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                 />
               )}
               <AuroraIconButton
-                icon={isDark ? 'light_mode' : 'dark_mode'}
+                icon={isDark ? 'sunny' : 'nightlight'}
                 label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
                 onClick={toggleThemeQuick}
               />
@@ -964,7 +964,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
               </p>
               <AuroraButton
                 color="primary-tonal"
-                icon="auto_awesome"
+                icon="wand_stars"
                 onClick={() => {
                   const q = quickQuery.trim();
                   setSearchOpen(false);
@@ -1016,8 +1016,8 @@ export function AuroraShell({ children }: { children: ReactNode }) {
               value={theme}
               onChange={handleSetTheme}
               options={[
-                { value: 'light', label: 'Claro', icon: 'light_mode' },
-                { value: 'dark', label: 'Escuro', icon: 'dark_mode' },
+                { value: 'light', label: 'Claro', icon: 'sunny' },
+                { value: 'dark', label: 'Escuro', icon: 'nightlight' },
                 { value: 'system', label: 'Sistema', icon: 'contrast' },
               ]}
             />

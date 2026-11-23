@@ -138,6 +138,14 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
+function iconOpticalScale(px: number): { wght: number; opsz: number } {
+  if (px <= 18) return { wght: 330, opsz: 20 };
+  if (px <= 20) return { wght: 320, opsz: 20 };
+  if (px <= 24) return { wght: 300, opsz: 24 };
+  if (px <= 28) return { wght: 260, opsz: 28 };
+  return { wght: 240, opsz: 32 };
+}
+
 export function UiIcon({
   name,
   size = 22,
@@ -149,11 +157,19 @@ export function UiIcon({
   filled?: boolean;
   className?: string;
 }) {
+  const px = Math.max(20, size);
+  const { wght, opsz } = iconOpticalScale(px);
   return (
     <span
       className={`ui-icon ${className}`.trim()}
       data-filled={filled ? 'true' : undefined}
-      style={{ '--ui-icon-size': `${Math.max(20, size)}px` } as CSSProperties}
+      style={
+        {
+          '--ui-icon-size': `${px}px`,
+          '--ui-icon-wght': wght,
+          '--ui-icon-opsz': opsz,
+        } as CSSProperties
+      }
       aria-hidden="true"
     >
       {name}
@@ -484,7 +500,7 @@ export function AuroraProcessingIndicator({
       className="stage-toast inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface"
     >
       <UiIcon
-        name="auto_awesome"
+        name="wand_stars"
         size={20}
         filled={state === 'processing' || state === 'responding'}
         className="text-primary"
@@ -549,7 +565,7 @@ export function AuroraThinkingSteps({
         className="w-full min-h-[48px] px-4 py-2.5 flex items-center justify-between gap-3 text-left text-on-surface hover:bg-surface-container-high cursor-pointer border-none bg-transparent transition-colors"
       >
         <span className="inline-flex items-center gap-2 typescale-label-lg text-on-surface-variant">
-          <UiIcon name="auto_awesome" size={20} className="text-primary" />
+          <UiIcon name="cognition" size={20} className="text-primary" />
           <span>{summary}</span>
         </span>
         <UiIcon

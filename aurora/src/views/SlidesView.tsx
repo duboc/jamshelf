@@ -2656,7 +2656,7 @@ export function SlidesView() {
                           }}
                           className="stage-btn stage-btn-outlined h-10 min-h-[40px] flex-1 px-2.5 typescale-label-sm"
                         >
-                          <UiIcon name={isDark ? 'light_mode' : 'dark_mode'} size={20} />
+                          <UiIcon name={isDark ? 'sunny' : 'nightlight'} size={20} />
                           {isDark ? 'Tema claro' : 'Tema escuro'}
                         </button>
                       </div>

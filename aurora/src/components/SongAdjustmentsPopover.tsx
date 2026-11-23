@@ -246,7 +246,7 @@ export function SongAdjustmentsPopover({
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
           <AuroraButton
             color="outlined"
-            icon={isDark ? 'light_mode' : 'dark_mode'}
+            icon={isDark ? 'sunny' : 'nightlight'}
             onClick={onToggleTheme}
             className="w-full justify-center"
           >
