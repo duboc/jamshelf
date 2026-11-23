@@ -258,12 +258,12 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
               title={
                 !startSongId
                   ? 'Adicione uma música primeiro'
-                  : 'Abrir visão de palco focada com deslize entre músicas'
+                  : 'Abrir Tela limpa de palco com rolagem, deslize entre músicas e Ao vivo'
               }
-              className="pill-btn pill-btn-rec h-11 px-5 text-sm"
+              className="pill-btn pill-btn-primary h-11 px-5 text-sm"
             >
               <PlayIcon size={14} />
-              Modo Show
+              Tela limpa
             </button>
             <button
               type="button"

@@ -2,7 +2,6 @@
 
 import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Song } from '@/lib/types/song';
-import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { isMinorKey } from '@/lib/utils/music';
@@ -10,7 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Gm3FocalBadge } from '@/components/ui/Gm3FocalBadge';
 import { TransitionLink } from '@/components/ui/TransitionLink';
 import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
-import { CheckIcon, HeartIcon, MoreVertIcon, StarIcon } from '@/components/ui/Icons';
+import { CheckIcon, MoreVertIcon } from '@/components/ui/Icons';
 
 interface SongCardProps {
   song: Song;
@@ -31,13 +30,10 @@ export const SongCard = memo(function SongCard({
   staggerIdx,
   focalKey = false,
 }: SongCardProps) {
-  const { patchMeta } = useSongStore();
   const { setlists, addSongToSetlist } = useSetlistStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [addedNotice, setAddedNotice] = useState('');
-  const [favPop, setFavPop] = useState(false);
-  const [starPop, setStarPop] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { mounted: menuMounted, closing: menuClosing } = useAnimatedPresence(menuOpen, 220);
   const { mounted: noticeMounted, closing: noticeClosing } = useAnimatedPresence(Boolean(addedNotice), 200);
@@ -60,26 +56,6 @@ export const SongCard = memo(function SongCard({
       document.removeEventListener('keydown', onKey);
     };
   }, [menuOpen]);
-
-  const handleStar = (e: React.MouseEvent, star: number) => {
-    e.preventDefault();
-    const newRating = song.rating === star ? 0 : star;
-    if (newRating > 0) {
-      setStarPop(star);
-      setTimeout(() => setStarPop(null), 380);
-    }
-    patchMeta(song.id, 'rating', newRating);
-  };
-
-  const handleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const nextFav = !song.favorite;
-    if (nextFav) {
-      setFavPop(true);
-      setTimeout(() => setFavPop(false), 380);
-    }
-    patchMeta(song.id, 'favorite', nextFav ? 'true' : 'false');
-  };
 
   const handleAddToSetlist = (setlistId: string, setlistName: string) => {
     addSongToSetlist(setlistId, song.id);
@@ -110,32 +86,6 @@ export const SongCard = memo(function SongCard({
           className={`gm3-card gm3-popover-top-right ${menuClosing ? 'gm3-popover-exit' : ''} absolute right-0 top-[calc(100%+6px)] z-40 w-64 rounded-[20px] bg-[var(--surface)] py-2`}
           style={{ boxShadow: 'var(--shadow-md)' }}
         >
-          {/* Rating inside menu (accessible 36px stars with WCAG AA contrast) */}
-          <div className="px-4 py-2 flex items-center justify-between gap-2">
-            <span className="field-label">Avaliação</span>
-            <div className="flex items-center gap-0.5" role="group" aria-label={`Avaliação de ${song.title}`}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={(e) => handleStar(e, star)}
-                  className={`gm3-icon-btn gm3-star-btn ${
-                    starPop === star ? 'gm3-pop-once' : ''
-                  } w-9 h-9 flex items-center justify-center cursor-pointer hover:bg-[var(--surface-high)] ${
-                    star <= song.rating ? 'text-[var(--warn-icon)]' : 'text-[var(--line)] hover:text-[var(--warn-icon)]'
-                  }`}
-                  title={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
-                  aria-label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
-                  aria-pressed={star <= song.rating}
-                >
-                  <StarIcon size={16} filled={star <= song.rating} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="my-1.5 mx-3 border-t border-[var(--line-subtle)]/40" />
-
           <div className="px-4 py-1.5 field-label">Adicionar ao setlist</div>
           {setlists.length === 0 ? (
             <TransitionLink
@@ -216,7 +166,7 @@ export const SongCard = memo(function SongCard({
     ? 'bg-[var(--minor-container)] text-[var(--on-minor-container)]'
     : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]';
 
-  // GM3 Expressive Tonal Card (single link per card, signature key badge, clean rating chip)
+  // GM3 Expressive Tonal Card (single link per card, signature key badge, clean metadata footer)
   if (variant === 'card') {
     return (
       <article
@@ -284,47 +234,17 @@ export const SongCard = memo(function SongCard({
           {overflowMenu}
         </div>
 
-        {/* Clean 2-zone footer: musical metadata left, rated pill + heart right (never wraps onto 4th row) */}
-        <div className="flex items-center justify-between gap-2 pt-0.5">
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            <span className="studio-chip bg-[var(--bg)] text-[var(--muted)] font-mono text-xs tabular-nums">
-              {song.tempo} BPM · {song.timeSignature}
-              {song.duration ? ` · ${formatDuration(song.duration)}` : ''}
+        {/* Clean musical metadata footer */}
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0 pt-0.5">
+          <span className="studio-chip bg-[var(--bg)] text-[var(--muted)] font-mono text-xs tabular-nums">
+            {song.tempo} BPM · {song.timeSignature}
+            {song.duration ? ` · ${formatDuration(song.duration)}` : ''}
+          </span>
+          {song.capo > 0 && (
+            <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] text-xs">
+              Capo {song.capo}
             </span>
-            {song.capo > 0 && (
-              <span className="studio-chip bg-[var(--tune-dim)] text-[var(--tune)] text-xs">
-                Capo {song.capo}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {song.rating > 0 && (
-              <button
-                type="button"
-                onClick={() => setMenuOpen(true)}
-                className="pill-btn h-7 px-2.5 text-xs bg-[var(--warn-dim)] text-[var(--warn-ink)]"
-                title={`Avaliação: ${song.rating} de 5 estrelas. Clique para ajustar`}
-                aria-label={`Avaliação ${song.rating} de 5 estrelas para ${song.title}`}
-              >
-                <StarIcon size={13} filled className="text-[var(--warn-icon)]" />
-                <span className="font-mono tabular-nums">{song.rating}</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleFavorite}
-              className={`gm3-icon-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-[var(--surface2)] ${
-                song.favorite ? 'text-[var(--rec)]' : 'text-[var(--muted)] hover:text-[var(--rec)]'
-              }`}
-              title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
-              aria-label={song.favorite ? `Remover ${song.title} das favoritas` : `Adicionar ${song.title} às favoritas`}
-              aria-pressed={song.favorite}
-            >
-              <HeartIcon size={18} filled={song.favorite} />
-            </button>
-          </div>
+          )}
         </div>
 
         {confirmDialog}
@@ -345,7 +265,7 @@ export const SongCard = memo(function SongCard({
   return (
     <div
       style={staggerStyle}
-      className={`gm3-card gm3-list-row ${staggerClass} group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_76px_92px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] ${segmentedRadius}`}
+      className={`gm3-card gm3-list-row ${staggerClass} group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_44px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] ${segmentedRadius}`}
     >
       <TransitionLink
         href={`/song/${song.id}`}
@@ -393,48 +313,20 @@ export const SongCard = memo(function SongCard({
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 font-mono text-xs text-[var(--muted)] tabular-nums">
-        <span>{song.tempo} BPM</span>
-        <span className="opacity-50">·</span>
-        <span>{song.timeSignature}</span>
-        {song.duration ? (
-          <>
-            <span className="opacity-50">·</span>
-            <span>{formatDuration(song.duration)}</span>
-          </>
-        ) : null}
-      </div>
-
       <div className="flex items-center justify-between md:contents">
-        <div>
-          {song.rating > 0 ? (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              className="pill-btn h-7 px-2.5 text-xs bg-[var(--warn-dim)] text-[var(--warn-ink)]"
-              aria-label={`Avaliação ${song.rating} de 5 estrelas para ${song.title}`}
-            >
-              <StarIcon size={13} filled className="text-[var(--warn-icon)]" />
-              <span className="font-mono tabular-nums">{song.rating}</span>
-            </button>
-          ) : (
-            <span className="text-xs text-[var(--muted)] hidden md:inline">-</span>
-          )}
+        <div className="flex items-center gap-1.5 font-mono text-xs text-[var(--muted)] tabular-nums">
+          <span>{song.tempo} BPM</span>
+          <span className="opacity-50">·</span>
+          <span>{song.timeSignature}</span>
+          {song.duration ? (
+            <>
+              <span className="opacity-50">·</span>
+              <span>{formatDuration(song.duration)}</span>
+            </>
+          ) : null}
         </div>
 
-        <div className="flex items-center justify-end gap-0.5">
-          <button
-            type="button"
-            onClick={handleFavorite}
-            className={`gm3-icon-btn gm3-fav-btn ${favPop ? 'gm3-pop-once' : ''} w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-[var(--surface2)] ${
-              song.favorite ? 'text-[var(--rec)]' : 'text-[var(--muted)] hover:text-[var(--rec)]'
-            }`}
-            title={song.favorite ? 'Remover das favoritas' : 'Adicionar às favoritas'}
-            aria-label={song.favorite ? `Remover ${song.title} das favoritas` : `Adicionar ${song.title} às favoritas`}
-            aria-pressed={song.favorite}
-          >
-            <HeartIcon size={18} filled={song.favorite} />
-          </button>
+        <div className="flex items-center justify-end">
           {overflowMenu}
         </div>
       </div>

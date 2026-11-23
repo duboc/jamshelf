@@ -49,25 +49,25 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { ChordProEditor } from '@/components/ui/ChordProEditor';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ShowModeView } from '@/components/show-mode/ShowModeView';
+import { CleanStageView } from '@/components/song/CleanStageView';
 import { SetlistDrawer } from '@/components/show-mode/SetlistDrawer';
 import { EnhanceModal } from '@/components/song/EnhanceModal';
 import { VersionHistoryModal } from '@/components/song/VersionHistoryModal';
 import { ChordsReference } from '@/components/chord-diagrams/ChordsReference';
 import { SongHeader } from '@/components/song/SongHeader';
+import { SongHeroStrip } from '@/components/song/SongHeroStrip';
 import { SongToolbar } from '@/components/song/SongToolbar';
 import { SectionNav } from '@/components/song/SectionNav';
-import { FocusDock } from '@/components/song/FocusDock';
 import { SpotifySection } from '@/components/song/SpotifySection';
 import { CalibrationBar } from '@/components/song/CalibrationBar';
 import { StageNotesBar } from '@/components/song/StageNotesBar';
 import { CountInOverlay } from '@/components/song/CountInOverlay';
 import { useWakeLock } from '@/lib/hooks/use-wake-lock';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
-import { useScrollCollapse } from '@/lib/hooks/use-scroll-collapse';
 import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
+import { ensureMetronomeAudioContext, useMetronomeEngine } from '@/lib/hooks/use-metronome-engine';
 import { navigateWithTransition, runStateViewTransition } from '@/lib/utils/view-transition';
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, PlusIcon, UndoIcon } from '@/components/ui/Icons';
+import { CloseIcon, PauseIcon, PlusIcon, UndoIcon } from '@/components/ui/Icons';
 import type { SpotifyTrackResult } from '@/lib/spotify';
 
 type SelectedCoord = { sectionIdx: number; lineIdx: number; segIdx: number };
@@ -86,9 +86,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const store = usePlayerStore();
   const {
     displayMode,
-    setDisplayMode,
     toggleHideChords,
     chordsRefOpen,
+    setChordsRefOpen,
     focusMode,
     setFocusMode,
     capoDisplay,
@@ -120,10 +120,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const jumpCancelRef = useRef<(() => void) | null>(null);
   const [chordsRefEverOpened, setChordsRefEverOpened] = useState(chordsRefOpen);
   const [editingNotes, setEditingNotes] = useState(false);
-  const [headerOverlayState, setHeaderOverlayState] = useState({
-    popoverOpen: false,
-    editingIdentity: false,
-  });
+  const [editingIdentity, setEditingIdentity] = useState(false);
+  const [headerScrolled, setHeaderScrolled] = useState(false);
   const choModalRef = useRef<HTMLDivElement>(null);
   const [localCountIn, setLocalCountIn] = useState<{
     nonce: number;
@@ -168,7 +166,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   // Live session (cross-device sync with normalized scrollRatio)
   const setlistIdParam = searchParams.get('setlist');
-  const showMode = searchParams.get('show') === '1';
+  const cleanUrlParam = searchParams.get('show') === '1' || searchParams.get('clean') === '1';
+  const isCleanStage = !store.editMode && (focusMode || cleanUrlParam);
   const activeSetlist = setlistIdParam
     ? setlists.find((sl) => sl.id === setlistIdParam) ?? null
     : null;
@@ -201,29 +200,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     : null;
   const displayCountIn = useRetainedValue(activeCountIn, countInKey);
 
-  // Keep screen awake during Show Mode, Focus Mode, Auto-scroll, or Metronome
+  // Keep screen awake during Clean Stage, Auto-scroll, or Metronome
   const wakeLock = useWakeLock(
-    showMode || focusMode || store.isAutoScrolling || store.metronomeOn
+    isCleanStage || store.isAutoScrolling || store.metronomeOn
   );
-
-  // Scroll-collapsible GM3 Top App Bar (reclaims ~180px of lyric space on scroll down, restores on scroll back)
-  const {
-    compact: headerCompact,
-    setCompact: setHeaderCompact,
-    handleScroll: handleHeaderScroll,
-  } = useScrollCollapse({
-    lockedExpanded:
-      store.editMode ||
-      calibrating ||
-      focusMode ||
-      chordsRefOpen ||
-      showSpotifyPreview ||
-      showSpotifyPicker ||
-      editingNotes ||
-      headerOverlayState.editingIdentity,
-    paused: headerOverlayState.popoverOpen,
-    resetKey: id,
-  });
 
   const storedSong = useMemo(() => {
     void entries;
@@ -238,6 +218,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     }
     return storedSong;
   }, [store.editMode, editDraftText, id, storedSong]);
+
+  // Headless Web Audio metronome scheduler mounted at page level so closing Ajustes never interrupts clicks
+  const { audioBlocked: metronomeAudioBlocked, unlockAudio: unlockMetronomeAudio } =
+    useMetronomeEngine(parseInt(song?.timeSignature ?? '4/4', 10) || 4);
 
   const allChords = useMemo(
     () => (song ? extractChords(song.sections) : []),
@@ -310,6 +294,8 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       setCalibrating(false);
       setShowSpotifyPreview(false);
       setSpotifySuggestionDismissed(false);
+      setEditingIdentity(false);
+      setHeaderScrolled(false);
       scrollStateRef.current = { scrollTop: 0, scrollRatio: 0 };
     }
   }, [storedSong, store]);
@@ -324,18 +310,18 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storedSong?.capo]);
 
-  // Follow live session leader, preserving &show=1 in Show Mode
+  // Follow live session leader, preserving &show=1 in Clean Stage mode
   useEffect(() => {
     if (!activeSetlist) return;
     if (live.isFollowing && live.session.currentSongId && live.session.currentSongId !== id) {
-      const showSuffix = showMode ? '&show=1' : '';
+      const showSuffix = cleanUrlParam ? '&show=1' : '';
       navigateWithTransition(
         router,
         `/song/${live.session.currentSongId}?setlist=${activeSetlist.id}${showSuffix}`,
         { direction: 'next' }
       );
     }
-  }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, showMode, router]);
+  }, [activeSetlist, live.isFollowing, live.session.currentSongId, id, cleanUrlParam, router]);
 
   // Auto-search Spotify for unmatched songs
   const spotifySongId = storedSong?.spotifyTrackId ?? null;
@@ -597,9 +583,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   useDialogA11y(showExport, closeExportModalCallback, choModalRef);
 
-  // Global keyboard shortcuts on song page (consistent with Show Mode + guarded for accessibility)
+  // Global keyboard shortcuts on song page (CleanStageView handles its own shortcuts)
   useEffect(() => {
-    if (showMode) return;
+    if (isCleanStage) return;
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const inInput =
@@ -720,6 +706,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         if (live.isLeading) live.triggerCountIn(store.bpm, bpb);
       } else if (e.key.toLowerCase() === 'm' && !live.isFollowing) {
         e.preventDefault();
+        if (!store.metronomeOn) ensureMetronomeAudioContext();
         store.setMetronomeOn(!store.metronomeOn);
       } else if ((e.key === '+' || e.key === '=') && !live.isFollowing) {
         e.preventDefault();
@@ -732,7 +719,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
-    showMode,
+    isCleanStage,
     store,
     handleUndo,
     handleRedo,
@@ -835,71 +822,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     setLocalCountIn(null);
     live.clearIncomingCountIn();
   };
-
-  const nextSongObj = nextSongId ? getSong(nextSongId) : null;
-
-  if (activeSetlist && showMode) {
-    return (
-      <>
-        <ShowModeView
-          song={song}
-          displayedKey={displayedKey}
-          activeSetlist={activeSetlist}
-          setlistSongIdx={setlistSongIdx}
-          totalSongs={existingSetlistSongIds.length}
-          prevSongId={prevSongId}
-          nextSongId={nextSongId}
-          nextSongMeta={
-            nextSongObj ? { title: nextSongObj.title, displayKey: nextSongObj.displayKey } : null
-          }
-          beatsPerBar={beatsPerBar}
-          pitchTarget={pitchTarget}
-          wakeLockActive={wakeLock.active}
-          live={live}
-          onNavigate={(songId) => {
-            const targetIdx = existingSetlistSongIds.indexOf(songId);
-            const direction = targetIdx >= 0 && targetIdx < setlistSongIdx ? 'prev' : 'next';
-            navigateWithTransition(router, `/song/${songId}?setlist=${activeSetlist.id}&show=1`, {
-              direction,
-            });
-          }}
-          onExit={() =>
-            navigateWithTransition(router, `/song/${id}?setlist=${activeSetlist.id}`, {
-              songId: id,
-              direction: 'back',
-              replace: true,
-            })
-          }
-          onChordTap={(chord) => store.setActiveChord(chord)}
-          onScrollStateChange={(st) => {
-            scrollStateRef.current = { scrollTop: st.scrollTop, scrollRatio: st.scrollRatio };
-          }}
-          onTriggerCountIn={handleTriggerCountIn}
-          onSaveBpm={(nextBpm) => {
-            patchMeta(id, 'tempo', nextBpm);
-            flashStatus(`BPM salvo (${nextBpm})`);
-          }}
-          handleGoLive={handleGoLive}
-          confirmGoLive={confirmGoLive}
-          showNamePrompt={showNamePrompt}
-          nameInput={nameInput}
-          setNameInput={setNameInput}
-          setShowNamePrompt={setShowNamePrompt}
-        />
-        {displayCountIn && (
-          <CountInOverlay
-            open={Boolean(activeCountIn)}
-            nonce={displayCountIn.nonce}
-            bpm={displayCountIn.bpm}
-            beats={displayCountIn.beats}
-            leaderName={displayCountIn.leaderName}
-            onComplete={closeCountIn}
-            onCancel={closeCountIn}
-          />
-        )}
-      </>
-    );
-  }
 
   // ── Visual edit session lifecycle & draft helpers ───────────────────────────
   const currentSong = song;
@@ -1507,295 +1429,303 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   };
   saveChoRef.current = handleSaveCho;
 
-  const navigateInSetlist = (songId: string) => {
+  const navigateInSetlist = (songId: string, preserveCleanParam = false) => {
     if (!activeSetlist) return;
     const targetIdx = existingSetlistSongIds.indexOf(songId);
     const direction = targetIdx >= 0 && targetIdx < setlistSongIdx ? 'prev' : 'next';
+    const cleanSuffix = preserveCleanParam && cleanUrlParam ? '&show=1' : '';
     guardLeaveEdit(() => {
-      navigateWithTransition(router, `/song/${songId}?setlist=${activeSetlist.id}`, {
+      navigateWithTransition(router, `/song/${songId}?setlist=${activeSetlist.id}${cleanSuffix}`, {
         direction,
       });
     });
   };
 
+  const handleOpenSlides = () => {
+    navigateWithTransition(
+      router,
+      activeSetlist ? `/slides?setlist=${activeSetlist.id}&song=${id}` : `/slides?song=${id}`,
+      { direction: 'forward' }
+    );
+  };
+
+  const handleExitCleanStage = () => {
+    if (cleanUrlParam) {
+      setFocusMode(false);
+      navigateWithTransition(
+        router,
+        activeSetlist ? `/song/${id}?setlist=${activeSetlist.id}` : `/song/${id}`,
+        { songId: id, direction: 'back', replace: true }
+      );
+      return;
+    }
+    runStateViewTransition(() => setFocusMode(false), 'morph');
+  };
+
   const songHasCalibration = hasUsableMarks(song.sectionMarks, song.sections.length);
+  const baselineScrollSpeed = song.scrollSpeed ?? 1;
+  const scrollSpeedChanged = Math.abs(store.autoScrollSpeed - baselineScrollSpeed) >= 0.04;
+
+  // Unified Clean Stage ("Tela limpa", absorbing legacy Show Mode)
+  if (isCleanStage) {
+    return (
+      <>
+        <CleanStageView
+          song={song}
+          displayedKey={displayedKey}
+          pitchTarget={pitchTarget}
+          beatsPerBar={beatsPerBar}
+          wakeLockActive={wakeLock.active}
+          audioBlocked={metronomeAudioBlocked}
+          onUnlockAudio={unlockMetronomeAudio}
+          activeSetlist={activeSetlist}
+          setlistSongIdx={setlistSongIdx}
+          totalSongs={existingSetlistSongIds.length}
+          prevSongId={prevSongId}
+          nextSongId={nextSongId}
+          live={live}
+          handleGoLive={handleGoLive}
+          confirmGoLive={confirmGoLive}
+          showNamePrompt={showNamePrompt}
+          nameInput={nameInput}
+          setNameInput={setNameInput}
+          setShowNamePrompt={setShowNamePrompt}
+          onNavigateSong={(songId) => navigateInSetlist(songId, true)}
+          onChordTap={(chord) => store.setActiveChord(chord)}
+          onScrollStateChange={(st) => {
+            scrollStateRef.current = { scrollTop: st.scrollTop, scrollRatio: st.scrollRatio };
+          }}
+          onTriggerCountIn={handleTriggerCountIn}
+          onSaveBpm={(nextBpm) => {
+            patchMeta(id, 'tempo', nextBpm);
+            flashStatus(`✓ BPM salvo (${nextBpm})`);
+          }}
+          onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
+          onEnterSlidesMode={handleOpenSlides}
+          onEnterEdit={() => {
+            if (cleanUrlParam) {
+              setFocusMode(false);
+              router.replace(activeSetlist ? `/song/${id}?setlist=${activeSetlist.id}` : `/song/${id}`);
+            } else {
+              setFocusMode(false);
+            }
+            enterVisualEdit();
+          }}
+          onExit={handleExitCleanStage}
+        />
+
+        <ChordPanel
+          chord={store.activeChord}
+          onClose={() => store.setActiveChord(null)}
+        />
+
+        <ConfirmDialog
+          open={showTransposeConfirm}
+          title="Salvar neste novo tom?"
+          description={
+            <>
+              <span className="font-mono text-[var(--ink)]">{song.displayKey || 'Tom atual'}</span>
+              {' → '}
+              <span className="font-mono font-semibold text-[var(--accent-ink)]">
+                {transposeChord(song.displayKey, store.transpose, store.useFlats)}
+              </span>
+              . Todos os acordes da música serão reescritos permanentemente e a transposição volta para 0.
+            </>
+          }
+          confirmLabel="Salvar tom"
+          onConfirm={handleSaveAsKey}
+          onCancel={() => setShowTransposeConfirm(false)}
+        />
+
+        {displayCountIn && (
+          <CountInOverlay
+            open={Boolean(activeCountIn)}
+            nonce={displayCountIn.nonce}
+            bpm={displayCountIn.bpm}
+            beats={displayCountIn.beats}
+            leaderName={displayCountIn.leaderName}
+            onComplete={closeCountIn}
+            onCancel={closeCountIn}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       <VisualPulse />
 
-      {focusMode ? (
-        <FocusDock
-          songTitle={song.title}
-          displayedKey={displayedKey}
-          pitchTarget={pitchTarget}
-          stageNotes={song.notes}
-          wakeLockActive={wakeLock.active}
-          isFollowing={live.isFollowing}
-          hasSetlist={!!activeSetlist}
-          prevSongId={prevSongId}
-          nextSongId={nextSongId}
-          onNavigateSong={navigateInSetlist}
-          onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
-          onTriggerCountIn={handleTriggerCountIn}
-          onExit={() => runStateViewTransition(() => setFocusMode(false), 'morph')}
+      {/* Constant 56px Pinned Top Bar (or dedicated Edit Top Bar when editing) */}
+      <SongHeader
+        song={song}
+        displayedKey={displayedKey}
+        pitchTarget={pitchTarget}
+        beatsPerBar={beatsPerBar}
+        chordCount={allChords.length}
+        titleInput={titleInput}
+        artistInput={artistInput}
+        onTitleChange={setTitleInput}
+        onArtistChange={setArtistInput}
+        onSaveTitle={saveTitle}
+        onSaveArtist={saveArtist}
+        onPatchMeta={applyMetaEdit}
+        editMode={store.editMode}
+        editingIdentity={editingIdentity}
+        onSetEditingIdentity={setEditingIdentity}
+        scrolled={headerScrolled}
+        onBack={() =>
+          guardLeaveEdit(() =>
+            navigateWithTransition(
+              router,
+              activeSetlist ? `/setlists/${activeSetlist.id}` : '/',
+              { songId: id, direction: 'back' }
+            )
+          )
+        }
+        onEnterFocusMode={() => runStateViewTransition(() => setFocusMode(true), 'morph')}
+        onEnterSlidesMode={handleOpenSlides}
+        onEnterEdit={enterVisualEdit}
+        activeSetlist={activeSetlist}
+        setlistSongIdx={setlistSongIdx}
+        totalSetlistSongs={existingSetlistSongIds.length}
+        prevSongId={prevSongId}
+        nextSongId={nextSongId}
+        onNavigateSong={(songId) => navigateInSetlist(songId)}
+        onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
+        live={live}
+        handleGoLive={handleGoLive}
+        confirmGoLive={confirmGoLive}
+        showNamePrompt={showNamePrompt}
+        nameInput={nameInput}
+        setNameInput={setNameInput}
+        setShowNamePrompt={setShowNamePrompt}
+        audioBlocked={metronomeAudioBlocked}
+        onUnlockAudio={unlockMetronomeAudio}
+        hasCalibration={songHasCalibration}
+        canCalibrate={song.sections.length >= 2}
+        calibrating={calibrating}
+        onStartCalibration={handleStartCalibration}
+        onClearCalibration={() => setShowClearCalConfirm(true)}
+        onSaveBpm={(nextBpm) => {
+          patchMeta(id, 'tempo', nextBpm);
+          flashStatus(`✓ BPM salvo (${nextBpm})`);
+        }}
+        onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
+        onTriggerCountIn={handleTriggerCountIn}
+        onToggleChordsRef={() => {
+          setChordsRefEverOpened(true);
+          setChordsRefOpen(!chordsRefOpen);
+        }}
+        setlists={setlists}
+        onAddToSetlist={handleAddToSetlist}
+        onGoToCreateSetlist={() =>
+          guardLeaveEdit(() =>
+            navigateWithTransition(router, '/?tab=setlists', { direction: 'fade' })
+          )
+        }
+        showSpotifyPreview={showSpotifyPreview}
+        onToggleSpotifyPreview={() => setShowSpotifyPreview((v) => !v)}
+        onOpenSpotifyPicker={openSpotifyPicker}
+        onOpenEnhance={() => setShowEnhance(true)}
+        onOpenHistory={() => setShowHistory(true)}
+        onOpenChordPro={() => {
+          const liveDraft = store.editMode ? captureLiveDraft() : null;
+          if (store.editMode && liveDraft !== null && liveDraft !== editDraftText) {
+            commitDraftText(liveDraft);
+          }
+          setChoDraft(liveDraft ?? (store.editMode && editDraftText !== null ? editDraftText : exportEntry(id) ?? ''));
+          setChoView(typeof window !== 'undefined' && window.innerWidth < 1024 ? 'editor' : 'split');
+          setDiscardArmed(false);
+          setShowExport(true);
+        }}
+        onEditNotes={() => setEditingNotes(true)}
+        editToolbarSlot={
+          store.editMode ? (
+            <SongToolbar
+              editSubMode={editSubMode}
+              onChangeEditSubMode={handleSwitchEditSubMode}
+              editingOriginalKey={song.originalKey}
+              canUndo={undoStack.length > 0}
+              canRedo={redoStack.length > 0}
+              editDirty={editDirty}
+              editDiscardArmed={editDiscardArmed}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onSaveEdit={handleSaveVisualEdit}
+              onCancelEdit={handleCancelVisualEdit}
+            />
+          ) : undefined
+        }
+      />
+
+      {/* Explicit transient overlays/strips (only visible when user opens them) */}
+      <SpotifySection
+        spotifyTrackId={song.spotifyTrackId}
+        showPreview={showSpotifyPreview}
+        showPicker={showSpotifyPicker}
+        results={spotifyResults}
+        loading={spotifyLoading}
+        suggestionDismissed={spotifySuggestionDismissed}
+        showMoreSuggestions={showMoreSuggestions}
+        onSelect={handleSelectSpotify}
+        onClear={handleClearSpotify}
+        onDismissSuggestion={() => setSpotifySuggestionDismissed(true)}
+        onToggleMoreSuggestions={() => setShowMoreSuggestions((v) => !v)}
+        onClosePicker={() => setShowSpotifyPicker(false)}
+      />
+
+      {!store.editMode && editingNotes && (
+        <StageNotesBar
+          notes={song.notes}
+          editing
+          onStartEdit={() => setEditingNotes(true)}
+          onSave={handleSaveNotes}
+          onCancel={() => setEditingNotes(false)}
         />
-      ) : (
-        <>
-          <div
-            className={`gm3-collapsible gm3-header-collapse flex-shrink-0 ${
-              store.editMode ? 'hidden sm:block' : ''
-            }`}
-            data-collapsed={headerCompact ? 'true' : undefined}
-            aria-hidden={headerCompact || undefined}
-            inert={headerCompact || undefined}
-          >
-            <div className="gm3-collapsible-inner">
-              <Breadcrumb
-                vtSongId={id}
-                items={
-                  activeSetlist
-                    ? [
-                        { label: 'Início', href: '/' },
-                        { label: 'Setlists', href: '/?tab=setlists' },
-                        { label: activeSetlist.name, href: `/setlists/${activeSetlist.id}` },
-                        { label: song.title },
-                      ]
-                    : [{ label: 'Início', href: '/' }, { label: song.title }]
-                }
-                rightSlot={
-                  activeSetlist ? (
-                    <div className="inline-flex sm:hidden gm3-btn-group flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => prevSongId && navigateInSetlist(prevSongId)}
-                        disabled={!prevSongId || live.isFollowing}
-                        className="pill-btn w-8 h-8"
-                        title="Música anterior no setlist"
-                        aria-label="Música anterior no setlist"
-                      >
-                        <ChevronLeftIcon size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowSetlistDrawer(true)}
-                        className="pill-btn px-2 h-8 font-mono text-xs tabular-nums"
-                        title="Abrir lista do setlist"
-                      >
-                        {setlistSongIdx + 1}/{existingSetlistSongIds.length}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => nextSongId && navigateInSetlist(nextSongId)}
-                        disabled={!nextSongId || live.isFollowing}
-                        className="pill-btn w-8 h-8"
-                        title="Próxima música no setlist"
-                        aria-label="Próxima música no setlist"
-                      >
-                        <ChevronRightIcon size={15} />
-                      </button>
-                    </div>
-                  ) : undefined
-                }
-              />
-            </div>
-          </div>
-
-          <SongHeader
-            song={song}
-            displayedKey={displayedKey}
-            pitchTarget={pitchTarget}
-            titleInput={titleInput}
-            artistInput={artistInput}
-            onTitleChange={setTitleInput}
-            onArtistChange={setArtistInput}
-            onSaveTitle={saveTitle}
-            onSaveArtist={saveArtist}
-            onPatchMeta={applyMetaEdit}
-            displayMode={displayMode}
-            onSetDisplayMode={(m) => runStateViewTransition(() => setDisplayMode(m), 'morph')}
-            editMode={store.editMode}
-            onEnterFocusMode={() => runStateViewTransition(() => setFocusMode(true), 'morph')}
-            onEnterSlidesMode={() =>
-              navigateWithTransition(
-                router,
-                activeSetlist
-                  ? `/slides?setlist=${activeSetlist.id}&song=${id}`
-                  : `/slides?song=${id}`,
-                { direction: 'forward' }
-              )
-            }
-            activeSetlist={activeSetlist}
-            setlistSongIdx={setlistSongIdx}
-            totalSetlistSongs={existingSetlistSongIds.length}
-            prevSongId={prevSongId}
-            nextSongId={nextSongId}
-            onNavigateSong={navigateInSetlist}
-            onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
-            onEnterShowMode={() =>
-              activeSetlist &&
-              navigateWithTransition(router, `/song/${id}?setlist=${activeSetlist.id}&show=1`, {
-                songId: id,
-                direction: 'forward',
-              })
-            }
-            live={live}
-            handleGoLive={handleGoLive}
-            confirmGoLive={confirmGoLive}
-            showNamePrompt={showNamePrompt}
-            nameInput={nameInput}
-            setNameInput={setNameInput}
-            setShowNamePrompt={setShowNamePrompt}
-            setlists={setlists}
-            onAddToSetlist={handleAddToSetlist}
-            onGoToCreateSetlist={() =>
-              guardLeaveEdit(() =>
-                navigateWithTransition(router, '/?tab=setlists', { direction: 'fade' })
-              )
-            }
-            showSpotifyPreview={showSpotifyPreview}
-            onToggleSpotifyPreview={() => setShowSpotifyPreview((v) => !v)}
-            onOpenSpotifyPicker={openSpotifyPicker}
-            onOpenEnhance={() => setShowEnhance(true)}
-            onOpenHistory={() => setShowHistory(true)}
-            onOpenChordPro={() => {
-              const liveDraft = store.editMode ? captureLiveDraft() : null;
-              if (store.editMode && liveDraft !== null && liveDraft !== editDraftText) {
-                commitDraftText(liveDraft);
-              }
-              setChoDraft(liveDraft ?? (store.editMode && editDraftText !== null ? editDraftText : exportEntry(id) ?? ''));
-              setChoView(typeof window !== 'undefined' && window.innerWidth < 1024 ? 'editor' : 'split');
-              setDiscardArmed(false);
-              setShowExport(true);
-            }}
-            onEditNotes={() => setEditingNotes(true)}
-            compact={headerCompact}
-            onExpandHeader={() => setHeaderCompact(false)}
-            onBack={() =>
-              guardLeaveEdit(() =>
-                navigateWithTransition(
-                  router,
-                  activeSetlist ? `/setlists/${activeSetlist.id}` : '/',
-                  { songId: id, direction: 'back' }
-                )
-              )
-            }
-            isAutoScrolling={store.isAutoScrolling}
-            onToggleAutoScroll={store.toggleAutoScroll}
-            isFollowing={live.isFollowing}
-            onOverlayStateChange={setHeaderOverlayState}
-            toolbarSlot={
-              <SongToolbar
-                beatsPerBar={beatsPerBar}
-                savedTempo={song.tempo}
-                tempoConfirmed={song.tempoConfirmed}
-                chordCount={allChords.length}
-                isFollowing={live.isFollowing}
-                savedScrollSpeed={song.scrollSpeed}
-                hasCalibration={songHasCalibration}
-                calibrating={calibrating}
-                canCalibrate={song.sections.length >= 2}
-                editSubMode={editSubMode}
-                onChangeEditSubMode={handleSwitchEditSubMode}
-                editingOriginalKey={song.originalKey}
-                canUndo={undoStack.length > 0}
-                canRedo={redoStack.length > 0}
-                editDirty={editDirty}
-                editDiscardArmed={editDiscardArmed}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                onSaveEdit={handleSaveVisualEdit}
-                onCancelEdit={handleCancelVisualEdit}
-                onEnterEdit={enterVisualEdit}
-                hasNotes={Boolean(song.notes)}
-                onSaveBpm={(nextBpm) => {
-                  patchMeta(id, 'tempo', nextBpm);
-                  flashStatus(`✓ BPM salvo (${nextBpm})`);
-                }}
-                onSaveScrollSpeed={handleSaveScrollSpeed}
-                onStartCalibration={handleStartCalibration}
-                onClearCalibration={() => setShowClearCalConfirm(true)}
-                onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
-                onTriggerCountIn={handleTriggerCountIn}
-                onToggleEditNotes={() => setEditingNotes((v) => !v)}
-                onChordsRefToggle={() => setChordsRefEverOpened(true)}
-              />
-            }
-          />
-
-          <SpotifySection
-            spotifyTrackId={song.spotifyTrackId}
-            showPreview={showSpotifyPreview}
-            showPicker={showSpotifyPicker}
-            results={spotifyResults}
-            loading={spotifyLoading}
-            suggestionDismissed={spotifySuggestionDismissed}
-            showMoreSuggestions={showMoreSuggestions}
-            onSelect={handleSelectSpotify}
-            onClear={handleClearSpotify}
-            onDismissSuggestion={() => setSpotifySuggestionDismissed(true)}
-            onToggleMoreSuggestions={() => setShowMoreSuggestions((v) => !v)}
-            onClosePicker={() => setShowSpotifyPicker(false)}
-          />
-
-          <StageNotesBar
-            notes={store.editMode ? '' : song.notes}
-            editing={!store.editMode && editingNotes}
-            onStartEdit={() => setEditingNotes(true)}
-            onSave={handleSaveNotes}
-            onCancel={() => setEditingNotes(false)}
-          />
-
-          <CalibrationBar
-            open={calibrating}
-            sections={song.sections}
-            elapsedSec={calElapsedSec}
-            marks={calMarks}
-            nextSectionIdx={calNextIdx}
-            onMarkNext={() => {
-              if (calNextIdx < song.sections.length) markCalibrationSection(calNextIdx);
-            }}
-            onSave={handleSaveCalibration}
-            onCancel={() => setCalibrating(false)}
-          />
-
-          {/* Bidirectional Collapsible Chords Reference Strip (lazy-mounted on first open; collapses smoothly on mode switches) */}
-          {allChords.length > 0 && (() => {
-            const chordsVisible = chordsRefOpen && !store.editMode && !calibrating && displayMode !== 'lyrics-only';
-            return (
-              <div
-                data-chords-ref-collapsible="true"
-                data-collapsed={chordsVisible ? undefined : 'true'}
-                aria-hidden={!chordsVisible || undefined}
-                inert={!chordsVisible || undefined}
-                className="gm3-collapsible flex-shrink-0"
-              >
-                <div className="gm3-collapsible-inner">
-                  {(chordsVisible || chordsRefEverOpened) && (
-                    <ChordsReference
-                      chords={allChords.map((c) => transposeChord(c, chordDisplayShift, store.useFlats))}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
-        </>
       )}
 
-      {/* Section jump navigation bar (stays alive in Edit Mode for instant jumps + mobile Texto|Acordes switcher!) */}
-      <div
-        className="gm3-collapsible gm3-header-collapse flex-shrink-0"
-        data-collapsed={headerCompact ? 'true' : undefined}
-        aria-hidden={headerCompact || undefined}
-        inert={headerCompact || undefined}
-      >
-        <div className="gm3-collapsible-inner">
+      <CalibrationBar
+        open={calibrating}
+        sections={song.sections}
+        elapsedSec={calElapsedSec}
+        marks={calMarks}
+        nextSectionIdx={calNextIdx}
+        onMarkNext={() => {
+          if (calNextIdx < song.sections.length) markCalibrationSection(calNextIdx);
+        }}
+        onSave={handleSaveCalibration}
+        onCancel={() => setCalibrating(false)}
+      />
+
+      {/* Bidirectional Collapsible Chords Reference Strip (visible immediately even when toggled mid-song) */}
+      {allChords.length > 0 && (() => {
+        const chordsVisible = chordsRefOpen && !store.editMode && !calibrating && displayMode !== 'lyrics-only';
+        return (
+          <div
+            data-chords-ref-collapsible="true"
+            data-collapsed={chordsVisible ? undefined : 'true'}
+            aria-hidden={!chordsVisible || undefined}
+            inert={!chordsVisible || undefined}
+            className="gm3-collapsible flex-shrink-0"
+          >
+            <div className="gm3-collapsible-inner">
+              {(chordsVisible || chordsRefEverOpened) && (
+                <ChordsReference
+                  chords={allChords.map((c) => transposeChord(c, chordDisplayShift, store.useFlats))}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Pinned SectionNav ONLY in Edit Mode / Calibration (in normal reading mode it scrolls naturally inside SongHeroStrip) */}
+      {(store.editMode || calibrating) && (
+        <div className="flex-shrink-0 pt-1">
           <SectionNav
             sections={song.sections}
             activeIdx={activeSectionIdx}
-            collapsed={headerCompact}
             onJump={(idx) => {
               if (calibrating) markCalibrationSection(idx);
               else handleJumpToSection(idx);
@@ -1845,9 +1775,9 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
             }
           />
         </div>
-      </div>
+      )}
 
-      {/* Main chord / lyric sheet */}
+      {/* Main chord / lyric sheet (SongHeroStrip scrolls naturally 1:1 inside ChordSheet!) */}
       <main id="main-content" className="gm3-page-enter flex flex-1 relative min-h-0">
         <ChordSheet
           song={song}
@@ -1876,12 +1806,34 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           onCalibrationTap={markCalibrationSection}
           onScrollStateChange={(st) => {
             scrollStateRef.current = { scrollTop: st.scrollTop, scrollRatio: st.scrollRatio };
-            handleHeaderScroll(st.scrollTop, st.maxScroll, store.isAutoScrolling);
+            const isPastTop = st.scrollTop > 12;
+            setHeaderScrolled((prev) => (prev === isPastTop ? prev : isPastTop));
           }}
           syncCorrection={live.syncCorrection}
           scrollContainerRef={sheetScrollRef}
           onActiveSectionChange={setActiveSectionIdx}
           arrivedSectionIdx={arrivedSectionIdx}
+          headerSlot={
+            !store.editMode && !calibrating ? (
+              <SongHeroStrip
+                song={song}
+                displayedKey={displayedKey}
+                artistInput={artistInput}
+                activeSetlist={activeSetlist}
+                setlistSongIdx={setlistSongIdx}
+                totalSetlistSongs={existingSetlistSongIds.length}
+                prevSongId={prevSongId}
+                nextSongId={nextSongId}
+                isFollowing={live.isFollowing}
+                activeSectionIdx={activeSectionIdx}
+                onPatchMeta={applyMetaEdit}
+                onNavigateSong={(songId) => navigateInSetlist(songId)}
+                onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
+                onJumpToSection={handleJumpToSection}
+                onStartEditNotes={() => setEditingNotes(true)}
+              />
+            ) : undefined
+          }
           bottomPaddingClass={
             store.editMode
               ? overlaySelected || addTarget || pickStampOpen
@@ -1889,7 +1841,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 : editSubMode === 'chords'
                 ? 'pb-52'
                 : 'pb-48'
-              : focusMode
+              : store.isAutoScrolling
               ? 'pb-28'
               : 'pb-20'
           }
@@ -1903,6 +1855,82 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         )}
       </main>
 
+      {/* Floating Auto-Scroll Speed Pill (only mounted while scrolling; zero header reflow!) */}
+      {!store.editMode && !calibrating && !live.isFollowing && store.isAutoScrolling && (
+        <div
+          className="fixed bottom-4 inset-x-0 z-30 flex justify-center px-3 pointer-events-none"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <div
+            data-autoscroll-dock="true"
+            className="gm3-sheet-enter pointer-events-auto flex items-center gap-1.5 flex-wrap justify-center rounded-full bg-[var(--surface)]/95 backdrop-blur-md px-2.5 py-1.5"
+            style={{ boxShadow: 'var(--shadow-md)' }}
+          >
+            <button
+              type="button"
+              onClick={store.toggleAutoScroll}
+              className="pill-btn pill-btn-tune h-9 px-3 text-xs"
+              title="Pausar auto-scroll (Espaço)"
+            >
+              <PauseIcon size={12} />
+              Pausar
+            </button>
+            <div className="gm3-btn-group">
+              <button
+                type="button"
+                onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
+                className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+                aria-label="Scroll mais devagar"
+              >
+                -
+              </button>
+              <span className="font-mono text-xs text-[var(--ink)] tabular-nums px-1.5 min-w-[44px] text-center flex items-center justify-center">
+                {store.autoScrollSpeed.toFixed(2)}×
+              </span>
+              <button
+                type="button"
+                onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
+                className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+                aria-label="Scroll mais rápido"
+              >
+                +
+              </button>
+            </div>
+            <div className="hidden sm:inline-flex items-center gap-1">
+              {[
+                { label: '0.75×', value: 0.75 },
+                { label: '1.0×', value: 1 },
+                { label: '1.25×', value: 1.25 },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  aria-pressed={Math.abs(store.autoScrollSpeed - preset.value) < 0.04}
+                  onClick={() => store.setAutoScrollSpeed(preset.value)}
+                  className={`pill-btn px-2.5 h-9 font-mono text-xs ${
+                    Math.abs(store.autoScrollSpeed - preset.value) < 0.04
+                      ? 'pill-btn-tune'
+                      : 'bg-[var(--bg)]'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            {scrollSpeedChanged && (
+              <button
+                type="button"
+                onClick={handleSaveScrollSpeed}
+                className="pill-btn pill-btn-tonal px-3 h-9 text-xs"
+                title="Salvar esta velocidade como padrão desta música"
+              >
+                Salvar ritmo
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Setlist Drawer */}
       {activeSetlist && (
         <SetlistDrawer
@@ -1910,7 +1938,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           setlist={activeSetlist}
           currentSongId={song.id}
           canReorder={!live.isFollowing}
-          onNavigate={navigateInSetlist}
+          onNavigate={(songId) => navigateInSetlist(songId)}
           onClose={() => setShowSetlistDrawer(false)}
         />
       )}

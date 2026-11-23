@@ -447,7 +447,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [entries, getSongs]);
 
   const validSongIds = useMemo(() => new Set(songs.map((s) => s.id)), [songs]);
-  const favoriteCount = useMemo(() => songs.filter((s) => s.favorite).length, [songs]);
 
   useEffect(() => {
     void useSongStore.persist.rehydrate();
@@ -526,9 +525,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const activeNav =
     pathname === '/'
-      ? tabParam === 'favorites'
-        ? 'favorites'
-        : tabParam === 'setlists'
+      ? tabParam === 'setlists'
         ? 'setlists'
         : 'songs'
       : pathname.startsWith('/setlists')
@@ -596,26 +593,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               strokeLinejoin="round"
             />
           )}
-        </svg>
-      ),
-    },
-    {
-      key: 'favorites',
-      label: 'Favoritas',
-      shortLabel: 'Favoritas',
-      href: '/?tab=favorites',
-      count: favoriteCount,
-      active: activeNav === 'favorites',
-      softActive: false,
-      icon: (active: boolean) => (
-        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M12 20.4s-7.2-4.4-7.2-9.6A4.1 4.1 0 0 1 12 7.9a4.1 4.1 0 0 1 7.2 2.9c0 5.2-7.2 9.6-7.2 9.6Z"
-            fill={active ? 'currentColor' : 'none'}
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
         </svg>
       ),
     },
@@ -987,7 +964,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="gm3-mobile-nav md:hidden fixed bottom-0 inset-x-0 z-30 bg-[var(--surface-high)]/95 backdrop-blur-md"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
-            <div className="grid grid-cols-3 h-16 px-2">
+            <div className="grid grid-cols-2 h-16 px-2">
               {navItems.map((item) => (
                 <TransitionLink
                   key={item.key}

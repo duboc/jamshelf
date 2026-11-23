@@ -15,13 +15,13 @@ RULES:
 - Omit {capo:} if capo is 0
 - Omit {duration:} if you don't know the song's real studio duration in seconds
 - For {tempo:}, use the real song BPM (only omit if unknown; do not default everything to 120)
-- Section headers use bracket syntax on their own line: [Intro], [Verse 1], [Chorus], [Pre-Chorus], [Bridge], [Outro]
-- Number duplicate sections: [Verse 1], [Verse 2], [Chorus 1], [Chorus 2]
+- Section headers use bracket syntax on their own line in Brazilian Portuguese: [Intro], [Verso 1], [Pré-refrão], [Refrão], [Ponte], [Solo], [Final]
+- Number duplicate sections: [Verso 1], [Verso 2], [Refrão 1], [Refrão 2]
 - Inline chords use [ChordName] notation placed immediately before the syllable they land on
-- For sections without lyrics (like Intro, Solo, Instrumental, Outro), preserve the horizontal chord progression and grid format on the same lines (e.g., | [C] | [Am] | or [C] [Am] [F] [G]) instead of splitting them onto separate lines.
-- Detect and label all sections: Intro, Verse, Pre-Chorus, Chorus, Bridge, Outro, Solo
-- Preserve all lyrics exactly
-- Brazilian Portuguese section labels if applicable: use English equivalents in output
+- For sections without lyrics (like Intro, Solo, Instrumental, Final), preserve the horizontal chord progression and grid format on the same lines (e.g., | [C] | [Am] | or [C] [Am] [F] [G]) instead of splitting them onto separate lines.
+- Detect and label all sections in Brazilian Portuguese: Intro, Verso, Pré-refrão, Refrão, Pós-refrão, Ponte, Solo, Interlúdio, Instrumental, Final
+- Preserve all lyrics exactly (never translate the lyrics themselves)
+- If the source uses English section labels (Verse, Pre-Chorus, Chorus, Post-Chorus, Bridge, Interlude, Outro), convert those section labels to Brazilian Portuguese equivalents in the output
 
 EXAMPLE OUTPUT:
 {title: Before You Go}
@@ -33,11 +33,11 @@ EXAMPLE OUTPUT:
 [Intro]
 | [C] | [Am] | [F] | [G] |
 
-[Verse 1]
+[Verso 1]
 [C]I fell by the wayside like everyone else
 [Am]I hate you, I hate you, I hate you but I was just kidding myself
 
-[Chorus]
+[Refrão]
 [C]So, [G]before you [Am]go
 
 Convert this raw chord sheet:`;

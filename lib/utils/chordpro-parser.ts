@@ -1,4 +1,5 @@
 import type { ParsedSong, Section, SectionType, ChordProEntry } from '@/lib/types/song';
+import { formatSectionLabel } from '@/lib/utils/music';
 
 // ─── Section type inference ──────────────────────────────────────────────────
 
@@ -9,9 +10,9 @@ export function inferSectionType(label: string): SectionType {
   if (l.includes('verse') || l.includes('verso') || l.includes('estrofe')) return 'verse';
   if (l.includes('bridge') || l.includes('pont')) return 'bridge';
   if (l.includes('intro')) return 'intro';
-  if (l.includes('outro') || l.includes('final')) return 'outro';
   if (l.includes('solo')) return 'solo';
-  if (l.includes('interlude') || l.includes('instrumental') || l.includes('grid')) return 'interlude';
+  if (l.includes('outro') || l.includes('final')) return 'outro';
+  if (l.includes('interlud') || l.includes('instrumental') || l.includes('grid')) return 'interlude';
   return 'verse';
 }
 
@@ -25,7 +26,7 @@ export function looksLikeSection(s: string): boolean {
   if (!trimmed) return false;
   if (/\s/.test(trimmed)) return true;
   if (
-    /^(intro|verse|chorus|pre.?chorus|pr[eé].?refr|bridge|outro|solo|interlude|instrumental|grid|refr|verso|ponte|estrofe|final|coda|tag|riff|break|ending|turnaround|tema|parte|coro)/i.test(
+    /^(intro|verse|chorus|pre.?chorus|pr[eé].?refr|p[oó]s.?refr|bridge|outro|solo|interlud|instrumental|grid|refr|verso|ponte|estrofe|final|coda|tag|riff|break|ending|turnaround|tema|parte|coro|m[uú]sica)/i.test(
       trimmed
     )
   ) {
@@ -98,8 +99,6 @@ export function parseChordPro(
     tempo: 120,
     tempoConfirmed: false,
     timeSignature: '4/4',
-    rating: 0,
-    favorite: false,
     spotifyTrackId: null as string | null,
     duration: null as number | null,
     scrollSpeed: null as number | null,
@@ -160,12 +159,6 @@ export function parseChordPro(
     const timeM = line.match(/^\{time:\s*(.+)\}$/i);
     if (timeM) { meta.timeSignature = timeM[1].trim(); continue; }
 
-    const ratingM = line.match(/^\{rating:\s*([1-5])\}$/i);
-    if (ratingM) { meta.rating = parseInt(ratingM[1], 10); continue; }
-
-    const favM = line.match(/^\{favorite:\s*(true|false)\}$/i);
-    if (favM) { meta.favorite = favM[1].toLowerCase() === 'true'; continue; }
-
     const spotifyM = line.match(/^\{spotify:\s*(.+)\}$/i);
     if (spotifyM) { meta.spotifyTrackId = spotifyM[1].trim(); continue; }
 
@@ -207,7 +200,7 @@ export function parseChordPro(
     if (startOfM) {
       const typeWord = startOfM[1];
       const labelOverride = startOfM[2]?.trim();
-      const label = labelOverride || (typeWord.charAt(0).toUpperCase() + typeWord.slice(1));
+      const label = labelOverride || formatSectionLabel(typeWord.charAt(0).toUpperCase() + typeWord.slice(1));
       startSection(label);
       continue;
     }
@@ -243,7 +236,7 @@ export function parseChordPro(
 
     // ── Content line ──────────────────────────────────────────────────────
     if (!current && line.trim()) {
-      current = { type: 'verse', label: 'Song', lines: [] };
+      current = { type: 'verse', label: 'Música', lines: [] };
     }
     if (current) current.lines.push(line);
   }
@@ -253,7 +246,7 @@ export function parseChordPro(
   if (sections.length === 0) {
     const contentLines = lines.filter((l) => l.trim() && !/^\{[^}]+\}$/.test(l));
     if (contentLines.length) {
-      sections.push({ type: 'verse', label: 'Song', lines: contentLines });
+      sections.push({ type: 'verse', label: 'Música', lines: contentLines });
     } else if (preserveEmpty) {
       sections.push({ type: 'verse', label: 'Verso', lines: [''] });
     }
@@ -269,8 +262,6 @@ export function parseChordPro(
     tempo: meta.tempo,
     tempoConfirmed: meta.tempoConfirmed,
     timeSignature: meta.timeSignature,
-    rating: meta.rating,
-    favorite: meta.favorite,
     spotifyTrackId: meta.spotifyTrackId,
     duration: meta.duration,
     scrollSpeed: meta.scrollSpeed,
@@ -290,8 +281,6 @@ export function songToChordPro(song: ParsedSong): string {
   if (song.capo > 0) lines.push(`{capo: ${song.capo}}`);
   if (song.tempoConfirmed || song.tempo !== 120) lines.push(`{tempo: ${song.tempo}}`);
   if (song.timeSignature !== '4/4') lines.push(`{time: ${song.timeSignature}}`);
-  if (song.rating > 0) lines.push(`{rating: ${song.rating}}`);
-  if (song.favorite) lines.push(`{favorite: true}`);
   if (song.spotifyTrackId) lines.push(`{spotify: ${song.spotifyTrackId}}`);
   if (song.duration && song.duration > 0) lines.push(`{duration: ${Math.round(song.duration)}}`);
   if (song.scrollSpeed && song.scrollSpeed > 0) lines.push(`{scroll: ${Number(song.scrollSpeed.toFixed(2))}}`);

@@ -24,8 +24,12 @@ import {
 import { useDisplayStore, type DisplayMode } from '@/lib/stores/display-store';
 import { useAnnotationStore } from '@/lib/stores/annotation-store';
 import { useWakeLock } from '@/lib/hooks/use-wake-lock';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
+import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import {
   SECTION_COLORS,
+  extractChords,
+  formatSectionLabel,
   isMinorKey,
   shouldPreferFlats,
   transposeChord,
@@ -61,6 +65,8 @@ import {
   EditIcon,
   MenuListIcon,
   MoonIcon,
+  PitchWaveIcon,
+  SlidersIcon,
   SunIcon,
 } from '@/components/ui/Icons';
 
@@ -187,7 +193,7 @@ function SlideSectionCard({
                 className="font-display text-[clamp(13px,0.78em,18px)] font-semibold leading-tight"
                 style={{ color: colors.lb }}
               >
-                {chunk.label}
+                {formatSectionLabel(chunk.label)}
               </h2>
             </div>
             <span className="text-xs text-[var(--muted)]">· trecho instrumental</span>
@@ -245,7 +251,7 @@ function SlideSectionCard({
               className="font-display text-[clamp(13px,0.78em,18px)] font-semibold leading-tight"
               style={{ color: colors.lb }}
             >
-              {chunk.label}
+              {formatSectionLabel(chunk.label)}
               {chunk.continuation ? ' (cont.)' : ''}
             </h2>
           </div>
@@ -311,6 +317,7 @@ interface SlideshowViewProps {
   /** Optional initial transpose carried over from the active song page (applies to initialSongId only). */
   initialTranspose?: number;
   initialUseFlats?: boolean;
+  onSwitchToClean?: (currentSongId: string) => void;
   onExit: (currentSongId: string) => void;
 }
 
@@ -377,6 +384,7 @@ export function SlideshowView({
   activeSetlist = null,
   initialTranspose = 0,
   initialUseFlats = false,
+  onSwitchToClean,
   onExit,
 }: SlideshowViewProps) {
   const {
@@ -431,8 +439,20 @@ export function SlideshowView({
     effectiveFontSize: globalFontSize || 100,
   });
   const [showSetlistDrawer, setShowSetlistDrawer] = useState(false);
-  const [showFontPopover, setShowFontPopover] = useState(false);
-  const fontPopoverRef = useRef<HTMLDivElement>(null);
+  const [showSettingsPopover, setShowSettingsPopover] = useState(false);
+  const [pitchRinging, setPitchRinging] = useState(false);
+  const [slideTransposeBySong, setSlideTransposeBySong] = useState<
+    Record<string, { shift: number; useFlats?: boolean }>
+  >(() =>
+    initialResolvedId && initialTranspose !== 0
+      ? { [initialResolvedId]: { shift: initialTranspose, useFlats: initialUseFlats } }
+      : {}
+  );
+  const settingsPopoverRef = useRef<HTMLDivElement>(null);
+  const { mounted: settingsMounted, closing: settingsClosing } = useAnimatedPresence(
+    showSettingsPopover,
+    200
+  );
 
   // Annotation studio state
   const [annotateMode, setAnnotateMode] = useState(false);
@@ -566,15 +586,21 @@ export function SlideshowView({
     }
   }, [activeSetlist, rawSong]);
 
-  // Accurate musical transposition matching SongPage + ChordBadge
-  const { displayedKey, shiftedSections } = useMemo(() => {
-    if (!rawSong) return { displayedKey: '', shiftedSections: [] };
-    const isInitialSong = initialSongId ? rawSong.id === initialSongId : safeSongIdx === 0;
-    const baseTranspose = isInitialSong ? initialTranspose : 0;
+  // Accurate musical transposition matching SongPage + ChordBadge, with live per-song override in Slides
+  const { displayedKey, shiftedSections, activeTranspose, activeUseFlats, pitchTarget } = useMemo(() => {
+    if (!rawSong) {
+      return {
+        displayedKey: '',
+        shiftedSections: [],
+        activeTranspose: 0,
+        activeUseFlats: false,
+        pitchTarget: '',
+      };
+    }
+    const override = slideTransposeBySong[rawSong.id];
+    const baseTranspose = override?.shift ?? 0;
     const keyFlats =
-      isInitialSong && initialTranspose !== 0
-        ? initialUseFlats
-        : shouldPreferFlats(rawSong.displayKey);
+      override?.useFlats !== undefined ? override.useFlats : shouldPreferFlats(rawSong.displayKey);
     const nextDisplayedKey = baseTranspose
       ? transposeChord(rawSong.displayKey, baseTranspose, keyFlats)
       : rawSong.displayKey;
@@ -582,9 +608,7 @@ export function SlideshowView({
     const chordShift =
       baseTranspose + (rawSong.capo > 0 && capoDisplay === 'shapes' ? 0 : rawSong.capo);
     const chordFlats =
-      isInitialSong && initialTranspose !== 0
-        ? initialUseFlats
-        : shouldPreferFlats(nextDisplayedKey);
+      override?.useFlats !== undefined ? override.useFlats : shouldPreferFlats(nextDisplayedKey);
 
     const sections =
       chordShift === 0
@@ -594,8 +618,19 @@ export function SlideshowView({
             lines: sec.lines.map((line) => transposeLine(line, chordShift, chordFlats)),
           }));
 
-    return { displayedKey: nextDisplayedKey, shiftedSections: sections };
-  }, [rawSong, initialSongId, safeSongIdx, initialTranspose, initialUseFlats, capoDisplay]);
+    const firstChord = extractChords(rawSong.sections)[0];
+    const nextPitchTarget =
+      nextDisplayedKey ||
+      (firstChord ? transposeChord(firstChord, baseTranspose + rawSong.capo, chordFlats) : '');
+
+    return {
+      displayedKey: nextDisplayedKey,
+      shiftedSections: sections,
+      activeTranspose: baseTranspose,
+      activeUseFlats: chordFlats,
+      pitchTarget: nextPitchTarget,
+    };
+  }, [rawSong, slideTransposeBySong, capoDisplay]);
 
   const preparedSections = useMemo(
     () => prepareSlideSections(shiftedSections, displayMode),
@@ -916,19 +951,23 @@ export function SlideshowView({
     announce,
   ]);
 
-  // Dismiss mobile font zoom popover on outside click or Escape
+  // Dismiss Slides Adjustments popover on outside click or Escape
   useEffect(() => {
-    if (!showFontPopover) return;
+    if (!showSettingsPopover) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (fontPopoverRef.current && e.target instanceof Node && !fontPopoverRef.current.contains(e.target)) {
-        setShowFontPopover(false);
+      if (
+        settingsPopoverRef.current &&
+        e.target instanceof Node &&
+        !settingsPopoverRef.current.contains(e.target)
+      ) {
+        setShowSettingsPopover(false);
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        setShowFontPopover(false);
+        setShowSettingsPopover(false);
       }
     };
     window.addEventListener('pointerdown', onPointerDown, true);
@@ -937,7 +976,7 @@ export function SlideshowView({
       window.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('keydown', onKeyDown, true);
     };
-  }, [showFontPopover]);
+  }, [showSettingsPopover]);
 
   const isLayoutSynced = Boolean(rawSong && deckLayout.songId === rawSong.id);
   const pages = isLayoutSynced ? deckLayout.pages : [];
@@ -1023,7 +1062,7 @@ export function SlideshowView({
       for (const chunk of col) {
         if (!seen.has(chunk.sectionIdx)) {
           seen.add(chunk.sectionIdx);
-          opts.push({ sectionIdx: chunk.sectionIdx, label: chunk.label });
+          opts.push({ sectionIdx: chunk.sectionIdx, label: formatSectionLabel(chunk.label) });
         }
       }
     }
@@ -1951,9 +1990,57 @@ export function SlideshowView({
     announce(nextCols === 2 ? '2 colunas por página' : '1 coluna por página');
   };
 
+  const handleAdjustTranspose = (delta: number, e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setSlideTransposeBySong((prev) => {
+      const cur = prev[rawSong.id]?.shift ?? 0;
+      const mod = (((cur + delta) % 12) + 12) % 12;
+      const nextShift = mod > 6 ? mod - 12 : mod;
+      return {
+        ...prev,
+        [rawSong.id]: { shift: nextShift, useFlats: prev[rawSong.id]?.useFlats },
+      };
+    });
+    announce(delta > 0 ? 'Meio tom acima' : 'Meio tom abaixo');
+  };
+
+  const handleResetTranspose = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setSlideTransposeBySong((prev) => {
+      const next = { ...prev };
+      delete next[rawSong.id];
+      return next;
+    });
+    announce('Tom original restaurado');
+  };
+
+  const handleToggleFlats = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    const nextFlats = !activeUseFlats;
+    setSlideTransposeBySong((prev) => ({
+      ...prev,
+      [rawSong.id]: { shift: prev[rawSong.id]?.shift ?? 0, useFlats: nextFlats },
+    }));
+    announce(nextFlats ? 'Usando bemóis' : 'Usando sustenidos');
+  };
+
+  const handlePlayPitch = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    if (!pitchTarget) return;
+    if (playReferencePitch(pitchTarget, { mode: 'chord' })) {
+      setPitchRinging(true);
+      setTimeout(() => setPitchRinging(false), 1600);
+      announce(`Tocando acorde guia ${pitchTarget}`);
+    }
+  };
+
   const handleToggleAnnotate = (e: React.MouseEvent<HTMLButtonElement>) => {
     blurOnPointer(e);
     cancelActiveGestures();
+    setShowSettingsPopover(false);
     setAnnotateMode((prev) => {
       const next = !prev;
       if (!next) {
@@ -1963,6 +2050,11 @@ export function SlideshowView({
       return next;
     });
   };
+
+  const slideTransposeDelta =
+    activeTranspose > 0 ? `+${activeTranspose}` : activeTranspose < 0 ? `${activeTranspose}` : '';
+  const hasCustomSlideSettings =
+    fitMode === 'manual' || activeTranspose !== 0 || colsPref !== 'auto';
 
   const stageCursorClass = annotateMode
     ? annotateTool === 'text'
@@ -2047,13 +2139,20 @@ export function SlideshowView({
                   {rawSong.title}
                 </h1>
                 {displayedKey && (
-                  <span
-                    className={`studio-chip ${keyToneClasses} font-semibold flex-shrink-0`}
-                    title={`Tom ${displayedKey}`}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      blurOnPointer(e);
+                      setShowSettingsPopover((prev) => !prev);
+                    }}
+                    className={`studio-chip ${keyToneClasses} font-semibold flex-shrink-0 cursor-pointer hover:opacity-90`}
+                    title={`Tom ${displayedKey}${slideTransposeDelta ? ` (${slideTransposeDelta})` : ''} — toque para ajustar tom ou ouvir guia`}
+                    aria-label={`Tom ${displayedKey}. Abrir ajustes de tom e guia`}
                   >
                     <span className="sr-only">Tom </span>
                     {displayedKey}
-                  </span>
+                    {rawSong.capo > 0 && capoDisplay === 'shapes' ? ` · C${rawSong.capo}` : ''}
+                  </button>
                 )}
                 {annotateMode && (
                   <span
@@ -2063,43 +2162,11 @@ export function SlideshowView({
                     {safePageIdx + 1}/{totalPages}
                   </span>
                 )}
-                {rawSong.capo > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleToggleCapo}
-                    aria-pressed={capoDisplay === 'shapes'}
-                    aria-label={
-                      capoDisplay === 'shapes'
-                        ? `Capo ${rawSong.capo}: mostrando posições de capo, toque para tom real`
-                        : `Tom real (C${rawSong.capo}): mostrando tom real, toque para posições de capo`
-                    }
-                    title={
-                      capoDisplay === 'shapes'
-                        ? `Posições com Capo ${rawSong.capo} (toque para tom real)`
-                        : `Tom real (toque para posições com Capo ${rawSong.capo})`
-                    }
-                    className={`pill-btn h-11 min-w-11 px-2.5 text-xs font-semibold flex-shrink-0 ${
-                      capoDisplay === 'shapes'
-                        ? 'bg-[var(--tune-dim)] text-[var(--tune)]'
-                        : 'bg-[var(--surface)] text-[var(--tune)]'
-                    }`}
-                  >
-                    <span className="sm:hidden">
-                      {capoDisplay === 'shapes' ? `Capo ${rawSong.capo}` : 'Real'}
-                    </span>
-                    <span className="hidden sm:inline xl:hidden">
-                      {capoDisplay === 'shapes' ? `Capo ${rawSong.capo}` : 'Tom real'}
-                    </span>
-                    <span className="hidden xl:inline">
-                      {capoDisplay === 'shapes' ? `Capo ${rawSong.capo}` : `Tom real (C${rawSong.capo})`}
-                    </span>
-                  </button>
-                )}
               </div>
             </div>
 
-            {/* Right: Essential stage controls (Aa popover on <640px prevents 375px clipping in all states) */}
-            <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 w-full md:w-auto justify-between md:justify-end">
+            {/* Right: Only 3 calm stage controls (Cifra|Letra|Acordes, Anotar, Ajustes) */}
+            <div className="flex items-center gap-1.5 flex-shrink-0 w-full md:w-auto justify-between md:justify-end">
               <ConnectedGroup value={displayMode} ariaLabel="Modo de leitura nos slides">
                 {(
                   [
@@ -2123,7 +2190,7 @@ export function SlideshowView({
                         announce(`Modo ${opt.label}`);
                       }}
                       aria-pressed={selected}
-                      className={`gm3-connected-btn h-11 min-w-11 px-2 sm:px-3 text-xs cursor-pointer ${
+                      className={`gm3-connected-btn h-11 min-w-11 px-2.5 sm:px-3 text-xs cursor-pointer ${
                         selected ? 'font-semibold' : 'font-medium'
                       }`}
                     >
@@ -2133,180 +2200,283 @@ export function SlideshowView({
                 })}
               </ConnectedGroup>
 
-              {/* Phones (< 640px): single Aa popover trigger for A- / A+ / Auto (zero 375px overflow) */}
-              <div ref={fontPopoverRef} className="relative sm:hidden flex-shrink-0">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
+                  ref={annotateToggleRef}
                   type="button"
-                  data-font-popover-trigger="true"
-                  onClick={(e) => {
-                    blurOnPointer(e);
-                    setShowFontPopover((prev) => !prev);
-                  }}
-                  aria-haspopup="true"
-                  aria-expanded={showFontPopover}
-                  aria-label={`Tamanho da fonte (${activeFontSize}%)`}
-                  title={`Fonte (${activeFontSize}%)`}
-                  className={`pill-btn h-11 min-w-11 w-11 text-xs font-mono font-semibold ${
-                    fitMode === 'manual' ? 'pill-btn-tonal' : ''
+                  data-annotate-toggle="true"
+                  onClick={handleToggleAnnotate}
+                  aria-pressed={annotateMode}
+                  aria-label={
+                    totalAnnotationCount > 0
+                      ? `Anotar nos slides (${totalAnnotationCount} anotações)`
+                      : 'Anotar nos slides'
+                  }
+                  title={annotateMode ? 'Sair das anotações (Esc)' : 'Anotar à mão ou com texto'}
+                  className={`relative pill-btn h-11 min-w-11 w-11 lg:w-auto lg:px-3 text-xs flex-shrink-0 ${
+                    annotateMode
+                      ? 'bg-[var(--warn-dim)] text-[var(--warn-ink)] font-semibold'
+                      : ''
                   }`}
                 >
-                  Aa
-                </button>
-                {showFontPopover && (
-                  <div
-                    role="group"
-                    aria-label="Ajustar tamanho da fonte"
-                    data-font-popover="true"
-                    className="gm3-header-popover absolute right-0 top-[calc(100%+6px)] z-50 p-1.5 inline-flex items-center gap-1"
-                  >
-                    {fitMode === 'manual' && (
-                      <button
-                        type="button"
-                        data-autofit-reset="true"
-                        onClick={(e) => {
-                          handleResetAutoFit(e);
-                          setShowFontPopover(false);
-                        }}
-                        aria-label="Auto: ajuste automático de tela"
-                        className="pill-btn pill-btn-tonal h-11 min-w-11 px-2.5 text-xs font-semibold"
-                      >
-                        Auto
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => handleAdjustFont(-10, e)}
-                      aria-disabled={fitMode === 'manual' && manualFontSize <= MIN_FONT_SIZE}
-                      aria-label={`Diminuir fonte (atual ${activeFontSize}%)`}
-                      className={`pill-btn h-11 min-w-11 w-11 text-xs font-mono ${
-                        fitMode === 'manual' && manualFontSize <= MIN_FONT_SIZE ? 'opacity-40' : ''
-                      }`}
+                  <EditIcon size={15} />
+                  <span className="hidden lg:inline">Anotar</span>
+                  {totalAnnotationCount > 0 && (
+                    <span
+                      data-annotate-count="true"
+                      className="absolute -top-1 -right-1 lg:static inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-xs font-mono font-semibold tabular-nums leading-none"
+                      style={{
+                        backgroundColor: annotateMode ? 'var(--surface)' : 'var(--warn-dim)',
+                        color: 'var(--warn-ink)',
+                        boxShadow: 'var(--shadow-sm)',
+                      }}
                     >
-                      A-
-                    </button>
-                    <span className="font-mono text-xs font-semibold tabular-nums text-[var(--ink)] px-1">
-                      {activeFontSize}%
+                      {totalAnnotationCount}
                     </span>
-                    <button
-                      type="button"
-                      onClick={(e) => handleAdjustFont(10, e)}
-                      aria-disabled={fitMode === 'manual' && manualFontSize >= MAX_FONT_SIZE}
-                      aria-label={`Aumentar fonte (atual ${activeFontSize}%)`}
-                      className={`pill-btn h-11 min-w-11 w-11 text-xs font-mono ${
-                        fitMode === 'manual' && manualFontSize >= MAX_FONT_SIZE ? 'opacity-40' : ''
-                      }`}
-                    >
-                      A+
-                    </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </button>
 
-              {/* Tablets & Desktop (>= 640px): inline Auto (pinned left of A-) + A- / A+ */}
-              <div className="hidden sm:inline-flex gm3-btn-group flex-shrink-0">
-                {fitMode === 'manual' && (
+                {/* Unified Slides Adjustments popover (Fonte/Auto, Tom/Capo, Guia, 2 col, Tema, Tela limpa) */}
+                <div ref={settingsPopoverRef} className="relative flex-shrink-0">
                   <button
                     type="button"
-                    data-autofit-reset="true"
-                    onClick={handleResetAutoFit}
-                    aria-label="Auto: ajuste automático de tela"
-                    title="Auto: ajustar fonte automaticamente à tela"
-                    className="pill-btn pill-btn-tonal h-11 min-w-11 px-2.5 text-xs font-semibold"
-                  >
-                    Auto
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={(e) => handleAdjustFont(-10, e)}
-                  aria-disabled={fitMode === 'manual' && manualFontSize <= MIN_FONT_SIZE}
-                  aria-label={`Diminuir fonte (atual ${activeFontSize}%)`}
-                  title={`Diminuir fonte (${activeFontSize}%)`}
-                  className={`pill-btn h-11 min-w-11 w-11 text-xs font-mono ${
-                    fitMode === 'manual' && manualFontSize <= MIN_FONT_SIZE ? 'opacity-40' : ''
-                  }`}
-                >
-                  A-
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleAdjustFont(10, e)}
-                  aria-disabled={fitMode === 'manual' && manualFontSize >= MAX_FONT_SIZE}
-                  aria-label={`Aumentar fonte (atual ${activeFontSize}%)`}
-                  title={`Aumentar fonte (${activeFontSize}%)`}
-                  className={`pill-btn h-11 min-w-11 w-11 text-xs font-mono ${
-                    fitMode === 'manual' && manualFontSize >= MAX_FONT_SIZE ? 'opacity-40' : ''
-                  }`}
-                >
-                  A+
-                </button>
-              </div>
-
-              <button
-                ref={annotateToggleRef}
-                type="button"
-                data-annotate-toggle="true"
-                onClick={handleToggleAnnotate}
-                aria-pressed={annotateMode}
-                aria-label={
-                  totalAnnotationCount > 0
-                    ? `Anotar nos slides (${totalAnnotationCount} anotações)`
-                    : 'Anotar nos slides'
-                }
-                title={annotateMode ? 'Sair das anotações (Esc)' : 'Anotar à mão ou com texto'}
-                className={`relative pill-btn h-11 min-w-11 w-11 lg:w-auto lg:px-3 text-xs flex-shrink-0 ${
-                  annotateMode
-                    ? 'bg-[var(--warn-dim)] text-[var(--warn-ink)] font-semibold'
-                    : ''
-                }`}
-              >
-                <EditIcon size={15} />
-                <span className="hidden lg:inline">Anotar</span>
-                {totalAnnotationCount > 0 && (
-                  <span
-                    data-annotate-count="true"
-                    className="absolute -top-1 -right-1 lg:static inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-xs font-mono font-semibold tabular-nums leading-none"
-                    style={{
-                      backgroundColor: annotateMode ? 'var(--surface)' : 'var(--warn-dim)',
-                      color: 'var(--warn-ink)',
-                      boxShadow: 'var(--shadow-sm)',
+                    data-slides-settings-trigger="true"
+                    onClick={(e) => {
+                      blurOnPointer(e);
+                      setShowSettingsPopover((prev) => !prev);
                     }}
+                    aria-haspopup="dialog"
+                    aria-expanded={showSettingsPopover}
+                    aria-label="Ajustes dos slides"
+                    title="Ajustes (fonte, tom, guia, colunas, tema)"
+                    className={`relative pill-btn h-11 min-w-11 w-11 lg:w-auto lg:px-3 text-xs flex-shrink-0 ${
+                      showSettingsPopover ? 'pill-btn-tonal font-semibold' : ''
+                    }`}
                   >
-                    {totalAnnotationCount}
-                  </span>
-                )}
-              </button>
+                    <SlidersIcon size={16} />
+                    <span className="hidden lg:inline">Ajustes</span>
+                    {hasCustomSlideSettings && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-2 right-2 lg:static w-2 h-2 rounded-full bg-[var(--accent)]"
+                      />
+                    )}
+                  </button>
 
-              {canUseTwoCols && (
-                <button
-                  type="button"
-                  onClick={handleToggleCols}
-                  aria-pressed={effectiveCols === 2}
-                  aria-label="2 colunas"
-                  title={effectiveCols === 2 ? '2 colunas (toque para 1 coluna)' : '1 coluna (toque para 2 colunas)'}
-                  className={`pill-btn h-11 min-w-11 w-11 xl:w-auto xl:px-3 text-xs flex-shrink-0 ${
-                    effectiveCols === 2 ? 'pill-btn-tonal font-semibold' : ''
-                  }`}
-                >
-                  <ColumnsIcon size={15} />
-                  <span className="hidden xl:inline">2 col</span>
-                </button>
-              )}
+                  {settingsMounted && (
+                    <div
+                      role="dialog"
+                      aria-label="Ajustes dos slides"
+                      data-slides-settings-popover="true"
+                      inert={settingsClosing || undefined}
+                      className={`gm3-popover-top-right ${settingsClosing ? 'gm3-popover-exit' : ''} absolute right-0 top-[calc(100%+8px)] z-50 w-[min(320px,calc(100vw-24px))] max-h-[min(78vh,560px)] overflow-y-auto rounded-[24px] bg-[var(--surface)] p-4 space-y-3.5 text-left`}
+                      style={{ boxShadow: 'var(--shadow-md)' }}
+                    >
+                      {/* 1. Fonte & Auto-Fit */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="field-label">Fonte</span>
+                          {fitMode === 'manual' ? (
+                            <button
+                              type="button"
+                              data-autofit-reset="true"
+                              onClick={handleResetAutoFit}
+                              aria-label="Auto: ajuste automático de tela"
+                              className="pill-btn pill-btn-tonal h-8 px-2.5 text-xs font-semibold"
+                            >
+                              Voltar para Auto
+                            </button>
+                          ) : (
+                            <span className="text-xs text-[var(--muted)]">Ajuste automático</span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="gm3-btn-group w-full justify-between">
+                            <button
+                              type="button"
+                              onClick={(e) => handleAdjustFont(-10, e)}
+                              aria-disabled={fitMode === 'manual' && manualFontSize <= MIN_FONT_SIZE}
+                              aria-label={`Diminuir fonte (atual ${activeFontSize}%)`}
+                              className={`pill-btn bg-[var(--bg)] h-10 flex-1 font-mono text-xs ${
+                                fitMode === 'manual' && manualFontSize <= MIN_FONT_SIZE ? 'opacity-40' : ''
+                              }`}
+                            >
+                              A-
+                            </button>
+                            <span className="font-mono text-xs font-semibold tabular-nums text-[var(--ink)] px-3 flex items-center justify-center min-w-[60px]">
+                              {activeFontSize}%
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleAdjustFont(10, e)}
+                              aria-disabled={fitMode === 'manual' && manualFontSize >= MAX_FONT_SIZE}
+                              aria-label={`Aumentar fonte (atual ${activeFontSize}%)`}
+                              className={`pill-btn bg-[var(--bg)] h-10 flex-1 font-mono text-xs ${
+                                fitMode === 'manual' && manualFontSize >= MAX_FONT_SIZE ? 'opacity-40' : ''
+                              }`}
+                            >
+                              A+
+                            </button>
+                          </div>
+                        </div>
+                      </div>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  blurOnPointer(e);
-                  const next = isDark ? 'light' : 'dark';
-                  setTheme(next);
-                  announce(next === 'dark' ? 'Tema escuro' : 'Tema claro');
-                }}
-                aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-                title={isDark ? 'Tema claro' : 'Tema escuro'}
-                className="pill-btn h-11 min-w-11 w-11 flex-shrink-0"
-              >
-                {isDark ? <SunIcon size={17} /> : <MoonIcon size={17} />}
-              </button>
+                      <div className="border-t border-[var(--line-subtle)]/40" />
+
+                      {/* 2. Tom, Capo & Guia */}
+                      <div className="space-y-2.5">
+                        <div className="field-label">Tom e guia</div>
+
+                        {displayMode !== 'lyrics-only' && (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="gm3-btn-group">
+                              <button
+                                type="button"
+                                onClick={(e) => handleAdjustTranspose(-1, e)}
+                                className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
+                                aria-label="Baixar meio tom"
+                              >
+                                -
+                              </button>
+                              <button
+                                type="button"
+                                disabled={activeTranspose === 0}
+                                onClick={handleResetTranspose}
+                                className={`gm3-icon-btn font-mono text-xs min-w-[58px] h-10 px-2 text-center tabular-nums ${
+                                  activeTranspose !== 0
+                                    ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer'
+                                    : 'text-[var(--ink)] font-semibold cursor-default'
+                                }`}
+                                title={
+                                  activeTranspose !== 0
+                                    ? 'Toque para voltar ao tom original'
+                                    : 'Tom atual'
+                                }
+                              >
+                                {displayedKey || '0'}
+                                {slideTransposeDelta ? ` (${slideTransposeDelta})` : ''}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleAdjustTranspose(1, e)}
+                                className="pill-btn bg-[var(--bg)] w-10 h-10 font-mono text-xs"
+                                aria-label="Subir meio tom"
+                              >
+                                +
+                              </button>
+                              <button
+                                type="button"
+                                aria-pressed={activeUseFlats}
+                                onClick={handleToggleFlats}
+                                className={`pill-btn w-10 h-10 font-mono text-xs ${
+                                  activeUseFlats ? 'pill-btn-primary' : 'bg-[var(--bg)]'
+                                }`}
+                                title="Alternar sustenidos (#) e bemóis (b)"
+                                aria-label={activeUseFlats ? 'Mudar para sustenidos' : 'Mudar para bemóis'}
+                              >
+                                {activeUseFlats ? '♭' : '♯'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {rawSong.capo > 0 && displayMode !== 'lyrics-only' && (
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-[var(--muted)]">Capo {rawSong.capo}</span>
+                            <button
+                              type="button"
+                              onClick={handleToggleCapo}
+                              aria-pressed={capoDisplay === 'shapes'}
+                              className={`pill-btn h-9 px-3 text-xs font-medium ${
+                                capoDisplay === 'shapes'
+                                  ? 'bg-[var(--tune-dim)] text-[var(--tune)]'
+                                  : 'bg-[var(--bg)] text-[var(--ink)]'
+                              }`}
+                            >
+                              {capoDisplay === 'shapes'
+                                ? `Formas (Capo ${rawSong.capo})`
+                                : 'Tom real (sem capo)'}
+                            </button>
+                          </div>
+                        )}
+
+                        {pitchTarget && (
+                          <button
+                            type="button"
+                            onClick={handlePlayPitch}
+                            className={`pill-btn w-full justify-center h-10 px-3 text-xs ${
+                              pitchRinging
+                                ? 'pill-btn-primary'
+                                : 'bg-[var(--bg)] text-[var(--accent-ink)]'
+                            }`}
+                          >
+                            <PitchWaveIcon
+                              size={14}
+                              className={pitchRinging ? 'gm3-wave-ringing' : undefined}
+                            />
+                            {pitchRinging ? `Tocando ${pitchTarget}…` : `Ouvir guia do tom (${pitchTarget})`}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="border-t border-[var(--line-subtle)]/40" />
+
+                      {/* 3. Visual (Colunas + Tema) */}
+                      <div className="space-y-2">
+                        <div className="field-label">Visual</div>
+                        <div className="flex items-center gap-2">
+                          {canUseTwoCols && (
+                            <button
+                              type="button"
+                              onClick={handleToggleCols}
+                              aria-pressed={effectiveCols === 2}
+                              className={`pill-btn h-10 px-3 text-xs flex-1 justify-center ${
+                                effectiveCols === 2 ? 'pill-btn-tonal font-semibold' : 'bg-[var(--bg)]'
+                              }`}
+                            >
+                              <ColumnsIcon size={15} />
+                              {effectiveCols === 2 ? '2 colunas' : '1 coluna'}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              blurOnPointer(e);
+                              const next = isDark ? 'light' : 'dark';
+                              setTheme(next);
+                              announce(next === 'dark' ? 'Tema escuro' : 'Tema claro');
+                            }}
+                            className="pill-btn bg-[var(--bg)] h-10 px-3 text-xs flex-1 justify-center"
+                          >
+                            {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+                            {isDark ? 'Tema claro' : 'Tema escuro'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 4. Quick switch to Tela limpa */}
+                      {onSwitchToClean && (
+                        <>
+                          <div className="border-t border-[var(--line-subtle)]/40" />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              blurOnPointer(e);
+                              setShowSettingsPopover(false);
+                              void flushPendingSync(rawSong.id, { keepalive: true });
+                              onSwitchToClean(rawSong.id);
+                            }}
+                            className="pill-btn bg-[var(--bg)] w-full justify-center h-10 px-3 text-xs"
+                          >
+                            Trocar para Tela limpa (rolagem)
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </header>
@@ -2424,7 +2594,7 @@ export function SlideshowView({
                         <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 whitespace-nowrap">
                           <span className="w-2 h-2 rounded-full flex-shrink-0" />
                           <span className="font-display text-[clamp(13px,0.78em,18px)] font-semibold">
-                            {sec.label}
+                            {formatSectionLabel(sec.label)}
                           </span>
                         </div>
                         <span className="text-xs">· trecho instrumental</span>
@@ -2444,7 +2614,7 @@ export function SlideshowView({
                         <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 whitespace-nowrap">
                           <span className="w-2 h-2 rounded-full flex-shrink-0" />
                           <span className="font-display text-[clamp(13px,0.78em,18px)] font-semibold leading-tight">
-                            {sec.label}
+                            {formatSectionLabel(sec.label)}
                           </span>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDuration } from '@/lib/utils/chordpro-parser';
+import { formatSectionLabel } from '@/lib/utils/music';
 import type { Section } from '@/lib/types/song';
 
 interface CalibrationBarProps {
@@ -64,7 +65,7 @@ export function CalibrationBar({
                   className="pill-btn pill-btn-primary px-4 py-1.5 text-xs"
                   title="Atalho: Espaço ou Enter"
                 >
-                  Marcar &ldquo;{nextSection.label}&rdquo; (Espaço)
+                  Marcar &ldquo;{formatSectionLabel(nextSection.label)}&rdquo; (Espaço)
                 </button>
               ) : (
                 <span className="font-mono text-xs text-[var(--tune)] font-semibold">

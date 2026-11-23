@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { Section } from '@/lib/types/song';
-import { SECTION_COLORS } from '@/lib/utils/music';
+import { SECTION_COLORS, formatSectionLabel } from '@/lib/utils/music';
 
 interface SectionNavProps {
   sections: Section[];
@@ -32,9 +32,11 @@ export function SectionNav({
     const reduced =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    activeBtn.scrollIntoView({
-      inline: 'center',
-      block: 'nearest',
+    // Scroll ONLY the horizontal rail (never scrollIntoView, which hijacks vertical ChordSheet scroll!)
+    const targetLeft =
+      activeBtn.offsetLeft - rail.clientWidth / 2 + activeBtn.clientWidth / 2;
+    rail.scrollTo({
+      left: Math.max(0, targetLeft),
       behavior: reduced ? 'auto' : 'smooth',
     });
   }, [activeIdx, collapsed]);
@@ -71,7 +73,7 @@ export function SectionNav({
                 style={{ backgroundColor: colors.bd }}
                 aria-hidden="true"
               />
-              {sec.label}
+              {formatSectionLabel(sec.label)}
             </button>
           );
         })}

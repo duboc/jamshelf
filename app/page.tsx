@@ -25,11 +25,11 @@ import {
 } from '@/components/ui/Icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-type Tab = 'all' | 'favorites' | 'setlists';
-type SortMode = 'title' | 'rating' | 'bpm' | 'favorites';
+type Tab = 'all' | 'setlists';
+type SortMode = 'title' | 'bpm';
 
 function isTab(value: string | null): value is Tab {
-  return value === 'all' || value === 'favorites' || value === 'setlists';
+  return value === 'all' || value === 'setlists';
 }
 
 function SetlistCardMenu({
@@ -145,8 +145,6 @@ function HomeContent() {
 
   useDialogA11y(showImport, closeImport, importDialogRef);
 
-  const favoriteCount = useMemo(() => songs.filter((s) => s.favorite).length, [songs]);
-
   const availableKeys = useMemo(() => {
     const keys = new Set<string>();
     songs.forEach((s) => {
@@ -156,10 +154,9 @@ function HomeContent() {
   }, [songs]);
 
   const filteredSongs = useMemo(() => {
-    const base = tab === 'favorites' ? songs.filter((s) => s.favorite) : songs;
     const q = normalizeSearch(search);
 
-    const matched = base.filter((s) => {
+    const matched = songs.filter((s) => {
       if (keyFilter && s.displayKey !== keyFilter) return false;
       if (!q) return true;
       return (
@@ -170,20 +167,13 @@ function HomeContent() {
     });
 
     return [...matched].sort((a, b) => {
-      if (sortBy === 'rating') return b.rating - a.rating || a.title.localeCompare(b.title);
       if (sortBy === 'bpm') return b.tempo - a.tempo || a.title.localeCompare(b.title);
-      if (sortBy === 'favorites') {
-        return Number(b.favorite) - Number(a.favorite) || a.title.localeCompare(b.title);
-      }
       return a.title.localeCompare(b.title);
     });
-  }, [songs, tab, search, keyFilter, sortBy]);
+  }, [songs, search, keyFilter, sortBy]);
 
   const focalSongId = useMemo(() => {
-    const fiveStar = filteredSongs.find((s) => s.rating === 5 && Boolean(s.displayKey));
-    if (fiveStar) return fiveStar.id;
-    const firstFav = filteredSongs.find((s) => s.favorite && Boolean(s.displayKey));
-    return firstFav?.id ?? null;
+    return filteredSongs.find((s) => Boolean(s.displayKey))?.id ?? null;
   }, [filteredSongs]);
 
   const primarySetlistId = useMemo(() => {
@@ -250,17 +240,11 @@ function HomeContent() {
   };
 
   const pageHeading =
-    tab === 'favorites'
-      ? {
-          title: 'Favoritas',
-          countNum: favoriteCount,
-          subtitle: 'Suas músicas marcadas com coração para acesso rápido.',
-        }
-      : tab === 'setlists'
+    tab === 'setlists'
       ? {
           title: 'Setlists',
           countNum: setlists.length,
-          subtitle: 'Monte a sequência do ensaio ou entre direto no Modo Show.',
+          subtitle: 'Monte a sequência do ensaio ou entre direto na Tela limpa.',
         }
       : {
           title: 'Repertório',
@@ -347,7 +331,7 @@ function HomeContent() {
         </div>
       </div>
 
-      {/* Songs & Favorites */}
+      {/* Songs */}
       {tab !== 'setlists' && (
         <section key={tab} className="gm3-page-enter space-y-4">
           {/* Floating GM3 pill search + filters + Cards/List toggle */}
@@ -365,16 +349,8 @@ function HomeContent() {
               </svg>
               <input
                 type="text"
-                aria-label={
-                  tab === 'favorites'
-                    ? 'Buscar favoritas por nome, artista ou tom'
-                    : 'Buscar música, artista ou tom'
-                }
-                placeholder={
-                  tab === 'favorites'
-                    ? 'Buscar favoritas por nome, artista ou tom...'
-                    : 'Buscar música, artista ou tom...'
-                }
+                aria-label="Buscar música, artista ou tom"
+                placeholder="Buscar música, artista ou tom..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-transparent text-[15px] text-[var(--ink)] placeholder-[var(--muted)] outline-none pr-8"
@@ -434,8 +410,6 @@ function HomeContent() {
                   className="gm3-select appearance-none h-10 pl-4 pr-9 text-sm font-medium cursor-pointer"
                 >
                   <option value="title">Nome (A-Z)</option>
-                  <option value="rating">Avaliação</option>
-                  <option value="favorites">Favoritas</option>
                   <option value="bpm">Andamento (BPM)</option>
                 </select>
                 <ChevronDownIcon
@@ -480,18 +454,10 @@ function HomeContent() {
                 <MusicNoteIcon size={22} />
               </div>
               <h2 className="font-display text-lg font-bold text-[var(--ink)]">
-                {search || keyFilter
-                  ? 'Nenhuma música encontrada'
-                  : tab === 'favorites'
-                  ? 'Nenhuma favorita ainda'
-                  : 'Seu repertório está vazio'}
+                {search || keyFilter ? 'Nenhuma música encontrada' : 'Seu repertório está vazio'}
               </h2>
               <p className="text-sm text-[var(--muted)] max-w-md">
-                {tab === 'favorites'
-                  ? favoriteCount === 0
-                    ? 'Toque no coração de qualquer música para fixar aqui e abrir mais rápido no ensaio.'
-                    : 'Nenhuma favorita corresponde aos filtros atuais.'
-                  : songs.length === 0
+                {songs.length === 0
                   ? 'Adicione sua primeira cifra com IA ou importe um arquivo .cho.'
                   : 'Ajuste o texto buscado ou limpe o filtro de tom para ver todo o repertório.'}
               </p>
@@ -720,11 +686,11 @@ function HomeContent() {
                           <TransitionLink
                             href={`/song/${firstSongId}?setlist=${sl.id}&show=1`}
                             vtDirection="forward"
-                            className="pill-btn bg-[var(--rec-dim)] text-[var(--on-rec-container)] hover:bg-[var(--rec-fill)] hover:text-[var(--on-rec-fill)] h-10 px-3.5 text-xs"
-                            title="Abrir este setlist direto no Modo Show"
+                            className="pill-btn bg-[var(--surface-high)] text-[var(--ink)] hover:bg-[var(--primary-container)] hover:text-[var(--on-primary-container)] h-10 px-3.5 text-xs"
+                            title="Abrir este setlist direto na Tela limpa (rolagem contínua e Ao vivo)"
                           >
                             <PlayIcon size={13} />
-                            Show
+                            Tela limpa
                           </TransitionLink>
                         </div>
                       )}
@@ -791,7 +757,7 @@ function HomeContent() {
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
                 rows={11}
-                placeholder={`{title: Minha Música}\n{artist: Nome do Artista}\n{key: Am}\n\n[Verse 1]\n[Am]Letra aqui`}
+                placeholder={`{title: Minha Música}\n{artist: Nome do Artista}\n{key: Am}\n\n[Verso 1]\n[Am]Letra aqui`}
                 className="studio-input w-full px-4 py-3 font-mono text-xs resize-y"
               />
               {importMsg && (

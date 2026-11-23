@@ -37,8 +37,6 @@ export interface ParsedSong {
   tempoConfirmed: boolean; // true when explicit {tempo:} directive exists (not fallback 120)
   timeSignature: string;
   sections: Section[];
-  rating: number; // 0 = unrated, 1-5 stars
-  favorite: boolean;
   spotifyTrackId: string | null;
   duration: number | null; // song length in seconds (from {duration:} or Spotify)
   scrollSpeed: number | null; // saved per-song auto-scroll multiplier (from {scroll:})

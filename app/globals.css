@@ -1396,28 +1396,6 @@
     box-shadow: var(--shadow-sm);
   }
 
-  /* Favorite heart & star tactile micro-interactions */
-  .gm3-fav-btn svg,
-  .gm3-star-btn svg {
-    transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
-  }
-
-  .gm3-fav-btn:hover svg,
-  .gm3-star-btn:hover svg {
-    transform: scale(1.08);
-  }
-
-  .gm3-fav-btn:active svg,
-  .gm3-star-btn:active svg {
-    transform: scale(0.84);
-    transition-duration: var(--motion-press-duration);
-    transition-timing-function: var(--motion-press-ease);
-  }
-
-  .gm3-pop-once svg {
-    animation: gm3-icon-pop var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
-  }
-
   /* Interactive musical surfaces: ChordBadge, SectionNav, Metronome dots, PitchWave, CountIn, ChordsReference */
   .gm3-chord-badge {
     border-radius: 8px;
@@ -1703,11 +1681,19 @@
     transform-origin: top left;
   }
 
-  .gm3-popover-bottom-left {
-    transform-origin: bottom left;
+  .gm3-popover-bottom-left,
+  .gm3-popover-bottom-right {
     animation:
       gm3-popover-up-spatial var(--motion-spatial-default-duration) var(--motion-spatial-default) backwards,
       gm3-fade-in var(--motion-effects-fast-duration) var(--motion-effects-fast) backwards;
+  }
+
+  .gm3-popover-bottom-left {
+    transform-origin: bottom left;
+  }
+
+  .gm3-popover-bottom-right {
+    transform-origin: bottom right;
   }
 
   .gm3-popover-exit {
@@ -2519,10 +2505,6 @@
   .gm3-section-dot,
   .gm3-beat-dot,
   .gm3-chord-tile:active,
-  .gm3-fav-btn:hover svg,
-  .gm3-fav-btn:active svg,
-  .gm3-star-btn:hover svg,
-  .gm3-star-btn:active svg,
   .gm3-collapsible > .gm3-collapsible-inner,
   .gm3-collapsible > .gm3-collapsible-inner-open,
   .gm3-header-collapse > .gm3-collapsible-inner,
@@ -2549,6 +2531,7 @@
   .gm3-popover-top-right,
   .gm3-popover-top-left,
   .gm3-popover-bottom-left,
+  .gm3-popover-bottom-right,
   .gm3-sheet-enter,
   .gm3-drawer-left,
   .gm3-drawer-right,

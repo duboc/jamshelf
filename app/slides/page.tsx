@@ -109,6 +109,13 @@ function SlidesContent() {
     navigateWithTransition(router, target, { direction: 'back' });
   };
 
+  const handleSwitchToClean = (currentSongId: string) => {
+    const target = setlistId
+      ? `/song/${currentSongId}?setlist=${setlistId}&show=1`
+      : `/song/${currentSongId}?clean=1`;
+    navigateWithTransition(router, target, { direction: 'fade' });
+  };
+
   return (
     <SlideshowView
       songs={deckSongs}
@@ -116,6 +123,7 @@ function SlidesContent() {
       activeSetlist={activeSetlist}
       initialTranspose={songId ? playerTranspose : 0}
       initialUseFlats={songId ? playerUseFlats : false}
+      onSwitchToClean={handleSwitchToClean}
       onExit={handleExit}
     />
   );

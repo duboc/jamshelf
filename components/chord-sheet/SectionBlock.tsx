@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useState, type CSSProperties } from 'react';
-import { SECTION_COLORS, isInstrumentalSection } from '@/lib/utils/music';
+import { SECTION_COLORS, formatSectionLabel, isInstrumentalSection } from '@/lib/utils/music';
 import type { Section } from '@/lib/types/song';
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon, EditIcon, TrashIcon } from '@/components/ui/Icons';
 import { ChordLine } from './ChordLine';
@@ -82,6 +82,7 @@ export const SectionBlock = memo(function SectionBlock({
     }
   };
 
+  const displayLabel = formatSectionLabel(section.label);
   const selectedInSection =
     selectedCoord?.sectionIdx === sectionIdx
       ? { lineIdx: selectedCoord.lineIdx, segIdx: selectedCoord.segIdx }
@@ -130,7 +131,7 @@ export const SectionBlock = memo(function SectionBlock({
               className="font-display text-sm font-semibold"
               style={{ color: colors.lb }}
             >
-              {section.label}
+              {displayLabel}
             </span>
           </div>
           <span className="text-xs text-[var(--muted)]">
@@ -260,7 +261,7 @@ export const SectionBlock = memo(function SectionBlock({
               className="font-display text-[15px] font-semibold leading-tight"
               style={{ color: colors.lb }}
             >
-              {section.label}
+              {displayLabel}
             </h2>
           </div>
           {calibrationMarkSec !== null && (

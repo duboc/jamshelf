@@ -15,7 +15,7 @@ import {
 } from '@/lib/utils/autoscroll';
 import { SectionBlock } from './SectionBlock';
 
-const QUICK_SECTION_PRESETS = ['Verso', 'Refrão', 'Pré-refrão', 'Ponte', 'Intro', 'Solo', 'Outro'];
+const QUICK_SECTION_PRESETS = ['Verso', 'Refrão', 'Pré-refrão', 'Ponte', 'Intro', 'Solo', 'Final'];
 const USER_SCROLL_PAUSE_MS = 1400;
 
 interface ChordSheetProps {
@@ -53,6 +53,8 @@ interface ChordSheetProps {
   arrivedSectionIdx?: number | null;
   bottomPaddingClass?: string;
   allowMultiColumn?: boolean;
+  /** Optional full-width scrollable song hero/controls rendered natively inside the scroll container above Section 0. */
+  headerSlot?: React.ReactNode;
 }
 
 export function ChordSheet({
@@ -87,6 +89,7 @@ export function ChordSheet({
   arrivedSectionIdx = null,
   bottomPaddingClass = 'pb-20',
   allowMultiColumn = true,
+  headerSlot,
 }: ChordSheetProps) {
   const internalRef = useRef<HTMLDivElement>(null);
   const scrollRef = scrollContainerRef ?? internalRef;
@@ -108,6 +111,7 @@ export function ChordSheet({
   const { mounted: pausedMounted, closing: pausedClosing } = useAnimatedPresence(showUserPaused, 200);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const headerSlotRef = useRef<HTMLDivElement>(null);
   const contentWrapRef = useRef<HTMLDivElement>(null);
   const sectionTopsRef = useRef<number[]>([]);
   const lastActiveSectionRef = useRef<number>(-1);
@@ -163,9 +167,10 @@ export function ChordSheet({
     };
     scheduleRefresh();
     let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined' && contentWrapRef.current) {
+    if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(scheduleRefresh);
-      ro.observe(contentWrapRef.current);
+      if (contentWrapRef.current) ro.observe(contentWrapRef.current);
+      if (headerSlotRef.current) ro.observe(headerSlotRef.current);
     }
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
@@ -518,8 +523,7 @@ export function ChordSheet({
   return (
     <div
       ref={scrollRef}
-      className={`flex-1 overflow-y-auto overscroll-y-contain px-4 sm:px-6 lg:px-8 pt-3 relative ${bottomPaddingClass}`}
-      style={{ fontSize: `${fontSize}%` }}
+      className={`flex-1 overflow-y-auto overscroll-y-contain px-4 sm:px-6 lg:px-8 pt-2.5 relative ${bottomPaddingClass}`}
     >
       {/* Thin GM3 GPU-composited progress bar while auto-scrolling (zero layout reflow / zero React re-renders) */}
       {progressMounted && (
@@ -602,11 +606,18 @@ export function ChordSheet({
         </div>
       )}
 
+      {headerSlot && (
+        <div ref={headerSlotRef} className="w-full mb-3">
+          {headerSlot}
+        </div>
+      )}
+
       <div
         ref={contentWrapRef}
         className={`w-full ${
           isSingerMode ? 'font-display' : 'font-sans'
         } ${useTwoColumns ? 'xl:columns-2 xl:gap-5' : ''}`}
+        style={{ fontSize: `${fontSize}%` }}
       >
         {song.sections.map((section, i) => (
           <SectionBlock

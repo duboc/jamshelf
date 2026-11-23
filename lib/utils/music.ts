@@ -88,6 +88,33 @@ export const SECTION_COLORS: Record<
   },
 };
 
+const SECTION_LABEL_RULES: [RegExp, string][] = [
+  [/\bfinal\s+chorus\b/gi, 'Refrão final'],
+  [/\bpre[\s-]*chorus\b/gi, 'Pré-refrão'],
+  [/\bpost[\s-]*chorus\b/gi, 'Pós-refrão'],
+  [/\bchorus\b/gi, 'Refrão'],
+  [/\bverse\b/gi, 'Verso'],
+  [/\bbridge\b/gi, 'Ponte'],
+  [/\boutro\s+solo\b/gi, 'Solo final'],
+  [/\bguitar\s+solo\b/gi, 'Solo de guitarra'],
+  [/\bsynth\s+solo\b/gi, 'Solo de teclado'],
+  [/\boutro\b/gi, 'Final'],
+  [/\bending\b/gi, 'Final'],
+  [/\binterlude\b/gi, 'Interlúdio'],
+  [/^song$/i, 'Música'],
+];
+
+/** Formats standard English section headers in Brazilian Portuguese while preserving numbering and custom notes. */
+export function formatSectionLabel(label: string): string {
+  const trimmed = label.trim();
+  if (!trimmed) return '';
+  let out = trimmed;
+  for (const [pattern, replacement] of SECTION_LABEL_RULES) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
 /** True for minor keys such as "Am", "F#m", "Bbm", "Cm7", "Cmin" (false for major / "CM7" / "Cmaj7"). */
 export function isMinorKey(key?: string | null): boolean {
   if (!key) return false;
