@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { usePlayerStore } from '@/lib/stores/player-store';
 import { useDisplayStore, type DisplayMode } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
-import { playReferencePitch } from '@/lib/utils/pitch-audio';
 import { runStateViewTransition } from '@/lib/utils/view-transition';
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { Metronome } from '@/components/metronome/Metronome';
@@ -15,7 +14,6 @@ import {
   EditIcon,
   HeadphonesIcon,
   MoonIcon,
-  PitchWaveIcon,
   SlidesIcon,
   SunIcon,
 } from '@/components/ui/Icons';
@@ -32,7 +30,6 @@ interface SongAdjustmentsPopoverProps {
   /** 'song' for full Song view, 'clean' for unified Tela limpa stage view */
   variant: 'song' | 'clean';
   displayedKey: string;
-  pitchTarget: string;
   capo: number;
   beatsPerBar: number;
   savedTempo: number;
@@ -73,7 +70,6 @@ interface SongAdjustmentsPopoverProps {
 export function SongAdjustmentsPopover({
   variant,
   displayedKey,
-  pitchTarget,
   capo,
   beatsPerBar,
   savedTempo,
@@ -121,121 +117,20 @@ export function SongAdjustmentsPopover({
 
   const systemDark = useSyncExternalStore(subscribeSystemDark, getSystemDark, getServerDark);
   const isDark = theme === 'dark' || (theme === 'system' && systemDark);
-  const [pitchRinging, setPitchRinging] = useState(false);
 
   const isLyricsOnly = displayMode === 'lyrics-only';
   const transposeDeltaLabel =
     store.transpose > 0 ? `+${store.transpose}` : store.transpose < 0 ? `${store.transpose}` : '';
 
-  const handlePlayPitch = () => {
-    if (!pitchTarget) return;
-    if (playReferencePitch(pitchTarget, { mode: 'chord' })) {
-      setPitchRinging(true);
-      setTimeout(() => setPitchRinging(false), 1600);
-    }
-  };
-
   return (
     <div className="space-y-3.5 text-left">
-      {/* 1. Leitura (Reading mode, Font size, Theme & Columns) */}
+      {/* 1. Tonalidade e Fonte (always visible in every reading mode) */}
       <div className="space-y-2.5">
-        <div className="field-label">Leitura</div>
-
-        <ConnectedGroup
-          value={displayMode}
-          ariaLabel="Modo de leitura"
-          subtle
-          className="w-full grid grid-cols-3"
-        >
-          {(
-            [
-              { mode: 'both', label: 'Cifra' },
-              { mode: 'lyrics-only', label: 'Só letra' },
-              { mode: 'chords-only', label: 'Acordes' },
-            ] as { mode: DisplayMode; label: string }[]
-          ).map(({ mode, label }) => (
-            <button
-              key={mode}
-              type="button"
-              aria-pressed={displayMode === mode}
-              onClick={() => runStateViewTransition(() => setDisplayMode(mode), 'morph')}
-              className="gm3-connected-btn h-9 px-2 text-xs font-medium cursor-pointer"
-            >
-              {label}
-            </button>
-          ))}
-        </ConnectedGroup>
-
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-medium text-[var(--ink)]">Fonte</span>
-          <div className="gm3-btn-group">
-            <button
-              type="button"
-              onClick={() => setFontSize(fontSize - 10)}
-              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
-              aria-label="Diminuir fonte"
-            >
-              A-
-            </button>
-            <button
-              type="button"
-              disabled={fontSize === 100}
-              onClick={() => setFontSize(100)}
-              className={`gm3-icon-btn font-mono text-xs min-w-[46px] h-9 px-1.5 text-center tabular-nums ${
-                fontSize !== 100
-                  ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer'
-                  : 'text-[var(--muted)] cursor-default'
-              }`}
-              title={fontSize !== 100 ? 'Toque para voltar a 100%' : 'Tamanho padrão (100%)'}
-              aria-label={`Tamanho da fonte ${fontSize}%`}
-            >
-              {fontSize}%
-            </button>
-            <button
-              type="button"
-              onClick={() => setFontSize(fontSize + 10)}
-              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
-              aria-label="Aumentar fonte"
-            >
-              A+
-            </button>
-          </div>
-        </div>
+        <div className="field-label">Tonalidade e fonte</div>
 
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className="pill-btn bg-[var(--bg)] px-3 h-9 text-xs flex-1 justify-center"
-          >
-            {isDark ? <SunIcon size={15} /> : <MoonIcon size={15} />}
-            {isDark ? 'Tema claro' : 'Tema escuro'}
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={sheetColumns === 2}
-            onClick={() =>
-              runStateViewTransition(() => setSheetColumns(sheetColumns === 2 ? 1 : 2), 'morph')
-            }
-            className={`hidden xl:inline-flex pill-btn px-3 h-9 text-xs flex-1 justify-center ${
-              sheetColumns === 2 ? 'pill-btn-tonal' : 'bg-[var(--bg)]'
-            }`}
-          >
-            <ColumnsIcon size={15} />
-            {sheetColumns === 2 ? '2 colunas' : '1 coluna'}
-          </button>
-        </div>
-      </div>
-
-      <div className="border-t border-[var(--line-subtle)]/40" />
-
-      {/* 2. Tom e Guia */}
-      <div className="space-y-2.5">
-        <div className="field-label">Tom e guia</div>
-
-        {!isLyricsOnly && (
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-xs font-medium text-[var(--ink)]">Tom</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
             <div className="gm3-btn-group">
               <button
                 type="button"
@@ -280,23 +175,23 @@ export function SongAdjustmentsPopover({
                 {store.useFlats ? '♭' : '♯'}
               </button>
             </div>
-
-            {store.transpose !== 0 && onRequestSaveTranspose && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onRequestSaveTranspose();
-                }}
-                className="pill-btn bg-[var(--primary-container)] text-[var(--on-primary-container)] px-2.5 h-9 text-xs font-semibold"
-              >
-                Salvar tom
-              </button>
-            )}
           </div>
+        </div>
+
+        {store.transpose !== 0 && onRequestSaveTranspose && (
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onRequestSaveTranspose();
+            }}
+            className="pill-btn bg-[var(--primary-container)] text-[var(--on-primary-container)] w-full justify-center px-3 h-9 text-xs font-semibold"
+          >
+            Salvar neste novo tom
+          </button>
         )}
 
-        {capo > 0 && !isLyricsOnly && (
+        {capo > 0 && (
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-[var(--muted)]">Capo {capo}</span>
             <ConnectedGroup value={capoDisplay} ariaLabel="Acordes com capo" subtle>
@@ -320,18 +215,98 @@ export function SongAdjustmentsPopover({
           </div>
         )}
 
-        {pitchTarget && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-[var(--ink)]">Fonte</span>
+          <div className="gm3-btn-group">
+            <button
+              type="button"
+              onClick={() => setFontSize(fontSize - 10)}
+              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+              aria-label="Diminuir fonte"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              disabled={fontSize === 100}
+              onClick={() => setFontSize(100)}
+              className={`gm3-icon-btn font-mono text-xs min-w-[46px] h-9 px-1.5 text-center tabular-nums ${
+                fontSize !== 100
+                  ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer'
+                  : 'text-[var(--muted)] cursor-default'
+              }`}
+              title={fontSize !== 100 ? 'Toque para voltar a 100%' : 'Tamanho padrão (100%)'}
+              aria-label={`Tamanho da fonte ${fontSize}%`}
+            >
+              {fontSize}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontSize(fontSize + 10)}
+              className="pill-btn bg-[var(--bg)] w-9 h-9 font-mono text-xs"
+              aria-label="Aumentar fonte"
+            >
+              A+
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-[var(--line-subtle)]/40" />
+
+      {/* 2. Leitura (Reading mode, Theme & Columns) */}
+      <div className="space-y-2.5">
+        <div className="field-label">Leitura</div>
+
+        <ConnectedGroup
+          value={displayMode}
+          ariaLabel="Modo de leitura"
+          subtle
+          className="w-full grid grid-cols-3"
+        >
+          {(
+            [
+              { mode: 'both', label: 'Cifra' },
+              { mode: 'lyrics-only', label: 'Só letra' },
+              { mode: 'chords-only', label: 'Acordes' },
+            ] as { mode: DisplayMode; label: string }[]
+          ).map(({ mode, label }) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={displayMode === mode}
+              onClick={() => runStateViewTransition(() => setDisplayMode(mode), 'morph')}
+              className="gm3-connected-btn h-9 px-2 text-xs font-medium cursor-pointer"
+            >
+              {label}
+            </button>
+          ))}
+        </ConnectedGroup>
+
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <button
             type="button"
-            onClick={handlePlayPitch}
-            className={`pill-btn w-full justify-center h-9 px-3 text-xs ${
-              pitchRinging ? 'pill-btn-primary' : 'bg-[var(--bg)] text-[var(--accent-ink)]'
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            className="pill-btn bg-[var(--bg)] px-3 h-9 text-xs flex-1 justify-center"
+          >
+            {isDark ? <SunIcon size={15} /> : <MoonIcon size={15} />}
+            {isDark ? 'Tema claro' : 'Tema escuro'}
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={sheetColumns === 2}
+            onClick={() =>
+              runStateViewTransition(() => setSheetColumns(sheetColumns === 2 ? 1 : 2), 'morph')
+            }
+            className={`hidden xl:inline-flex pill-btn px-3 h-9 text-xs flex-1 justify-center ${
+              sheetColumns === 2 ? 'pill-btn-tonal' : 'bg-[var(--bg)]'
             }`}
           >
-            <PitchWaveIcon size={14} className={pitchRinging ? 'gm3-wave-ringing' : undefined} />
-            {pitchRinging ? `Tocando ${pitchTarget}…` : `Ouvir guia do tom (${pitchTarget})`}
+            <ColumnsIcon size={15} />
+            {sheetColumns === 2 ? '2 colunas' : '1 coluna'}
           </button>
-        )}
+        </div>
       </div>
 
       <div className="border-t border-[var(--line-subtle)]/40" />

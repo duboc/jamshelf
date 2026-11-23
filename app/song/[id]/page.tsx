@@ -800,11 +800,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       : song.displayKey;
   const chordDisplayShift =
     capoDisplay === 'shapes' ? store.transpose : store.transpose + store.capo;
-  const pitchTarget =
-    displayedKey ||
-    (allChords[0]
-      ? transposeChord(allChords[0], store.transpose + store.capo, store.useFlats)
-      : '');
 
   const handleTriggerCountIn = () => {
     setLocalCountIn({
@@ -1473,7 +1468,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         <CleanStageView
           song={song}
           displayedKey={displayedKey}
-          pitchTarget={pitchTarget}
           beatsPerBar={beatsPerBar}
           wakeLockActive={wakeLock.active}
           audioBlocked={metronomeAudioBlocked}
@@ -1560,7 +1554,6 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
       <SongHeader
         song={song}
         displayedKey={displayedKey}
-        pitchTarget={pitchTarget}
         beatsPerBar={beatsPerBar}
         chordCount={allChords.length}
         titleInput={titleInput}
@@ -1827,6 +1820,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
                 isFollowing={live.isFollowing}
                 activeSectionIdx={activeSectionIdx}
                 onPatchMeta={applyMetaEdit}
+                onRequestSaveTranspose={() => setShowTransposeConfirm(true)}
                 onNavigateSong={(songId) => navigateInSetlist(songId)}
                 onOpenSetlistDrawer={() => setShowSetlistDrawer(true)}
                 onJumpToSection={handleJumpToSection}

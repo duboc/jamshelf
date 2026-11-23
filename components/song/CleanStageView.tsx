@@ -34,7 +34,6 @@ const EDGE_GUARD_PX = 24;
 interface CleanStageViewProps {
   song: ParsedSong;
   displayedKey: string;
-  pitchTarget: string;
   beatsPerBar: number;
   wakeLockActive: boolean;
   audioBlocked: boolean;
@@ -72,7 +71,6 @@ interface CleanStageViewProps {
 export function CleanStageView({
   song,
   displayedKey,
-  pitchTarget,
   beatsPerBar,
   wakeLockActive,
   audioBlocked,
@@ -105,6 +103,7 @@ export function CleanStageView({
     setDisplayMode,
     toggleHideChords,
     fontSize,
+    setFontSize,
     sheetColumns,
     singleKeyShortcuts,
   } = useDisplayStore();
@@ -124,11 +123,12 @@ export function CleanStageView({
 
   const hasSetlist = Boolean(activeSetlist);
   const canNavigate = !live.isFollowing;
-  const chordsHidden = displayMode === 'lyrics-only';
   const minorKey = isMinorKey(displayedKey);
   const keyChipToneClasses = minorKey
     ? 'bg-[var(--minor-container)] text-[var(--on-minor-container)]'
     : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]';
+  const transposeDeltaLabel =
+    store.transpose > 0 ? `+${store.transpose}` : store.transpose < 0 ? `${store.transpose}` : '';
 
   const hasActiveAdjustments =
     store.transpose !== 0 ||
@@ -367,13 +367,17 @@ export function CleanStageView({
             {song.title}
           </h1>
 
-          {displayedKey && !chordsHidden && (
-            <span
+          {displayedKey && (
+            <button
+              type="button"
               data-vt-song-key={song.id}
-              className={`studio-chip ${keyChipToneClasses} font-semibold px-2.5 py-0.5 text-xs flex-shrink-0`}
+              onClick={() => setAdjustOpen((v) => !v)}
+              className={`studio-chip ${keyChipToneClasses} font-semibold px-2.5 py-0.5 text-xs flex-shrink-0 cursor-pointer hover:opacity-90`}
+              title={`Tom ${displayedKey}${transposeDeltaLabel ? ` (${transposeDeltaLabel})` : ''}. Toque para ajustar tonalidade e fonte`}
+              aria-label={`Tom ${displayedKey}. Abrir ajustes de tonalidade e fonte`}
             >
               {displayedKey}
-            </span>
+            </button>
           )}
 
           {wakeLockActive && (
@@ -514,14 +518,14 @@ export function CleanStageView({
                 type="button"
                 aria-pressed={store.isAutoScrolling}
                 onClick={store.toggleAutoScroll}
-                className={`pill-btn h-10 w-10 sm:w-auto sm:px-3.5 text-xs flex-shrink-0 ${
+                className={`pill-btn h-10 w-10 lg:w-auto lg:px-3.5 text-xs flex-shrink-0 ${
                   store.isAutoScrolling ? 'pill-btn-tune' : 'bg-[var(--bg)]'
                 }`}
                 title={store.isAutoScrolling ? 'Pausar rolagem (Espaço)' : 'Rolar automaticamente (Espaço)'}
                 aria-label={store.isAutoScrolling ? 'Pausar rolagem' : 'Iniciar rolagem'}
               >
                 {store.isAutoScrolling ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
-                <span className="hidden sm:inline">{store.isAutoScrolling ? 'Pausar' : 'Rolar'}</span>
+                <span className="hidden lg:inline">{store.isAutoScrolling ? 'Pausar' : 'Rolar'}</span>
               </button>
 
               {store.isAutoScrolling && (
@@ -529,7 +533,7 @@ export function CleanStageView({
                   <button
                     type="button"
                     onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed - 0.1)}
-                    className="pill-btn bg-[var(--bg)] w-9 h-10 font-mono text-xs"
+                    className="pill-btn bg-[var(--bg)] w-8 h-10 font-mono text-xs"
                     aria-label="Diminuir velocidade"
                   >
                     -
@@ -540,7 +544,7 @@ export function CleanStageView({
                   <button
                     type="button"
                     onClick={() => store.setAutoScrollSpeed(store.autoScrollSpeed + 0.1)}
-                    className="pill-btn bg-[var(--bg)] w-9 h-10 font-mono text-xs"
+                    className="pill-btn bg-[var(--bg)] w-8 h-10 font-mono text-xs"
                     aria-label="Aumentar velocidade"
                   >
                     +
@@ -576,7 +580,92 @@ export function CleanStageView({
             ))}
           </ConnectedGroup>
 
-          {/* 4. Unified Ajustes trigger (opens upward cleanly above the dock) */}
+          {/* 4. Direct Tonalidade & Fonte quick steppers on tablet/desktop (always top of Ajustes on phone) */}
+          <div
+            data-clean-transpose="true"
+            role="group"
+            aria-label="Ajustar tonalidade"
+            className="hidden md:inline-flex gm3-btn-group flex-shrink-0"
+          >
+            <button
+              type="button"
+              onClick={store.transposeDown}
+              className="pill-btn bg-[var(--bg)] w-8 h-10 font-mono text-xs"
+              aria-label="Baixar meio tom"
+              title="Baixar meio tom"
+            >
+              -
+            </button>
+            <button
+              type="button"
+              disabled={store.transpose === 0}
+              onClick={() => store.setTranspose(0)}
+              className={`gm3-icon-btn font-mono text-xs min-w-[38px] h-10 px-1.5 text-center tabular-nums inline-flex items-center justify-center ${
+                store.transpose !== 0
+                  ? `${keyChipToneClasses} font-semibold cursor-pointer`
+                  : 'bg-[var(--bg)] text-[var(--ink)] font-semibold cursor-default'
+              }`}
+              title={
+                store.transpose !== 0
+                  ? `Tom ${displayedKey || transposeDeltaLabel} (${transposeDeltaLabel}). Toque para voltar ao original`
+                  : `Tom ${displayedKey || 'original'}`
+              }
+              aria-label={`Tom ${displayedKey || transposeDeltaLabel || 'original'}`}
+            >
+              {displayedKey || transposeDeltaLabel || '0'}
+            </button>
+            <button
+              type="button"
+              onClick={store.transposeUp}
+              className="pill-btn bg-[var(--bg)] w-8 h-10 font-mono text-xs"
+              aria-label="Subir meio tom"
+              title="Subir meio tom"
+            >
+              +
+            </button>
+          </div>
+
+          <div
+            data-clean-font="true"
+            role="group"
+            aria-label="Ajustar tamanho da fonte"
+            className="hidden md:inline-flex gm3-btn-group flex-shrink-0"
+          >
+            <button
+              type="button"
+              onClick={() => setFontSize(fontSize - 10)}
+              className="pill-btn bg-[var(--bg)] w-9 h-10 font-mono text-xs"
+              aria-label="Diminuir fonte"
+              title={`Diminuir fonte (atual ${fontSize}%)`}
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              disabled={fontSize === 100}
+              onClick={() => setFontSize(100)}
+              className={`hidden lg:inline-flex gm3-icon-btn font-mono text-xs min-w-[42px] h-10 px-1 text-center tabular-nums items-center justify-center ${
+                fontSize !== 100
+                  ? 'bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold cursor-pointer'
+                  : 'bg-[var(--bg)] text-[var(--muted)] cursor-default'
+              }`}
+              title={fontSize !== 100 ? 'Toque para voltar a 100%' : 'Tamanho padrão da fonte (100%)'}
+              aria-label={`Tamanho da fonte ${fontSize}%`}
+            >
+              {fontSize}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontSize(fontSize + 10)}
+              className="pill-btn bg-[var(--bg)] w-9 h-10 font-mono text-xs"
+              aria-label="Aumentar fonte"
+              title={`Aumentar fonte (atual ${fontSize}%)`}
+            >
+              A+
+            </button>
+          </div>
+
+          {/* 5. Unified Ajustes trigger (opens upward cleanly above the dock) */}
           <button
             ref={adjustTriggerRef}
             type="button"
@@ -585,17 +674,17 @@ export function CleanStageView({
             aria-expanded={adjustOpen}
             aria-haspopup="dialog"
             aria-label="Ajustes da tela limpa"
-            title="Ajustes (fonte, tom, guia, metrônomo, 1·2·3·4, tema)"
-            className={`relative pill-btn h-10 w-10 sm:w-auto sm:px-3 text-xs flex-shrink-0 ${
+            title="Ajustes (tonalidade, fonte, metrônomo, 1·2·3·4, tema)"
+            className={`relative pill-btn h-10 w-10 xl:w-auto xl:px-3 text-xs flex-shrink-0 ${
               adjustOpen ? 'pill-btn-tonal' : 'bg-[var(--bg)]'
             }`}
           >
             <SlidersIcon size={16} />
-            <span className="hidden sm:inline">Ajustes</span>
+            <span className="hidden xl:inline">Ajustes</span>
             {hasActiveAdjustments && (
               <span
                 aria-hidden="true"
-                className="absolute top-1.5 right-1.5 sm:static w-2 h-2 rounded-full bg-[var(--accent)]"
+                className="absolute top-1.5 right-1.5 xl:static w-2 h-2 rounded-full bg-[var(--accent)]"
               />
             )}
           </button>
@@ -641,7 +730,6 @@ export function CleanStageView({
               <SongAdjustmentsPopover
                 variant="clean"
                 displayedKey={displayedKey}
-                pitchTarget={pitchTarget}
                 capo={song.capo}
                 beatsPerBar={beatsPerBar}
                 savedTempo={song.tempo}

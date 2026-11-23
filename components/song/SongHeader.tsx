@@ -27,7 +27,6 @@ import {
 interface SongHeaderProps {
   song: ParsedSong;
   displayedKey: string;
-  pitchTarget: string;
   beatsPerBar: number;
   chordCount: number;
   titleInput: string;
@@ -95,7 +94,6 @@ interface SongHeaderProps {
 export function SongHeader({
   song,
   displayedKey,
-  pitchTarget,
   beatsPerBar,
   chordCount,
   titleInput,
@@ -766,7 +764,6 @@ export function SongHeader({
                 <SongAdjustmentsPopover
                   variant="song"
                   displayedKey={displayedKey}
-                  pitchTarget={pitchTarget}
                   capo={song.capo}
                   beatsPerBar={beatsPerBar}
                   savedTempo={song.tempo}

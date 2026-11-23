@@ -19,6 +19,8 @@ interface SongMetaPopoverProps {
   editMode?: boolean;
   /** Render the single page-level GM3 focal key badge inside the trigger (true in Hero, false in Edit bar). */
   useFocalBadge?: boolean;
+  /** Hide the key badge in the trigger when an adjacent inline key stepper already renders it. */
+  hideKey?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
@@ -32,6 +34,7 @@ export function SongMetaPopover({
   onPatchMeta,
   editMode = false,
   useFocalBadge = false,
+  hideKey = false,
   onOpenChange,
 }: SongMetaPopoverProps) {
   const { capoDisplay, setCapoDisplay } = useDisplayStore();
@@ -194,7 +197,7 @@ export function SongMetaPopover({
         }`}
         title="Ajustar tom, capo, andamento (BPM), compasso e duração"
       >
-        {displayedKey && (
+        {!hideKey && displayedKey && (
           <span className="inline-flex items-center gap-1">
             <span className="text-xs font-medium text-[var(--muted)]">Tom</span>{' '}
             {useFocalBadge ? (
