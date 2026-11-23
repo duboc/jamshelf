@@ -208,7 +208,7 @@ export function AuroraButton({
       {...rest}
     >
       {icon && <UiIcon name={icon} size={20} filled={iconFilled} />}
-      <span>{children}</span>
+      {children}
       {trailingIcon && <UiIcon name={trailingIcon} size={20} />}
     </button>
   );
@@ -295,12 +295,14 @@ export function AuroraSegmented<T extends string>({
   options,
   ariaLabel,
   className = '',
+  blurOnPointer = false,
 }: {
   value: T;
   onChange: (next: T) => void;
   options: { value: T; label: string; shortLabel?: string; icon?: string }[];
   ariaLabel: string;
   className?: string;
+  blurOnPointer?: boolean;
 }) {
   const groupRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
@@ -408,7 +410,10 @@ export function AuroraSegmented<T extends string>({
             }}
             type="button"
             aria-pressed={active}
-            onClick={() => onChange(opt.value)}
+            onClick={(e) => {
+              if (blurOnPointer && e.detail > 0) e.currentTarget.blur();
+              onChange(opt.value);
+            }}
             className="stage-segmented-btn typescale-label-lg"
           >
             {opt.icon && <UiIcon name={opt.icon} size={20} filled={active} />}
@@ -615,6 +620,7 @@ export function AuroraDialog({
   title,
   subtitle,
   maxWidth = 'max-w-2xl',
+  motionScheme = 'expressive',
   children,
 }: {
   open: boolean;
@@ -622,6 +628,7 @@ export function AuroraDialog({
   title: string;
   subtitle?: string;
   maxWidth?: string;
+  motionScheme?: 'expressive' | 'standard';
   children: ReactNode;
 }) {
   const titleId = useId();
@@ -632,6 +639,7 @@ export function AuroraDialog({
 
   return createPortal(
     <div
+      data-motion-scheme={motionScheme === 'standard' ? 'standard' : undefined}
       className="fixed inset-0 z-50 stage-scrim flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
@@ -679,12 +687,14 @@ export function AuroraSheet({
   onClose,
   title,
   subtitle,
+  motionScheme = 'expressive',
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   subtitle?: string;
+  motionScheme?: 'expressive' | 'standard';
   children: ReactNode;
 }) {
   const titleId = useId();
@@ -695,6 +705,7 @@ export function AuroraSheet({
 
   return createPortal(
     <div
+      data-motion-scheme={motionScheme === 'standard' ? 'standard' : undefined}
       className="fixed inset-0 z-50 stage-scrim flex justify-end items-end md:items-stretch"
       onClick={onClose}
     >

@@ -20,8 +20,8 @@ import {
 import { getDisplayTitleAndArtist, getEffectiveKey } from '../utils/song-display';
 import { AuroraLink, navigate, useRoute } from '../router';
 
-type HomeTab = 'all' | 'favorites' | 'setlists';
-type SortMode = 'title' | 'rating' | 'favorites' | 'bpm';
+type HomeTab = 'all' | 'setlists';
+type SortMode = 'title' | 'bpm';
 
 function SongCardItem({
   song,
@@ -29,14 +29,12 @@ function SongCardItem({
   variant,
   itemRef,
   onOpenActions,
-  onToggleFavorite,
 }: {
   song: ParsedSong;
   index: number;
   variant: 'cards' | 'list';
   itemRef?: (el: HTMLElement | null) => void;
   onOpenActions: (song: ParsedSong) => void;
-  onToggleFavorite: (song: ParsedSong) => void;
 }) {
   const { title, artist, incomplete } = getDisplayTitleAndArtist(song);
   const { key: effectiveKey, estimated } = getEffectiveKey(song);
@@ -104,22 +102,6 @@ function SongCardItem({
               {metaParts.join(' · ')}
             </span>
           )}
-          {song.rating > 0 && (
-            <span
-              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-warn-bg text-warn-ink typescale-label-sm mr-1 tabular-nums"
-              aria-label={`Avaliação ${song.rating} de 5`}
-            >
-              <UiIcon name="star" size={20} filled className="text-warn-icon" />
-              <span>{song.rating}</span>
-            </span>
-          )}
-          <AuroraIconButton
-            icon="favorite"
-            filled={song.favorite}
-            label={song.favorite ? `Remover ${title} das favoritas` : `Favoritar ${title}`}
-            className={song.favorite ? 'text-error' : ''}
-            onClick={() => onToggleFavorite(song)}
-          />
           <AuroraIconButton
             icon="more_vert"
             label={`Mais ações para ${title}`}
@@ -174,25 +156,9 @@ function SongCardItem({
           <span className="typescale-body-sm text-on-surface-variant font-mono tabular-nums whitespace-normal">
             {metaParts.join(' · ') || '4/4'}
           </span>
-          {song.rating > 0 && (
-            <span
-              className="inline-flex items-center gap-0.5 text-warn-ink typescale-label-sm tabular-nums"
-              aria-label={`Avaliação ${song.rating} de 5`}
-            >
-              <UiIcon name="star" size={20} filled className="text-warn-icon" />
-              <span>{song.rating}</span>
-            </span>
-          )}
         </div>
 
         <div className="relative z-10 flex items-center -mr-2.5 -my-2">
-          <AuroraIconButton
-            icon="favorite"
-            filled={song.favorite}
-            label={song.favorite ? `Remover ${title} das favoritas` : `Favoritar ${title}`}
-            className={song.favorite ? 'text-error' : ''}
-            onClick={() => onToggleFavorite(song)}
-          />
           <AuroraIconButton
             icon="more_vert"
             label={`Mais ações para ${title}`}
@@ -208,7 +174,7 @@ export function HomeView() {
   const route = useRoute();
   const entries = useSongStore((s) => s.entries);
   const songsLoaded = useSongStore((s) => s.isLoaded);
-  const { getSongs, patchMeta, removeEntry, exportAll, importEntriesDetailed } = useSongStore();
+  const { getSongs, removeEntry, exportAll, importEntriesDetailed } = useSongStore();
   const {
     setlists,
     isLoaded: setlistsLoaded,
@@ -219,8 +185,7 @@ export function HomeView() {
   const { viewMode, setViewMode } = useDisplayStore();
 
   const tabParam = route.params.get('tab');
-  const tab: HomeTab =
-    tabParam === 'favorites' || tabParam === 'setlists' ? tabParam : 'all';
+  const tab: HomeTab = tabParam === 'setlists' ? 'setlists' : 'all';
 
   const [search, setSearch] = useState('');
   const [keyFilter, setKeyFilter] = useState('');
@@ -294,12 +259,6 @@ export function HomeView() {
     }
   }, [showNewSetlist]);
 
-  useEffect(() => {
-    if (tab === 'favorites' && sortBy === 'favorites') {
-      setSortBy('title');
-    }
-  }, [tab, sortBy]);
-
   const notify = (msg: string) => {
     setToast({ id: Date.now(), msg });
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
@@ -311,13 +270,10 @@ export function HomeView() {
     return getSongs();
   }, [entries, getSongs]);
 
-  const favoriteCount = useMemo(() => songs.filter((s) => s.favorite).length, [songs]);
-
   const { availableKeys, hasUnkeyed } = useMemo(() => {
-    const scopeSongs = tab === 'favorites' ? songs.filter((s) => s.favorite) : songs;
     const keys = new Set<string>();
     let missing = false;
-    scopeSongs.forEach((s) => {
+    songs.forEach((s) => {
       const k = getEffectiveKey(s).key;
       if (k) keys.add(k);
       else missing = true;
@@ -326,7 +282,7 @@ export function HomeView() {
       availableKeys: [...keys].sort((a, b) => a.localeCompare(b)),
       hasUnkeyed: missing,
     };
-  }, [songs, tab]);
+  }, [songs]);
 
   useEffect(() => {
     if (!keyFilter) return;
@@ -335,12 +291,11 @@ export function HomeView() {
     } else if (keyFilter !== '__none__' && !availableKeys.includes(keyFilter)) {
       setKeyFilter('');
     }
-  }, [tab, keyFilter, availableKeys, hasUnkeyed]);
+  }, [keyFilter, availableKeys, hasUnkeyed]);
 
   const filteredSongs = useMemo(() => {
-    const base = tab === 'favorites' ? songs.filter((s) => s.favorite) : songs;
     const q = normalizeSearch(search);
-    const matched = base.filter((s) => {
+    const matched = songs.filter((s) => {
       const effKey = getEffectiveKey(s).key;
       if (keyFilter === '__none__' && effKey) return false;
       if (keyFilter && keyFilter !== '__none__' && effKey !== keyFilter) return false;
@@ -356,14 +311,10 @@ export function HomeView() {
     return [...matched].sort((a, b) => {
       const ta = getDisplayTitleAndArtist(a).title;
       const tb = getDisplayTitleAndArtist(b).title;
-      if (sortBy === 'rating') return b.rating - a.rating || ta.localeCompare(tb);
       if (sortBy === 'bpm') return b.tempo - a.tempo || ta.localeCompare(tb);
-      if (sortBy === 'favorites') {
-        return Number(b.favorite) - Number(a.favorite) || ta.localeCompare(tb);
-      }
       return ta.localeCompare(tb);
     });
-  }, [songs, tab, search, keyFilter, sortBy]);
+  }, [songs, search, keyFilter, sortBy]);
 
   const handleExportAll = async () => {
     const ok = await copyText(exportAll());
@@ -414,39 +365,24 @@ export function HomeView() {
   };
 
   const heading =
-    tab === 'favorites'
+    tab === 'setlists'
       ? {
-          title: 'Favoritas',
-          count: favoriteCount,
-          subtitle: 'Músicas marcadas para acesso imediato no ensaio.',
+          title: 'Setlists',
+          count: setlists.length,
+          subtitle: 'Monte a sequência do ensaio ou entre direto em Slides e Tela limpa.',
         }
-      : tab === 'setlists'
-        ? {
-            title: 'Setlists',
-            count: setlists.length,
-            subtitle: 'Organize a sequência da banda e abra direto em Slides ou Modo show.',
-          }
-        : {
-            title: 'Repertório',
-            count: songs.length,
-            subtitle: 'Cifras, letras e setlists prontos para ensaio e palco.',
-          };
+      : {
+          title: 'Repertório',
+          count: songs.length,
+          subtitle: 'Cifras e letras prontas para ensaio e palco.',
+        };
 
   const currentActionSong = actionSong ? songs.find((s) => s.id === actionSong.id) ?? actionSong : null;
   const isFiltered = Boolean(search.trim() || keyFilter);
-  const sortOptions: { value: SortMode; label: string }[] =
-    tab === 'favorites'
-      ? [
-          { value: 'title', label: 'A-Z' },
-          { value: 'rating', label: 'Estrelas' },
-          { value: 'bpm', label: 'BPM' },
-        ]
-      : [
-          { value: 'title', label: 'A-Z' },
-          { value: 'rating', label: 'Estrelas' },
-          { value: 'favorites', label: 'Favoritas' },
-          { value: 'bpm', label: 'BPM' },
-        ];
+  const sortOptions: { value: SortMode; label: string }[] = [
+    { value: 'title', label: 'A-Z' },
+    { value: 'bpm', label: 'BPM' },
+  ];
 
   useEffect(() => {
     document.title = `${heading.title} - Jamshelf`;
@@ -533,9 +469,9 @@ export function HomeView() {
         </div>
       )}
 
-      {/* Top-level crossfade wrapper across Repertório / Favoritas / Setlists */}
+      {/* Top-level crossfade wrapper across Repertório / Setlists */}
       <div key={tab} data-transition="top-level" className="view-enter space-y-4">
-        {/* Repertório & Favoritas: straight to search, key chips, and songs */}
+        {/* Repertório: search, sort, key chips, and songs */}
         {tab !== 'setlists' && (
           <section aria-label="Lista de músicas" className="@container space-y-3.5">
             <div className="flex flex-col @[820px]:flex-row @[820px]:items-center gap-2.5">
@@ -549,11 +485,7 @@ export function HomeView() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={
-                    tab === 'favorites'
-                      ? 'Buscar favoritas por música, artista ou tom...'
-                      : 'Buscar música, artista ou tom...'
-                  }
+                  placeholder="Buscar música, artista ou tom..."
                   className="stage-field-borderless py-1.5"
                 />
                 {search && (
@@ -605,7 +537,7 @@ export function HomeView() {
               <div
                 role="group"
                 aria-label="Filtrar por tonalidade"
-                className="flex items-center gap-1.5 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 overflow-x-auto lg:overflow-visible lg:flex-wrap no-scrollbar pb-0.5"
+                className="flex items-center gap-1.5 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 overflow-x-auto no-scrollbar pb-0.5"
               >
                 <AuroraChip
                   selected={keyFilter === ''}
@@ -669,16 +601,12 @@ export function HomeView() {
                 <h2 className="typescale-title-lg text-on-surface m-0">
                   {search || keyFilter
                     ? 'Nenhuma música encontrada'
-                    : tab === 'favorites'
-                      ? 'Nenhuma favorita ainda'
-                      : 'Seu repertório está vazio'}
+                    : 'Seu repertório está vazio'}
                 </h2>
                 <p className="typescale-body-md text-on-surface-variant max-w-md m-0">
                   {search || keyFilter
                     ? 'Limpe o filtro de texto ou tonalidade para ver todas as músicas.'
-                    : tab === 'favorites'
-                      ? 'Toque no coração de qualquer cifra para fixar aqui.'
-                      : 'Adicione sua primeira cifra com IA ou importe um arquivo .cho.'}
+                    : 'Adicione sua primeira cifra com IA ou importe um arquivo .cho.'}
                 </p>
                 {search || keyFilter ? (
                   <AuroraButton
@@ -715,9 +643,6 @@ export function HomeView() {
                         else cardRefs.current.delete(song.id);
                       }}
                       onOpenActions={setActionSong}
-                      onToggleFavorite={(s) =>
-                        patchMeta(s.id, 'favorite', s.favorite ? 'false' : 'true')
-                      }
                     />
                   ))}
                 </div>
@@ -735,9 +660,6 @@ export function HomeView() {
                       else cardRefs.current.delete(song.id);
                     }}
                     onOpenActions={setActionSong}
-                    onToggleFavorite={(s) =>
-                      patchMeta(s.id, 'favorite', s.favorite ? 'false' : 'true')
-                    }
                   />
                 ))}
               </div>
@@ -898,7 +820,7 @@ export function HomeView() {
                           className="stage-btn stage-btn-filled typescale-label-lg no-underline"
                         >
                           <UiIcon name="play_arrow" size={20} />
-                          <span>Modo show</span>
+                          <span>Tela limpa</span>
                         </AuroraLink>
                       </div>
                     )}
@@ -951,36 +873,6 @@ export function HomeView() {
         {currentActionSong && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <div className="typescale-label-lg text-on-surface">Avaliação</div>
-              <div
-                role="group"
-                aria-label={`Avaliação de ${currentActionSong.title}`}
-                className="flex items-center gap-1"
-              >
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const active = star <= currentActionSong.rating;
-                  return (
-                    <AuroraIconButton
-                      key={star}
-                      icon="star"
-                      filled={active}
-                      label={`Avaliar com ${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
-                      aria-pressed={active}
-                      className={active ? 'text-warn-icon' : ''}
-                      onClick={() =>
-                        patchMeta(
-                          currentActionSong.id,
-                          'rating',
-                          currentActionSong.rating === star ? 0 : star
-                        )
-                      }
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <div className="typescale-label-lg text-on-surface">Adicionar ao setlist</div>
               {setlists.length === 0 ? (
                 <AuroraButton
@@ -1029,6 +921,17 @@ export function HomeView() {
             <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant">
               <AuroraButton
                 color="tonal"
+                icon="fullscreen"
+                onClick={() => {
+                  const id = currentActionSong.id;
+                  setActionSong(null);
+                  navigate(`/song/${id}?show=1`);
+                }}
+              >
+                Tela limpa
+              </AuroraButton>
+              <AuroraButton
+                color="tonal"
                 icon="slideshow"
                 onClick={() => {
                   const id = currentActionSong.id;
@@ -1036,7 +939,7 @@ export function HomeView() {
                   navigate(`/slides?song=${id}`);
                 }}
               >
-                Abrir em Slides
+                Slides
               </AuroraButton>
               <AuroraButton
                 color="danger"
@@ -1087,7 +990,7 @@ export function HomeView() {
             rows={10}
             value={importText}
             onChange={(e) => setImportText(e.target.value)}
-            placeholder={`{title: Minha música}\n{artist: Artista}\n{key: G}\n\n[Verse 1]\n[G]Letra aqui`}
+            placeholder={`{title: Minha música}\n{artist: Artista}\n{key: G}\n\n[Verso 1]\n[G]Letra aqui`}
             className="stage-field font-mono text-xs resize-y"
           />
 

@@ -3,7 +3,7 @@ import type { ChordProEntry } from '@/lib/types/song';
 import { useSongStore } from '@/lib/stores/song-store';
 import { processWithGemini } from '@/lib/utils/ai-import';
 import { parseChordPro, patchChordProMeta } from '@/lib/utils/chordpro-parser';
-import { normalizeSearch, parseLine } from '@/lib/utils/music';
+import { formatSectionLabel, normalizeSearch, parseLine } from '@/lib/utils/music';
 import { AuroraEnergy, useEnergyTask } from '../aurora/energy';
 import {
   AuroraButton,
@@ -25,6 +25,7 @@ interface SpotifyTrackResult {
   name: string;
   artist: string;
   album?: string;
+  albumArt?: string | null;
   durationMs?: number;
 }
 
@@ -48,11 +49,11 @@ function createBlankSong(): ChordProEntry {
       '{tempo: 120}',
       '{time: 4/4}',
       '',
-      '[Verse 1]',
+      '[Verso 1]',
       '[C]Primeira linha da [G]música',
       '[Am]Segunda linha da [F]música',
       '',
-      '[Chorus]',
+      '[Refrão]',
       '[F]Refrão [G]aqui [C]',
     ].join('\n'),
   };
@@ -536,7 +537,7 @@ export function AddSongView() {
                   rows={10}
                   value={choText}
                   onChange={(e) => setChoText(e.target.value)}
-                  placeholder={`{title: Minha música}\n{artist: Artista}\n{key: G}\n\n[Verse 1]\n[G]Letra aqui`}
+                  placeholder={`{title: Minha música}\n{artist: Artista}\n{key: G}\n\n[Verso 1]\n[G]Letra aqui`}
                   className="stage-field font-mono text-xs resize-y"
                 />
                 {choStatus && (
@@ -640,10 +641,10 @@ export function AddSongView() {
           )}
 
           <div className="stage-card p-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              <div className="lg:col-span-2 space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
                 <label htmlFor="meta-title" className="typescale-label-sm text-on-surface-variant block">
-                  Título
+                  Título *
                 </label>
                 <input
                   id="meta-title"
@@ -674,6 +675,9 @@ export function AddSongView() {
                   className="stage-field"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="space-y-1">
                 <label htmlFor="meta-key" className="typescale-label-sm text-on-surface-variant block">
                   Tom
@@ -684,6 +688,23 @@ export function AddSongView() {
                   placeholder="Ex.: G"
                   value={previewSong?.originalKey ?? ''}
                   onChange={(e) => updateMeta('key', e.target.value)}
+                  className="stage-field font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="meta-capo" className="typescale-label-sm text-on-surface-variant block">
+                  Capo
+                </label>
+                <input
+                  id="meta-capo"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={12}
+                  value={previewSong?.capo ?? 0}
+                  onChange={(e) =>
+                    updateMeta('capo', Math.max(0, Math.min(12, parseInt(e.target.value, 10) || 0)))
+                  }
                   className="stage-field font-mono"
                 />
               </div>
@@ -708,12 +729,30 @@ export function AddSongView() {
                   className="stage-field font-mono"
                 />
               </div>
+              <div className="space-y-1">
+                <label htmlFor="meta-time" className="typescale-label-sm text-on-surface-variant block">
+                  Compasso
+                </label>
+                <select
+                  id="meta-time"
+                  value={previewSong?.timeSignature ?? '4/4'}
+                  onChange={(e) => updateMeta('time', e.target.value)}
+                  className="stage-field font-mono"
+                >
+                  <option value="4/4">4/4</option>
+                  <option value="3/4">3/4</option>
+                  <option value="6/8">6/8</option>
+                  <option value="2/4">2/4</option>
+                  <option value="5/4">5/4</option>
+                  <option value="7/8">7/8</option>
+                </select>
+              </div>
             </div>
 
             {spotifyResults.length > 0 && (
-              <div className="space-y-1.5 pt-2 border-t border-outline-variant/60">
+              <div className="space-y-2 pt-2 border-t border-outline-variant/60">
                 <div className="typescale-label-sm text-on-surface-variant">
-                  Faixa sugerida no Spotify (preenche duração automaticamente)
+                  Referência no Spotify (preenche duração automaticamente)
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {spotifyResults.slice(0, 3).map((track) => {
@@ -730,13 +769,35 @@ export function AddSongView() {
                           selected ? 'bg-secondary-container text-on-secondary-container border-transparent' : ''
                         }`}
                       >
-                        <UiIcon name="headphones" size={20} />
+                        {track.albumArt ? (
+                          <img
+                            src={track.albumArt}
+                            alt=""
+                            width={22}
+                            height={22}
+                            className="w-5 h-5 rounded-md object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <UiIcon name="headphones" size={20} />
+                        )}
                         <span>
                           {track.name} · {track.artist}
                         </span>
                       </button>
                     );
                   })}
+                  <button
+                    type="button"
+                    aria-pressed={selectedSpotifyId === null}
+                    onClick={() => setSelectedSpotifyId(null)}
+                    className={`stage-chip typescale-label-sm ${
+                      selectedSpotifyId === null
+                        ? 'bg-secondary-container text-on-secondary-container border-transparent'
+                        : ''
+                    }`}
+                  >
+                    Sem vínculo
+                  </button>
                 </div>
               </div>
             )}
@@ -776,7 +837,7 @@ export function AddSongView() {
           {previewTab === 'source' ? (
             <div className="space-y-2">
               <p className="typescale-body-sm text-on-surface-variant m-0">
-                Use [Acorde] antes da palavra e [Verse 1] ou [Chorus] para nomear seções.
+                Use [Acorde] antes da palavra e [Verso 1] ou [Refrão] para nomear seções.
               </p>
               <textarea
                 aria-label="Código fonte ChordPro da nova música"
@@ -805,7 +866,7 @@ export function AddSongView() {
                         : 'bg-surface-container-high text-on-surface-variant'
                     }`}
                   >
-                    {sec.label}
+                    {formatSectionLabel(sec.label)}
                   </span>
                   <div className="space-y-3">
                     {sec.lines.map((line, li) => {

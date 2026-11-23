@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useLiveSessionStatus } from '@/lib/stores/live-session-store';
+import { usePointerReorder, moveItem } from '@/lib/hooks/use-pointer-reorder';
 import { computeSetlistDuration, formatSetlistDuration } from '@/lib/utils/autoscroll';
 import { formatDuration } from '@/lib/utils/chordpro-parser';
 import { isMinorKey, normalizeSearch } from '@/lib/utils/music';
@@ -70,11 +71,41 @@ export function SetlistView({ setlistId }: { setlistId: string }) {
   }, []);
 
   const setlist = setlists.find((sl) => sl.id === setlistId);
-  const songIdsKey = setlist ? setlist.songIds.join('|') : '';
+  const allSongs = useMemo(() => {
+    void entries;
+    return getSongs();
+  }, [entries, getSongs]);
+
+  const orderedEntries = useMemo(() => {
+    if (!setlist) return [];
+    return setlist.songIds
+      .map((sid, storeIdx) => ({ song: allSongs.find((s) => s.id === sid), storeIdx }))
+      .filter((e): e is { song: ParsedSong; storeIdx: number } => e.song !== undefined);
+  }, [setlist, allSongs]);
+
+  const { drag, getHandleProps } = usePointerReorder({
+    onReorder: (from, to) => {
+      const movedSong = orderedEntries[from]?.song;
+      if (!orderedEntries[from] || !orderedEntries[to]) return;
+      snapshotRows();
+      reorderSong(setlistId, orderedEntries[from].storeIdx, orderedEntries[to].storeIdx);
+      if (movedSong) {
+        setLastMovedId(movedSong.id);
+        setAnnounceMsg(`${movedSong.title} movida para a posição ${to + 1} de ${orderedEntries.length}.`);
+        if (moveHighlightTimer.current) window.clearTimeout(moveHighlightTimer.current);
+        moveHighlightTimer.current = window.setTimeout(() => setLastMovedId(null), 900);
+      }
+    },
+  });
+
+  const displayEntries = drag ? moveItem(orderedEntries, drag.from, drag.to) : orderedEntries;
+  const orderKey = displayEntries.map((e) => e.song.id).join('|');
+  const prevOrderKeyRef = useRef(orderKey);
 
   useLayoutEffect(() => {
     const prev = prevRowTopsRef.current;
     prevRowTopsRef.current = null;
+    prevOrderKeyRef.current = orderKey;
     if (!prev || prev.size === 0) return;
 
     const moves: { el: HTMLLIElement; dy: number; isMoved: boolean }[] = [];
@@ -103,18 +134,7 @@ export function SetlistView({ setlistId }: { setlistId: string }) {
         el.style.zIndex = '';
       }, 380);
     });
-  }, [songIdsKey, lastMovedId]);
-  const allSongs = useMemo(() => {
-    void entries;
-    return getSongs();
-  }, [entries, getSongs]);
-
-  const orderedEntries = useMemo(() => {
-    if (!setlist) return [];
-    return setlist.songIds
-      .map((sid, storeIdx) => ({ song: allSongs.find((s) => s.id === sid), storeIdx }))
-      .filter((e): e is { song: ParsedSong; storeIdx: number } => e.song !== undefined);
-  }, [setlist, allSongs]);
+  }, [orderKey, lastMovedId]);
 
   useEffect(() => {
     if (setlist) document.title = `${setlist.name} - Jamshelf`;
@@ -311,7 +331,7 @@ export function SetlistView({ setlistId }: { setlistId: string }) {
                 className="sm:order-3"
                 onClick={() => navigate(`/song/${startSongId}?setlist=${setlistId}&show=1`)}
               >
-                Modo show
+                Tela limpa
               </AuroraButton>
               <AuroraButton
                 color="tonal"
@@ -438,94 +458,119 @@ export function SetlistView({ setlistId }: { setlistId: string }) {
           </AuroraButton>
         </div>
       ) : (
-        <ol className="m-0 p-0 list-none space-y-2">
-          {orderedEntries.map(({ song, storeIdx }, idx) => {
-            const { title, artist } = getDisplayTitleAndArtist(song);
-            const effKey = getEffectiveKey(song).key;
-            const minor = isMinorKey(effKey);
-            const justMoved = lastMovedId === song.id;
-            return (
-              <li
-                key={song.id}
-                ref={(el) => {
-                  if (el) rowRefs.current.set(song.id, el);
-                  else rowRefs.current.delete(song.id);
-                }}
-                data-just-moved={justMoved ? 'true' : undefined}
-                className="stage-card stage-card-interactive px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3"
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <span className="w-7 text-center typescale-label-lg text-on-surface-variant font-mono tabular-nums flex-shrink-0">
-                    {idx + 1}
-                  </span>
-                  <AuroraLink
-                    href={`/song/${song.id}?setlist=${setlistId}`}
-                    aria-label={`${idx + 1}. ${title}, ${artist || 'Sem artista'}${effKey ? `, Tom ${effKey}` : ''}`}
-                    className="min-w-0 flex-1 no-underline text-on-surface after:absolute after:inset-0"
-                  >
-                    <div className="typescale-emphasized-title-md text-on-surface truncate">
-                      {title}
-                    </div>
-                    <div className="typescale-body-sm text-on-surface-variant truncate">
-                      <span>{artist || 'Sem artista'}</span>
-                      <span className="font-mono tabular-nums">
-                        {' · '}
-                        {[
-                          `${song.tempo} BPM`,
-                          song.duration ? formatDuration(song.duration) : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
+        <div className="space-y-2">
+          <div className="px-1 flex items-center justify-between gap-2 typescale-label-sm text-on-surface-variant">
+            <span>Ordem das faixas</span>
+            <span className="hidden sm:inline">Arraste ou use ↑↓ para reordenar</span>
+          </div>
+          <ol className="m-0 p-0 list-none space-y-2">
+            {displayEntries.map(({ song, storeIdx }, idx) => {
+              const { title, artist } = getDisplayTitleAndArtist(song);
+              const effKey = getEffectiveKey(song).key;
+              const minor = isMinorKey(effKey);
+              const justMoved = lastMovedId === song.id;
+              const isDragging = drag !== null && drag.to === idx;
+              const handleProps = getHandleProps(idx);
+              return (
+                <li
+                  key={song.id}
+                  data-display-idx={idx}
+                  data-dragging={isDragging ? 'true' : undefined}
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(song.id, el);
+                    else rowRefs.current.delete(song.id);
+                  }}
+                  data-just-moved={justMoved ? 'true' : undefined}
+                  className={`stage-card stage-card-interactive px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 ${
+                    isDragging ? 'ring-2 ring-primary bg-secondary-container/40' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div
+                      {...handleProps}
+                      onPointerDown={(e) => {
+                        snapshotRows();
+                        handleProps.onPointerDown(e);
+                      }}
+                      title="Arrastar para reordenar"
+                      aria-hidden="true"
+                      className="relative z-10 inline-flex items-center gap-1 text-on-surface-variant select-none touch-none cursor-grab active:cursor-grabbing py-1.5 px-1 -ml-1 flex-shrink-0"
+                    >
+                      <UiIcon name="drag_indicator" size={20} />
+                      <span className="w-6 text-right typescale-label-lg text-primary font-mono tabular-nums">
+                        {String(idx + 1).padStart(2, '0')}
                       </span>
                     </div>
-                  </AuroraLink>
-                </div>
-
-                <div className="flex items-center justify-between sm:justify-end gap-2 pl-10 sm:pl-0 flex-shrink-0">
-                  {effKey ? (
-                    <span
-                      className={`pointer-events-none px-2.5 sm:px-3 py-1 rounded-xl font-mono typescale-label-sm flex-shrink-0 ${
-                        minor
-                          ? 'bg-minor-bg text-minor-ink'
-                          : 'bg-primary-container text-on-primary-container'
-                      }`}
+                    <AuroraLink
+                      href={`/song/${song.id}?setlist=${setlistId}`}
+                      aria-label={`${idx + 1}. ${title}, ${artist || 'Sem artista'}${effKey ? `, Tom ${effKey}` : ''}`}
+                      className="min-w-0 flex-1 no-underline text-on-surface after:absolute after:inset-0"
                     >
-                      {effKey}
-                    </span>
-                  ) : (
-                    <span className="sm:hidden" />
-                  )}
-                  <div className="relative z-10 flex items-center gap-0.5 sm:gap-1 -my-1.5 -mr-2 sm:my-0 sm:mr-0 self-end sm:self-auto">
-                    <AuroraIconButton
-                      id={`setlist-up-${song.id}`}
-                      icon="arrow_upward"
-                      label={`Mover ${title} para cima`}
-                      disabled={idx === 0}
-                      onClick={() =>
-                        handleMove(song.id, title, storeIdx, orderedEntries[idx - 1].storeIdx, idx - 1, 'up')
-                      }
-                    />
-                    <AuroraIconButton
-                      id={`setlist-down-${song.id}`}
-                      icon="arrow_downward"
-                      label={`Mover ${title} para baixo`}
-                      disabled={idx === orderedEntries.length - 1}
-                      onClick={() =>
-                        handleMove(song.id, title, storeIdx, orderedEntries[idx + 1].storeIdx, idx + 1, 'down')
-                      }
-                    />
-                    <AuroraIconButton
-                      id={`setlist-remove-${song.id}`}
-                      icon="close"
-                      label={`Remover ${title} do setlist`}
-                      onClick={() => handleRemove(song.id, title, storeIdx, idx)}
-                    />
+                      <div className="typescale-emphasized-title-md text-on-surface truncate">
+                        {title}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 typescale-body-sm text-on-surface-variant">
+                        <span className="truncate">{artist || 'Sem artista'}</span>
+                        <span className="font-mono tabular-nums">
+                          · {[`${song.tempo}\u00A0BPM`, song.duration ? formatDuration(song.duration) : null]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                        {song.notes?.trim() && (
+                          <span className="px-2 py-0.5 rounded-full bg-warn-bg text-warn-ink typescale-label-sm max-w-[260px] truncate">
+                            {song.notes}
+                          </span>
+                        )}
+                      </div>
+                    </AuroraLink>
                   </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pl-12 sm:pl-0 flex-shrink-0">
+                    {effKey ? (
+                      <span
+                        className={`pointer-events-none px-2.5 sm:px-3 py-1 rounded-xl font-mono typescale-label-sm flex-shrink-0 ${
+                          minor
+                            ? 'bg-minor-bg text-minor-ink'
+                            : 'bg-primary-container text-on-primary-container'
+                        }`}
+                      >
+                        {effKey}
+                      </span>
+                    ) : (
+                      <span className="sm:hidden" />
+                    )}
+                    <div className="relative z-10 flex items-center gap-0.5 sm:gap-1 -my-1.5 -mr-2 sm:my-0 sm:mr-0 self-end sm:self-auto">
+                      <AuroraIconButton
+                        id={`setlist-up-${song.id}`}
+                        icon="arrow_upward"
+                        label={`Mover ${title} para cima`}
+                        disabled={idx === 0}
+                        onClick={() =>
+                          handleMove(song.id, title, storeIdx, orderedEntries[idx - 1].storeIdx, idx - 1, 'up')
+                        }
+                      />
+                      <AuroraIconButton
+                        id={`setlist-down-${song.id}`}
+                        icon="arrow_downward"
+                        label={`Mover ${title} para baixo`}
+                        disabled={idx === displayEntries.length - 1}
+                        onClick={() =>
+                          handleMove(song.id, title, storeIdx, orderedEntries[idx + 1].storeIdx, idx + 1, 'down')
+                        }
+                      />
+                      <AuroraIconButton
+                        id={`setlist-remove-${song.id}`}
+                        icon="close"
+                        label={`Remover ${title} do setlist`}
+                        onClick={() => handleRemove(song.id, title, storeIdx, idx)}
+                      />
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
       )}
     </main>
   );

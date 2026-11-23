@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
+import { usePlayerStore } from '@/lib/stores/player-store';
 import {
   useDisplayStore,
   type DisplayMode,
@@ -11,6 +12,7 @@ import {
 import { isMinorKey, normalizeSearch } from '@/lib/utils/music';
 import {
   AuroraButton,
+  AuroraCollapsible,
   AuroraDialog,
   AuroraIconButton,
   AuroraSegmented,
@@ -67,13 +69,18 @@ export function AuroraShell({ children }: { children: ReactNode }) {
   const entries = useSongStore((s) => s.entries);
   const getSongs = useSongStore((s) => s.getSongs);
   const songSyncError = useSongStore((s) => s.syncError);
+  const songPendingCount = useSongStore((s) => s.pendingOps.length);
+  const fetchEntries = useSongStore((s) => s.fetchEntries);
   const clearSongSyncError = useSongStore((s) => s.clearSyncError);
   const retrySongSync = useSongStore((s) => s.retryPendingSync);
 
   const setlists = useSetlistStore((s) => s.setlists);
   const setlistSyncError = useSetlistStore((s) => s.syncError);
+  const setlistPendingCount = useSetlistStore((s) => s.pendingOps.length);
+  const fetchSetlists = useSetlistStore((s) => s.fetchSetlists);
   const clearSetlistSyncError = useSetlistStore((s) => s.clearSyncError);
   const retrySetlistSync = useSetlistStore((s) => s.retryPendingSync);
+  const [retryingSync, setRetryingSync] = useState(false);
 
   const {
     theme,
@@ -135,7 +142,13 @@ export function AuroraShell({ children }: { children: ReactNode }) {
     }
   });
 
+  const [songRailExpanded, setSongRailExpanded] = useState(false);
+
   const toggleRail = () => {
+    if (isSongRoute) {
+      setSongRailExpanded((prev) => !prev);
+      return;
+    }
     setRailExpanded((prev) => {
       const next = !prev;
       if (typeof window === 'undefined' || window.innerWidth >= 1120) {
@@ -157,11 +170,12 @@ export function AuroraShell({ children }: { children: ReactNode }) {
     }
   }, [palette]);
 
-  // Global keyboard shortcuts: Cmd/Ctrl+K, '/', '?' (guarded against stacked modals)
+  // Global keyboard shortcuts: Cmd/Ctrl+K, '/', '?' (guarded against edit mode, slides & stacked modals)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const hasOpenModal = Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        if (usePlayerStore.getState().editMode) return;
         if (hasOpenModal && !searchOpen) return;
         e.preventDefault();
         setSearchOpen((v) => !v);
@@ -170,7 +184,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
       if (isEditableTarget(e.target)) return;
       if (!singleKeyShortcuts) return;
       if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        if (hasOpenModal) return;
+        if (hasOpenModal || usePlayerStore.getState().editMode || route.pathname === '/slides') return;
         e.preventDefault();
         const libraryInput = document.getElementById('library-filter-input') as HTMLInputElement | null;
         if (libraryInput) {
@@ -187,14 +201,14 @@ export function AuroraShell({ children }: { children: ReactNode }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [singleKeyShortcuts, searchOpen, shortcutsOpen]);
+  }, [singleKeyShortcuts, searchOpen, shortcutsOpen, route.pathname]);
 
   const isSongRoute = route.pathname.startsWith('/song/');
+  const isCleanUrl = route.params.get('show') === '1' || route.params.get('clean') === '1';
   const isImmersive =
-    route.pathname === '/slides' ||
-    (isSongRoute && (route.params.get('show') === '1' || focusMode));
+    route.pathname === '/slides' || (isSongRoute && (isCleanUrl || focusMode));
 
-  // Leave Focus Mode only when navigating away from song routes (preserves Focus Mode across setlist Prev/Next!)
+  // Leave Clean Stage (Focus Mode) only when navigating away from song routes
   useEffect(() => {
     if (!isSongRoute && focusMode) {
       setFocusMode(false);
@@ -214,13 +228,15 @@ export function AuroraShell({ children }: { children: ReactNode }) {
     };
   }, [isImmersive]);
 
+  const activeSetlistId = route.pathname.startsWith('/setlists/')
+    ? decodeURIComponent(route.pathname.slice('/setlists/'.length).split('/')[0] || '') || null
+    : route.params.get('setlist');
+
   const activeTab =
     route.pathname === '/'
-      ? route.params.get('tab') === 'favorites'
-        ? 'favorites'
-        : route.params.get('tab') === 'setlists'
-          ? 'setlists'
-          : 'all'
+      ? route.params.get('tab') === 'setlists'
+        ? 'setlists'
+        : 'all'
       : route.pathname.startsWith('/setlists')
         ? 'setlists'
         : route.pathname === '/add-song'
@@ -247,7 +263,11 @@ export function AuroraShell({ children }: { children: ReactNode }) {
     return getSongs();
   }, [entries, getSongs]);
 
-  const favoriteCount = useMemo(() => songs.filter((s) => s.favorite).length, [songs]);
+  const validSongIds = useMemo(() => new Set(songs.map((s) => s.id)), [songs]);
+  const primarySetlistId = useMemo(
+    () => setlists.find((sl) => sl.songIds.some((sid) => validSongIds.has(sid)))?.id ?? null,
+    [setlists, validSongIds]
+  );
 
   const quickResults = useMemo(() => {
     const q = normalizeSearch(quickQuery);
@@ -320,7 +340,30 @@ export function AuroraShell({ children }: { children: ReactNode }) {
   }, [quickActiveIdx, flatQuickItems, searchOpen]);
 
   const syncError = songSyncError || setlistSyncError;
+  const hasPendingWrites = songPendingCount > 0 || setlistPendingCount > 0;
   const deviceInitial = deviceName.trim().charAt(0).toUpperCase();
+
+  const handleRetrySync = async () => {
+    setRetryingSync(true);
+    try {
+      if (hasPendingWrites) {
+        if (songPendingCount > 0) await retrySongSync();
+        if (setlistPendingCount > 0) await retrySetlistSync();
+      } else {
+        clearSongSyncError();
+        clearSetlistSyncError();
+        await Promise.all([fetchEntries(), fetchSetlists()]);
+      }
+    } finally {
+      setRetryingSync(false);
+    }
+  };
+
+  const handleReloadFromServer = async () => {
+    clearSongSyncError();
+    clearSetlistSyncError();
+    await Promise.all([fetchEntries(), fetchSetlists()]);
+  };
 
   const navItems = [
     {
@@ -331,13 +374,6 @@ export function AuroraShell({ children }: { children: ReactNode }) {
       count: songs.length,
     },
     {
-      id: 'favorites',
-      href: '/?tab=favorites',
-      label: 'Favoritas',
-      icon: 'favorite',
-      count: favoriteCount,
-    },
-    {
       id: 'setlists',
       href: '/?tab=setlists',
       label: 'Setlists',
@@ -345,6 +381,9 @@ export function AuroraShell({ children }: { children: ReactNode }) {
       count: setlists.length,
     },
   ] as const;
+
+  // Keep rail collapsed on song pages by default so the chord sheet gets maximum reading width
+  const effectiveRailExpanded = isSongRoute ? songRailExpanded : railExpanded;
 
   return (
     <div
@@ -361,14 +400,14 @@ export function AuroraShell({ children }: { children: ReactNode }) {
         <aside
           aria-label="Barra lateral de navegação"
           className={`hidden md:flex flex-col justify-between sticky top-0 h-dvh flex-shrink-0 bg-surface-container-low stage-sidebar-rail ${
-            railExpanded ? 'w-[236px]' : 'w-[88px]'
+            effectiveRailExpanded ? 'w-[236px]' : 'w-[88px]'
           }`}
         >
-          <div className={`${railExpanded ? 'p-3' : 'px-1.5 py-3'} space-y-4`}>
+          <div className={`${effectiveRailExpanded ? 'p-3' : 'px-1.5 py-3'} space-y-4 overflow-y-auto no-scrollbar`}>
             {/* Top brand + collapse toggle */}
             <div
               className={`flex items-center ${
-                railExpanded ? 'justify-between gap-2 px-1' : 'flex-col gap-2'
+                effectiveRailExpanded ? 'justify-between gap-2 px-1' : 'flex-col gap-2'
               }`}
             >
               <AuroraLink
@@ -377,43 +416,46 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                 aria-label="Jamshelf, início"
               >
                 <JamshelfBrandMark size={32} />
-                {railExpanded && (
+                {effectiveRailExpanded && (
                   <span className="rail-label-enter typescale-title-lg text-on-surface truncate">
                     Jamshelf
                   </span>
                 )}
               </AuroraLink>
               <AuroraIconButton
-                icon={railExpanded ? 'menu_open' : 'menu'}
-                label={railExpanded ? 'Recolher menu lateral' : 'Expandir menu lateral'}
-                aria-expanded={railExpanded}
+                icon={effectiveRailExpanded ? 'menu_open' : 'menu'}
+                label={effectiveRailExpanded ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+                aria-expanded={effectiveRailExpanded}
                 onClick={toggleRail}
               />
             </div>
 
             {/* Dedicated Add Song FAB / Extended FAB (semantic link) */}
-            <div className={railExpanded ? 'px-1' : 'flex justify-center'}>
+            <div className={effectiveRailExpanded ? 'px-1' : 'flex justify-center'}>
               <AuroraLink
                 href="/add-song"
                 aria-current={activeTab === 'add' ? 'page' : undefined}
-                aria-label={!railExpanded ? 'Adicionar nova música' : undefined}
+                aria-label={!effectiveRailExpanded ? 'Adicionar nova música' : undefined}
                 title="Adicionar nova música"
                 className={`stage-btn stage-fab stage-btn-primary-tonal typescale-label-lg cursor-pointer no-underline ${
-                  railExpanded
+                  effectiveRailExpanded
                     ? 'w-full min-h-[52px] justify-start px-4'
                     : 'w-14 h-14 min-h-[56px] p-0 justify-center'
                 }`}
               >
                 <UiIcon name="add" size={24} />
-                {railExpanded && <span className="rail-label-enter">Nova música</span>}
+                {effectiveRailExpanded && <span className="rail-label-enter">Nova música</span>}
               </AuroraLink>
             </div>
 
-            {/* Primary destinations */}
+            {/* Primary destinations (2 tabs: Repertório & Setlists) */}
             <nav aria-label="Navegação principal" className="space-y-1">
               {navItems.map((item) => {
-                const active = activeTab === item.id;
-                if (railExpanded) {
+                const pinnedSetlistActive = Boolean(
+                  item.id === 'setlists' && effectiveRailExpanded && activeSetlistId
+                );
+                const active = activeTab === item.id && !pinnedSetlistActive;
+                if (effectiveRailExpanded) {
                   return (
                     <AuroraLink
                       key={item.id}
@@ -423,7 +465,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                       className="stage-nav-pill w-full justify-between px-3.5 min-h-[46px]"
                     >
                       <span className="inline-flex items-center gap-3 min-w-0">
-                        <UiIcon name={item.icon} size={22} filled={active} />
+                        <UiIcon name={item.icon} size={22} filled={active || pinnedSetlistActive} />
                         <span className="rail-label-enter typescale-label-lg truncate">
                           {item.label}
                         </span>
@@ -452,7 +494,49 @@ export function AuroraShell({ children }: { children: ReactNode }) {
                 );
               })}
 
-              {railExpanded ? (
+              {/* Pinned Setlists quick list when sidebar is expanded */}
+              {setlists.length > 0 && (
+                <AuroraCollapsible open={effectiveRailExpanded}>
+                  <div className="pt-3 space-y-1">
+                    <div className="px-3.5 typescale-label-sm text-on-surface-variant">
+                      Setlists rápidos
+                    </div>
+                    <div className="space-y-0.5 max-h-48 overflow-y-auto no-scrollbar">
+                      {setlists.slice(0, 6).map((sl) => {
+                        const isActive = activeSetlistId === sl.id;
+                        const validCount = sl.songIds.filter((sid) => validSongIds.has(sid)).length;
+                        return (
+                          <AuroraLink
+                            key={sl.id}
+                            href={`/setlists/${sl.id}`}
+                            aria-current={isActive ? 'page' : undefined}
+                            className="stage-nav-pill w-full justify-between px-3.5 min-h-[40px]"
+                          >
+                            <span className="inline-flex items-center gap-2.5 min-w-0">
+                              <span
+                                aria-hidden="true"
+                                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                  isActive
+                                    ? 'bg-on-secondary-container'
+                                    : sl.id === primarySetlistId
+                                      ? 'bg-primary'
+                                      : 'bg-outline'
+                                }`}
+                              />
+                              <span className="typescale-body-sm truncate">{sl.name}</span>
+                            </span>
+                            <span className="typescale-label-sm font-mono tabular-nums text-on-surface-variant">
+                              {validCount}
+                            </span>
+                          </AuroraLink>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </AuroraCollapsible>
+              )}
+
+              {effectiveRailExpanded ? (
                 <button
                   type="button"
                   onClick={() => setSearchOpen(true)}
@@ -487,7 +571,7 @@ export function AuroraShell({ children }: { children: ReactNode }) {
 
           {/* Sidebar Footer: Theme + Shortcuts + Preferences (borderless tonal separation) */}
           <div className="p-3 space-y-1">
-            {railExpanded ? (
+            {effectiveRailExpanded ? (
               <>
                 <button
                   type="button"
@@ -554,8 +638,8 @@ export function AuroraShell({ children }: { children: ReactNode }) {
         </aside>
       ) : null}
 
-      {/* Mobile Slim Top Header */}
-      {!isImmersive ? (
+      {/* Mobile Slim Top Header (SongView renders its own constant 56px SongHeader) */}
+      {!isImmersive && !isSongRoute ? (
         <header className="md:hidden sticky top-0 z-30 bg-surface-container-low border-b border-outline-variant/50">
           <div className="px-4 h-14 flex items-center justify-between gap-2">
             <AuroraLink
@@ -604,14 +688,18 @@ export function AuroraShell({ children }: { children: ReactNode }) {
               </span>
               <div className="flex items-center gap-1">
                 <AuroraButton
-                  color="text"
+                  color="tonal"
                   icon="refresh"
-                  onClick={() => {
-                    void retrySongSync();
-                    void retrySetlistSync();
-                  }}
+                  disabled={retryingSync}
+                  onClick={() => void handleRetrySync()}
                 >
-                  Tentar novamente
+                  {retryingSync ? 'Sincronizando...' : 'Tentar novamente'}
+                </AuroraButton>
+                <AuroraButton
+                  color="text"
+                  onClick={() => void handleReloadFromServer()}
+                >
+                  Recarregar
                 </AuroraButton>
                 <AuroraIconButton
                   icon="close"

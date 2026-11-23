@@ -32,107 +32,106 @@
   }
 }
 
+@utility typescale-display-sm {
+  font-family: var(--ui-font-sans);
+  font-size: clamp(1.75rem, 2.8vw, 2.25rem);
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: -0.028em;
+}
+
+@utility typescale-headline-md {
+  font-family: var(--ui-font-sans);
+  font-size: clamp(1.4rem, 2.2vw, 1.75rem);
+  line-height: 1.24;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+
+@utility typescale-headline-sm {
+  font-family: var(--ui-font-sans);
+  font-size: 1.375rem;
+  line-height: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+}
+
+@utility typescale-title-lg {
+  font-family: var(--ui-font-sans);
+  font-size: 1.25rem;
+  line-height: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+}
+
+@utility typescale-title-md {
+  font-family: var(--ui-font-sans);
+  font-size: 1rem;
+  line-height: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+}
+
+@utility typescale-emphasized-title-md {
+  font-family: var(--ui-font-sans);
+  font-size: 1.075rem;
+  line-height: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.014em;
+}
+
+@utility typescale-body-lg {
+  font-family: var(--ui-font-sans);
+  font-size: 1rem;
+  line-height: 1.55rem;
+  font-weight: 400;
+}
+
+@utility typescale-body-md {
+  font-family: var(--ui-font-sans);
+  font-size: 0.875rem;
+  line-height: 1.3rem;
+  font-weight: 400;
+}
+
+@utility typescale-body-sm {
+  font-family: var(--ui-font-sans);
+  font-size: 0.75rem;
+  line-height: 1.05rem;
+  font-weight: 400;
+}
+
+@utility typescale-label-lg {
+  font-family: var(--ui-font-sans);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+@utility typescale-label-sm {
+  font-family: var(--ui-font-sans);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+}
+
+@utility typescale-expressive-metric {
+  font-family: var(--ui-font-sans);
+  font-size: 1.35rem;
+  line-height: 1.15;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility typescale-hero-count {
+  font-family: var(--ui-font-sans);
+  font-size: clamp(3.5rem, 12vw, 6.5rem);
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 @layer md {
-  /* Jamshelf type ramp */
-  .typescale-display-sm {
-    font-family: var(--ui-font-sans);
-    font-size: clamp(1.75rem, 2.8vw, 2.25rem);
-    line-height: 1.18;
-    font-weight: 700;
-    letter-spacing: -0.028em;
-  }
-
-  .typescale-headline-md {
-    font-family: var(--ui-font-sans);
-    font-size: clamp(1.4rem, 2.2vw, 1.75rem);
-    line-height: 1.24;
-    font-weight: 700;
-    letter-spacing: -0.022em;
-  }
-
-  .typescale-headline-sm {
-    font-family: var(--ui-font-sans);
-    font-size: 1.375rem;
-    line-height: 1.85rem;
-    font-weight: 700;
-    letter-spacing: -0.018em;
-  }
-
-  .typescale-title-lg {
-    font-family: var(--ui-font-sans);
-    font-size: 1.25rem;
-    line-height: 1.65rem;
-    font-weight: 600;
-    letter-spacing: -0.014em;
-  }
-
-  .typescale-title-md {
-    font-family: var(--ui-font-sans);
-    font-size: 1rem;
-    line-height: 1.45rem;
-    font-weight: 600;
-    letter-spacing: -0.006em;
-  }
-
-  .typescale-emphasized-title-md {
-    font-family: var(--ui-font-sans);
-    font-size: 1.075rem;
-    line-height: 1.4rem;
-    font-weight: 700;
-    letter-spacing: -0.014em;
-  }
-
-  .typescale-body-lg {
-    font-family: var(--ui-font-sans);
-    font-size: 1rem;
-    line-height: 1.55rem;
-    font-weight: 400;
-  }
-
-  .typescale-body-md {
-    font-family: var(--ui-font-sans);
-    font-size: 0.875rem;
-    line-height: 1.3rem;
-    font-weight: 400;
-  }
-
-  .typescale-body-sm {
-    font-family: var(--ui-font-sans);
-    font-size: 0.75rem;
-    line-height: 1.05rem;
-    font-weight: 400;
-  }
-
-  .typescale-label-lg {
-    font-family: var(--ui-font-sans);
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    font-weight: 600;
-  }
-
-  .typescale-label-sm {
-    font-family: var(--ui-font-sans);
-    font-size: 0.75rem;
-    line-height: 1rem;
-    font-weight: 600;
-  }
-
-  .typescale-expressive-metric {
-    font-family: var(--ui-font-sans);
-    font-size: 1.35rem;
-    line-height: 1.15;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .typescale-hero-count {
-    font-family: var(--ui-font-sans);
-    font-size: clamp(3.5rem, 12vw, 6.5rem);
-    line-height: 1;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
   .ui-icon {
     font-family: var(--ui-font-icon, 'Material Symbols Rounded');
     font-weight: normal;
@@ -655,14 +654,16 @@
       padding: 0 7px;
     }
 
-    .rehearsal-dock .stage-segmented {
-      min-height: 38px;
+    .rehearsal-dock .stage-segmented,
+    [data-clean-dock] .stage-segmented {
+      min-height: 40px;
       padding: 2px;
     }
 
-    .rehearsal-dock .stage-segmented-btn {
-      min-height: 32px;
-      padding: 0 8px;
+    .rehearsal-dock .stage-segmented-btn,
+    [data-clean-dock] .stage-segmented-btn {
+      min-height: 34px;
+      padding: 0 10px;
     }
   }
 
@@ -1113,7 +1114,7 @@
     transition-timing-function: ease-out;
   }
 
-  /* Outlined / tonal input field (WCAG 1.4.11 >= 3.0:1 border via --ui-outline) */
+  /* Outlined / tonal input field (WCAG 1.4.11 >= 3.0:1 border via --ui-outline; 16px prevents Safari auto-zoom) */
   .stage-field {
     width: 100%;
     min-height: 46px;
@@ -1123,11 +1124,24 @@
     background: var(--ui-surface-low);
     color: var(--ui-ink);
     font-family: var(--ui-font-sans);
-    font-size: 0.9375rem;
+    font-size: 1rem;
     line-height: 1.4;
     transition:
       border-color var(--ui-motion-effect-fast),
       background-color var(--ui-motion-effect-fast);
+  }
+
+  @media (any-pointer: coarse) {
+    input:not(.stage-field-title),
+    textarea,
+    select {
+      font-size: 1rem !important;
+    }
+
+    .stage-touch-44 {
+      min-width: 44px;
+      min-height: 44px;
+    }
   }
 
   .stage-field:focus {
@@ -1270,6 +1284,43 @@
       opacity: 0;
       transform: translate3d(0, 8px, 0);
     }
+  }
+
+  /* Directional Aurora popovers (origin-aware spring entrance) */
+  .stage-popover {
+    opacity: 1;
+    transform: none;
+    transform-origin: top right;
+    transition:
+      opacity var(--ui-motion-effect-fast),
+      transform var(--ui-motion-expressive-fast);
+  }
+
+  .stage-popover[data-origin='bottom'] {
+    transform-origin: bottom right;
+  }
+
+  .stage-popover[data-origin='top-left'] {
+    transform-origin: top left;
+  }
+
+  @starting-style {
+    .stage-popover {
+      opacity: 0;
+      transform: translate3d(0, -6px, 0) scale(0.96);
+    }
+
+    .stage-popover[data-origin='bottom'] {
+      opacity: 0;
+      transform: translate3d(0, 8px, 0) scale(0.96);
+    }
+  }
+
+  /* Spatial jump arrival highlight on section card (outline-color smoothly transitioned on .stage-card) */
+  .stage-card[data-jump-target='true'] {
+    border-color: var(--ui-primary);
+    outline: 2px solid color-mix(in srgb, var(--ui-primary) 42%, transparent);
+    outline-offset: 2px;
   }
 
   .stage-list-row {
@@ -1616,18 +1667,193 @@
   .edit-word-slot {
     border: none;
     background: transparent;
-    padding: 0 1px;
+    padding: 0 2px;
     margin: 0;
     font: inherit;
     color: var(--ui-ink);
     border-radius: var(--ui-radius-xs);
     cursor: pointer;
-    transition: background-color var(--ui-motion-effect-fast);
+    transition:
+      background-color var(--ui-motion-effect-fast),
+      color var(--ui-motion-effect-fast);
   }
 
-  .edit-word-slot:hover {
+  @media (any-pointer: coarse) {
+    .edit-word-slot {
+      padding: 4px 3px;
+    }
+  }
+
+  .edit-word-slot:hover,
+  .edit-word-slot:active {
     background: var(--ui-primary-container);
     color: var(--ui-on-primary-container);
+  }
+
+  /* Chord Stamp mode chip (clean spring press, zero ::before halo, bottom hitbox never invades lyrics) */
+  .chord-stamp-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 32px;
+    padding: 2px 8px;
+    border-radius: var(--ui-radius-sm);
+    border: none;
+    font-family: var(--ui-font-mono);
+    font-weight: 700;
+    line-height: 1.2;
+    background: var(--ui-primary-container);
+    color: var(--ui-on-primary-container);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color var(--ui-motion-effect-fast),
+      color var(--ui-motion-effect-fast),
+      transform var(--ui-motion-expressive-fast);
+  }
+
+  .chord-stamp-chip:hover {
+    background: var(--ui-primary);
+    color: var(--ui-on-primary);
+  }
+
+  .chord-stamp-chip:active {
+    transform: scale(0.94);
+    transition-duration: var(--ui-motion-duration-press);
+    transition-timing-function: ease-out;
+  }
+
+  /* Arrival pop for newly stamped chord chip */
+  .chord-stamp-pop {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    transition:
+      opacity var(--ui-motion-effect-fast),
+      transform var(--ui-motion-expressive-fast);
+  }
+
+  @starting-style {
+    .chord-stamp-pop {
+      opacity: 0;
+      transform: translate3d(0, -6px, 0) scale(0.84);
+    }
+  }
+
+  /* Directional preview feedback in VisualChordEditModal */
+  .chord-nudge {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    transition:
+      opacity var(--ui-motion-effect-fast),
+      transform var(--ui-motion-expressive-fast);
+  }
+
+  @starting-style {
+    .chord-nudge[data-nudge='left'] {
+      opacity: 0.6;
+      transform: translate3d(8px, 0, 0);
+    }
+
+    .chord-nudge[data-nudge='right'] {
+      opacity: 0.6;
+      transform: translate3d(-8px, 0, 0);
+    }
+
+    .chord-nudge[data-nudge='swap'] {
+      opacity: 0.55;
+      transform: scale(0.9);
+    }
+  }
+
+  /* Trailing '+' chord button in ChordStampSection (>= 3:1 outline contrast, 36px/44px touch) */
+  .stamp-add-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--ui-radius-pill);
+    border: 1px solid var(--ui-outline);
+    background: var(--ui-surface-mid);
+    color: var(--ui-ink-muted);
+    cursor: pointer;
+    vertical-align: baseline;
+    transition:
+      background-color var(--ui-motion-effect-fast),
+      color var(--ui-motion-effect-fast),
+      border-color var(--ui-motion-effect-fast),
+      transform var(--ui-motion-expressive-fast);
+  }
+
+  @media (any-pointer: coarse) {
+    .stamp-add-btn {
+      min-width: 44px;
+      min-height: 44px;
+      width: 44px;
+      height: 44px;
+    }
+  }
+
+  .stamp-add-btn:hover {
+    background: var(--ui-primary-container);
+    color: var(--ui-on-primary-container);
+    border-color: var(--ui-primary);
+  }
+
+  .stamp-add-btn:active {
+    transform: scale(0.92);
+    transition-duration: var(--ui-motion-duration-press);
+    transition-timing-function: ease-out;
+  }
+
+  /* Slide note chip entrance decoupled from translate positioning via CSS scale */
+  .note-chip-enter {
+    scale: 1;
+    opacity: 1;
+    transition:
+      scale var(--ui-motion-standard-fast),
+      opacity var(--ui-motion-effect-fast);
+  }
+
+  @starting-style {
+    .note-chip-enter {
+      scale: 0.88;
+      opacity: 0;
+    }
+  }
+
+  /* Slides progress hairline, page dots (GPU scaleX, no width layout animation), footer fade */
+  .slide-progress-fill {
+    transition: transform var(--ui-motion-settle);
+  }
+
+  .slide-page-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--ui-radius-pill);
+    transition:
+      transform var(--ui-motion-standard-fast),
+      background-color var(--ui-motion-effect-fast);
+  }
+
+  .slide-page-dot[data-active='true'] {
+    transform: scaleX(1.75);
+  }
+
+  .slides-footer {
+    transition: opacity var(--ui-motion-effect-fast);
+  }
+
+  .leadin-bar {
+    transition: transform 950ms linear;
+  }
+
+  .clean-swipe-main {
+    transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
   }
 
   /* GPU beat indicator (zero width transition) */
@@ -1747,8 +1973,20 @@
 
     .tx-expand,
     .tx-chevron,
-    .stage-sidebar-rail {
+    .stage-sidebar-rail,
+    .scroll-progress-bar,
+    .slide-progress-fill,
+    .leadin-bar,
+    .clean-swipe-main,
+    .slides-footer {
       transition-duration: var(--ui-motion-duration-none);
+    }
+
+    .note-chip-enter {
+      scale: 1 !important;
+      transition-property: opacity;
+      transition-duration: 150ms;
+      transition-timing-function: linear;
     }
 
     .view-enter,
@@ -1758,7 +1996,6 @@
     .diagram-settle,
     .piano-key,
     .countdown-tick,
-    .scroll-progress-bar,
     .qs-active-highlight,
     .theme-icon-spin,
     .luminous-stage,
@@ -1770,6 +2007,7 @@
     .dock-enter-top,
     .dock-enter-bottom,
     .panel-settle,
+    .stage-popover,
     .rail-label-enter,
     .rail-compact-enter,
     .icon-pop-in,
@@ -1793,6 +2031,12 @@
     .suggestion-pill:active,
     .chord-token,
     .chord-token::before,
+    .chord-stamp-chip,
+    .chord-stamp-chip:active,
+    .chord-stamp-pop,
+    .chord-nudge,
+    .stamp-add-btn,
+    .stamp-add-btn:active,
     .chord-settle,
     .key-ref-pill,
     .stage-segmented-indicator,
@@ -1804,6 +2048,7 @@
     .swatch-card:active,
     .stage-nav-pill,
     .stage-nav-pill:active,
+    .slide-page-dot,
     .beat-dot {
       transform: none !important;
       transition-delay: 0ms !important;

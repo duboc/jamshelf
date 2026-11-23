@@ -1,4 +1,4 @@
-import { parseLine } from './music';
+import { lineHasLyrics, parseLine } from './music';
 import { inferSectionType } from './chordpro-parser';
 import type { Section } from '@/lib/types/song';
 
@@ -88,24 +88,38 @@ export function moveChordWithIndex(
   const target = chords[targetIdx];
   const updated = chords.map((c) => ({ ...c }));
 
+  // On pure chord-only lines (e.g. "[Dmaj7] [Bsus2] [Gsus2]"), swap adjacent chords directly
+  // with clean single-space separation instead of chewing through spaces one char at a time.
+  if (!lineHasLyrics(line) && updated.length >= 2) {
+    const swapWith = dir === 'left' ? targetIdx - 1 : targetIdx + 1;
+    if (swapWith < 0 || swapWith >= updated.length) {
+      return { line, nextSegIdx: segIdx };
+    }
+    const tmp = updated[swapWith];
+    updated[swapWith] = updated[targetIdx];
+    updated[targetIdx] = tmp;
+    const nextLine = updated.map((c) => `[${c.chord}]`).join(' ');
+    return { line: nextLine, nextSegIdx: swapWith };
+  }
+
   if (dir === 'left') {
-    if (target.pos > 0) {
-      updated[targetIdx].pos = target.pos - 1;
-    } else if (targetIdx > 0 && updated[targetIdx - 1].pos === target.pos) {
-      // Swap order with an immediately preceding chord at the same position
+    if (targetIdx > 0 && updated[targetIdx - 1].pos === target.pos) {
+      // Swap order with an immediately preceding chord at the exact same position first
       const prev = updated[targetIdx - 1];
       updated[targetIdx - 1] = updated[targetIdx];
       updated[targetIdx] = prev;
+    } else if (target.pos > 0) {
+      updated[targetIdx].pos = target.pos - 1;
     } else {
       return { line, nextSegIdx: segIdx };
     }
   } else {
-    if (target.pos < plainText.length) {
-      updated[targetIdx].pos = target.pos + 1;
-    } else if (targetIdx < updated.length - 1 && updated[targetIdx + 1].pos === target.pos) {
+    if (targetIdx < updated.length - 1 && updated[targetIdx + 1].pos === target.pos) {
       const next = updated[targetIdx + 1];
       updated[targetIdx + 1] = updated[targetIdx];
       updated[targetIdx] = next;
+    } else if (target.pos < plainText.length) {
+      updated[targetIdx].pos = target.pos + 1;
     } else {
       return { line, nextSegIdx: segIdx };
     }
@@ -119,6 +133,158 @@ export function moveChordWithIndex(
  */
 export function moveChord(line: string, segIdx: number, dir: 'left' | 'right'): string {
   return moveChordWithIndex(line, segIdx, dir).line;
+}
+
+/**
+ * Jump the chord at `segIdx` to the previous or next word start (or line start/end).
+ * On chord-only lines, swaps cleanly with the adjacent chord.
+ */
+export function moveChordByWordWithIndex(
+  line: string,
+  segIdx: number,
+  dir: 'left' | 'right'
+): { line: string; nextSegIdx: number } {
+  if (!lineHasLyrics(line)) {
+    return moveChordWithIndex(line, segIdx, dir);
+  }
+  const segs = parseLine(line);
+  if (segIdx < 0 || segIdx >= segs.length || !segs[segIdx].chord) {
+    return { line, nextSegIdx: segIdx };
+  }
+  const { plainText, chords, segIdxToId } = extractPlacedChords(line);
+  const targetId = segIdxToId.get(segIdx);
+  if (targetId === undefined) return { line, nextSegIdx: segIdx };
+  const targetIdx = chords.findIndex((c) => c.id === targetId);
+  if (targetIdx === -1) return { line, nextSegIdx: segIdx };
+
+  const stops: number[] = [0];
+  for (let i = 0; i < plainText.length; i++) {
+    if (!/\s/.test(plainText[i]) && (i === 0 || /\s/.test(plainText[i - 1]))) {
+      if (stops[stops.length - 1] !== i) stops.push(i);
+    }
+  }
+  if (stops[stops.length - 1] !== plainText.length) stops.push(plainText.length);
+
+  const curPos = chords[targetIdx].pos;
+  let nextPos = curPos;
+  if (dir === 'right') {
+    const found = stops.find((s) => s > curPos);
+    if (found !== undefined) nextPos = found;
+  } else {
+    for (let i = stops.length - 1; i >= 0; i--) {
+      if (stops[i] < curPos) {
+        nextPos = stops[i];
+        break;
+      }
+    }
+  }
+  if (nextPos === curPos) return { line, nextSegIdx: segIdx };
+
+  const updated = chords.map((c, idx) => (idx === targetIdx ? { ...c, pos: nextPos } : { ...c }));
+  return rebuildLineFromPlaced(plainText, updated, targetId);
+}
+
+/**
+ * Reports whether the chord at `segIdx` can move left/right and whether the line is chord-only.
+ */
+export function getChordMoveBounds(
+  line: string,
+  segIdx: number
+): { canMoveLeft: boolean; canMoveRight: boolean; isChordOnly: boolean } {
+  const isChordOnly = !lineHasLyrics(line);
+  const { plainText, chords, segIdxToId } = extractPlacedChords(line);
+  const targetId = segIdxToId.get(segIdx);
+  if (targetId === undefined) {
+    return { canMoveLeft: false, canMoveRight: false, isChordOnly };
+  }
+  const targetIdx = chords.findIndex((c) => c.id === targetId);
+  if (targetIdx === -1) {
+    return { canMoveLeft: false, canMoveRight: false, isChordOnly };
+  }
+  if (isChordOnly) {
+    return {
+      canMoveLeft: targetIdx > 0,
+      canMoveRight: targetIdx < chords.length - 1,
+      isChordOnly: true,
+    };
+  }
+  const target = chords[targetIdx];
+  const canMoveLeft =
+    target.pos > 0 || (targetIdx > 0 && chords[targetIdx - 1].pos === target.pos);
+  const canMoveRight =
+    target.pos < plainText.length ||
+    (targetIdx < chords.length - 1 && chords[targetIdx + 1].pos === target.pos);
+  return { canMoveLeft, canMoveRight, isChordOnly: false };
+}
+
+/**
+ * Counts exact occurrences of `[chord]` across all sections.
+ */
+export function countChordOccurrences(sections: Section[], chord: string): number {
+  let count = 0;
+  for (const sec of sections) {
+    for (const line of sec.lines) {
+      for (const seg of parseLine(line)) {
+        if (seg.chord === chord) count++;
+      }
+    }
+  }
+  return count;
+}
+
+/**
+ * Replaces every `[fromChord]` occurrence across all sections with `[toChord]`.
+ */
+export function replaceAllChordsInSections(
+  sections: Section[],
+  fromChord: string,
+  toChord: string
+): { sections: Section[]; replacedCount: number } {
+  let replacedCount = 0;
+  const nextSections = sections.map((sec) => ({
+    ...sec,
+    lines: sec.lines.map((line) => {
+      const segs = parseLine(line);
+      let changed = false;
+      const nextSegs = segs.map((seg) => {
+        if (seg.chord === fromChord) {
+          replacedCount++;
+          changed = true;
+          return { ...seg, chord: toChord };
+        }
+        return seg;
+      });
+      return changed ? segmentsToLine(nextSegs) : line;
+    }),
+  }));
+  return { sections: nextSections, replacedCount };
+}
+
+/**
+ * Finds the previous or next chord coordinate across the entire song in reading order.
+ */
+export function findAdjacentChord(
+  sections: Section[],
+  current: { sectionIdx: number; lineIdx: number; segIdx: number },
+  dir: 'prev' | 'next'
+): { sectionIdx: number; lineIdx: number; segIdx: number } | null {
+  const all: { sectionIdx: number; lineIdx: number; segIdx: number }[] = [];
+  sections.forEach((sec, sectionIdx) => {
+    sec.lines.forEach((line, lineIdx) => {
+      parseLine(line).forEach((seg, segIdx) => {
+        if (seg.chord) all.push({ sectionIdx, lineIdx, segIdx });
+      });
+    });
+  });
+  const idx = all.findIndex(
+    (c) =>
+      c.sectionIdx === current.sectionIdx &&
+      c.lineIdx === current.lineIdx &&
+      c.segIdx === current.segIdx
+  );
+  if (idx === -1) return null;
+  const target = dir === 'prev' ? idx - 1 : idx + 1;
+  return target >= 0 && target < all.length ? all[target] : null;
 }
 
 /**
@@ -152,8 +318,18 @@ export function deleteChord(line: string, segIdx: number): string {
 
 /**
  * Insert a chord at a given lyric character position (ignoring existing [Chord] tokens).
+ * Keeps clean single-space separation on empty or chord-only lines.
  */
 export function insertChord(line: string, charPos: number, chord: string): string {
+  if (!line.trim()) {
+    return `[${chord}]`;
+  }
+  if (!lineHasLyrics(line)) {
+    const plainLen = extractPlacedChords(line).plainText.length;
+    if (charPos >= plainLen) {
+      return `${line.trimEnd()} [${chord}]`;
+    }
+  }
   let rawIdx = 0;
   let lyricCount = 0;
   while (rawIdx < line.length) {

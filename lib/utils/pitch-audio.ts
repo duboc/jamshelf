@@ -17,6 +17,10 @@ function getAudioContext(): AudioContext | null {
   return sharedAudioCtx;
 }
 
+export function ensurePitchAudioContext(): AudioContext | null {
+  return getAudioContext();
+}
+
 export function midiToFrequency(midi: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }

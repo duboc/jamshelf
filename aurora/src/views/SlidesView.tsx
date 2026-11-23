@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import type { ParsedSong } from '@/lib/types/song';
 import { useSongStore } from '@/lib/stores/song-store';
 import { useSetlistStore } from '@/lib/stores/setlist-store';
@@ -13,15 +21,32 @@ import {
   computeStrokeWidthEm,
   simplifyRawPoints,
   type AnnotateTool,
+  type AnnotationAnchor,
+  type InkStroke,
+  type NoteShape,
   type NoteTone,
+  type StrokeTool,
+  type TextNote,
 } from '@/lib/types/annotations';
 import {
   computeSlideFillStats,
+  findSlideIndexForAnchor,
   packSectionsIntoSlides,
   prepareSlideSections,
+  type SlideChunk,
+  type SlidePage,
   type SlideSectionMetrics,
 } from '@/lib/utils/slide-pagination';
-import { parseLine, transposeChord } from '@/lib/utils/music';
+import {
+  SECTION_COLORS,
+  formatSectionLabel,
+  isMinorKey,
+  parseLine,
+  shouldPreferFlats,
+  transposeChord,
+  transposeLine,
+} from '@/lib/utils/music';
+import { applyColorScheme } from '../components/AuroraShell';
 import {
   AuroraButton,
   AuroraChip,
@@ -34,7 +59,23 @@ import {
 import { getDisplayTitleAndArtist, getEffectiveKey } from '../utils/song-display';
 import { navigate, useRoute } from '../router';
 
-const AUTO_FIT_SCALES = [1.32, 1.22, 1.12, 1.04, 0.96, 0.88, 0.8, 0.74];
+const SWIPE_MIN_DX = 48;
+const SWIPE_MAX_DT = 650;
+const SWIPE_DX_DY_RATIO = 1.35;
+const EDGE_GUARD_PX = 16;
+const KEY_DEBOUNCE_MS = 140;
+const PEN_SUPPRESS_MS = 480;
+const COL_GAP_PX = 14;
+const CARD_GAP_PX = 10;
+const HEIGHT_SAFETY_PX = 6;
+const MIN_FONT_SIZE = 70;
+const MAX_FONT_SIZE = 180;
+const AUTO_FIT_MAX_FONT = 164;
+const AUTO_FIT_MIN_FONT = 84;
+const SVG_SCALE = 100;
+
+const EMPTY_STROKES: InkStroke[] = [];
+const EMPTY_NOTES: TextNote[] = [];
 
 const TONE_LABELS_PT: Record<NoteTone, string> = {
   amber: 'Âmbar',
@@ -42,6 +83,609 @@ const TONE_LABELS_PT: Record<NoteTone, string> = {
   tune: 'Verde',
   rec: 'Vermelho',
 };
+
+function blurOnPointer(e: React.MouseEvent<HTMLButtonElement>) {
+  if (e.detail > 0) {
+    e.currentTarget.blur();
+  }
+}
+
+function trySetPointerCapture(el: Element | null, pointerId: number) {
+  if (!el) return;
+  try {
+    el.setPointerCapture(pointerId);
+  } catch {
+    // ignore iPadOS Safari synthetic capture errors
+  }
+}
+
+function isStylusTouch(touch: React.Touch): boolean {
+  return 'touchType' in touch && (touch as React.Touch & { touchType?: string }).touchType === 'stylus';
+}
+
+function makeId(prefix: string): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function round3(n: number): number {
+  return Math.round(n * 1000) / 1000;
+}
+
+function anchorKey(sectionIdx: number, origLineIdx: number): string {
+  return `${sectionIdx}:${origLineIdx}`;
+}
+
+function prefersReduced(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+function ToneShapeGlyph({
+  shape,
+  color,
+  size = 9,
+}: {
+  shape: NoteShape;
+  color: string;
+  size?: number;
+}) {
+  if (shape === 'diamond') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 10 10" className="flex-shrink-0" aria-hidden="true">
+        <polygon points="5,0.6 9.4,5 5,9.4 0.6,5" fill={color} />
+      </svg>
+    );
+  }
+  if (shape === 'square') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 10 10" className="flex-shrink-0" aria-hidden="true">
+        <rect x="1.2" y="1.2" width="7.6" height="7.6" rx="1.8" fill={color} />
+      </svg>
+    );
+  }
+  if (shape === 'triangle') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 10 10" className="flex-shrink-0" aria-hidden="true">
+        <polygon points="5,0.8 9.3,8.8 0.7,8.8" fill={color} />
+      </svg>
+    );
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 10 10" className="flex-shrink-0" aria-hidden="true">
+      <circle cx="5" cy="5" r="4" fill={color} />
+    </svg>
+  );
+}
+
+function StrokeLayer({
+  strokes,
+  coordMode,
+  renderKind,
+}: {
+  strokes: InkStroke[];
+  coordMode: 'em' | 'page';
+  renderKind: 'highlighter' | 'pen';
+}) {
+  const filtered = strokes.filter((s) => s.tool === renderKind);
+  if (filtered.length === 0) return null;
+  const isHi = renderKind === 'highlighter';
+
+  return (
+    <div
+      className={`pointer-events-none absolute inset-0 overflow-visible ${isHi ? 'z-0' : 'z-10'}`}
+      aria-hidden="true"
+    >
+      {filtered.map((stroke) => {
+        const tone = NOTE_TONE_MAP[stroke.tone] ?? NOTE_TONE_MAP.amber;
+        const strokeColor = isHi ? tone.hiVar : tone.inkVar;
+        const strokeWidth = computeStrokeWidthEm(stroke.tool, stroke.points) * SVG_SCALE;
+        const scaled: [number, number, number][] = stroke.points.map(([x, y, p]) => [
+          Math.round(x * SVG_SCALE * 10) / 10,
+          Math.round(y * SVG_SCALE * 10) / 10,
+          p,
+        ]);
+
+        let maxDxEm = 0.6;
+        for (let i = 0; i < stroke.points.length; i++) {
+          if (stroke.points[i][0] > maxDxEm) maxDxEm = stroke.points[i][0];
+        }
+        const safeRightReserve = Math.min(8, Math.round(maxDxEm * 10) / 10);
+
+        const posStyle: CSSProperties =
+          coordMode === 'em'
+            ? {
+                left: `min(calc(${Math.max(0, stroke.originX)}em), max(0px, calc(100% - ${safeRightReserve}em - 6px)))`,
+                top: `${stroke.originY}em`,
+              }
+            : {
+                left: `${stroke.originX * 100}%`,
+                top: `${stroke.originY * 100}%`,
+              };
+
+        return (
+          <div key={stroke.id} className="absolute pointer-events-none" style={posStyle}>
+            <svg
+              width="1em"
+              height="1em"
+              viewBox={`0 0 ${SVG_SCALE} ${SVG_SCALE}`}
+              className="overflow-visible block"
+            >
+              <path
+                data-stroke-id={stroke.id}
+                data-stroke-tool={stroke.tool}
+                d={buildSmoothSvgPath(scaled)}
+                fill="none"
+                stroke={strokeColor}
+                strokeOpacity={1}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function getNotePosStyle(note: TextNote, coordMode: 'em' | 'page'): CSSProperties {
+  if (coordMode === 'page') {
+    if (note.align === 'right' || note.x > 0.62) {
+      return {
+        right: `clamp(8px, ${(1 - note.x) * 100}%, calc(100% - 140px))`,
+        top: `clamp(16px, ${note.y * 100}%, calc(100% - 36px))`,
+        translate: '0 -50%',
+      };
+    }
+    return {
+      left: `clamp(8px, ${note.x * 100}%, calc(100% - 140px))`,
+      top: `clamp(16px, ${note.y * 100}%, calc(100% - 36px))`,
+      translate: '0 -50%',
+    };
+  }
+  if (note.align === 'right') {
+    return {
+      right: `clamp(0px, calc(${Math.max(0, note.x)}em), max(0px, calc(100% - min(180px, 65%))))`,
+      top: `${note.y}em`,
+      translate: '0 -45%',
+    };
+  }
+  return {
+    left: `clamp(0px, calc(${Math.max(0, note.x)}em), max(0px, calc(100% - min(180px, 65%))))`,
+    top: `${note.y}em`,
+    translate: '0 -45%',
+  };
+}
+
+function TextNoteList({
+  notes,
+  coordMode,
+  annotateMode,
+  activeTool,
+  draggingNoteId,
+  onStartDragNote,
+  onTapNote,
+}: {
+  notes: TextNote[];
+  coordMode: 'em' | 'page';
+  annotateMode: boolean;
+  activeTool: AnnotateTool;
+  draggingNoteId: string | null;
+  onStartDragNote: (note: TextNote, e: React.PointerEvent<HTMLButtonElement>) => void;
+  onTapNote: (note: TextNote, rect: DOMRect) => void;
+}) {
+  if (notes.length === 0) return null;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-visible z-20">
+      {notes.map((note) => {
+        const tone = NOTE_TONE_MAP[note.tone] ?? NOTE_TONE_MAP.amber;
+        const isDragging = draggingNoteId === note.id;
+        const posStyle = getNotePosStyle(note, coordMode);
+
+        if (!annotateMode) {
+          return (
+            <div
+              key={note.id}
+              role="note"
+              data-note-id={note.id}
+              aria-label={`Nota (${TONE_LABELS_PT[note.tone] ?? tone.label}): ${note.text}`}
+              className="note-chip-enter pointer-events-none absolute inline-flex items-start gap-1.5 px-2.5 py-1 rounded-xl text-left w-max max-w-[min(240px,86%)] select-none"
+              style={{
+                ...posStyle,
+                backgroundColor: tone.chipBg,
+                color: tone.chipFg,
+              }}
+            >
+              <span className="mt-[0.3em]">
+                <ToneShapeGlyph shape={tone.shape} color={tone.dotColor} size={8} />
+              </span>
+              <span className="typescale-label-sm break-words whitespace-pre-wrap">{note.text}</span>
+            </div>
+          );
+        }
+
+        const isEraser = activeTool === 'eraser';
+        return (
+          <button
+            key={note.id}
+            type="button"
+            data-note-id={note.id}
+            aria-label={
+              isEraser
+                ? `Apagar nota: ${note.text}`
+                : `Editar ou mover nota: ${note.text}`
+            }
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onStartDragNote(note, e);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (e.detail === 0) {
+                onTapNote(note, e.currentTarget.getBoundingClientRect());
+              }
+            }}
+            className={`note-chip-enter pointer-events-auto touch-none absolute inline-flex items-start gap-1.5 px-2.5 py-1.5 rounded-xl border-none text-left w-max max-w-[min(240px,86%)] select-none ${
+              isEraser
+                ? 'cursor-pointer ring-2 ring-inset ring-error'
+                : 'cursor-grab active:cursor-grabbing'
+            } ${isDragging ? 'opacity-30' : 'opacity-100'}`}
+            style={{
+              ...posStyle,
+              backgroundColor: tone.chipBg,
+              color: tone.chipFg,
+            }}
+          >
+            <span className="mt-[0.25em]">
+              <ToneShapeGlyph shape={tone.shape} color={tone.dotColor} size={8} />
+            </span>
+            <span className="typescale-label-sm break-words whitespace-pre-wrap">{note.text}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SlideChordLine({
+  line,
+  displayMode,
+  shiftDir,
+  shiftKey,
+}: {
+  line: string;
+  displayMode: DisplayMode;
+  shiftDir: 'none' | 'up' | 'down' | 'reset';
+  shiftKey: string;
+}) {
+  if (!line.trim()) return <div className="h-[0.45em]" />;
+  const segs = parseLine(line);
+
+  if (displayMode === 'lyrics-only') {
+    const lyricText = segs.map((s) => s.text).join('').replace(/^\s+/, '');
+    return <p className="text-on-surface m-0 leading-[1.4]">{lyricText}</p>;
+  }
+
+  if (displayMode === 'chords-only') {
+    const chords = segs.filter((s) => s.chord).map((s) => s.chord!);
+    return (
+      <div className="flex flex-wrap gap-x-3 gap-y-1 font-mono font-bold text-primary py-0.5 leading-snug">
+        {chords.map((c, ci) => (
+          <span
+            key={`${ci}-${shiftDir === 'none' ? 'init' : shiftKey}`}
+            data-shift-dir={shiftDir === 'none' ? undefined : shiftDir}
+            className="chord-settle"
+          >
+            {c}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-[1.22em] leading-[1.36]">
+      {segs.map((seg, si) => {
+        const chord = seg.chord;
+        const nextHasChord = Boolean(segs[si + 1]?.chord);
+        const prevEndedSpace = si > 0 && /\s$/.test(segs[si - 1].text);
+        if (!chord) {
+          const cleanText = si === 0 ? seg.text.replace(/^\s+/, '') : seg.text;
+          return (
+            <span key={si} className="text-on-surface whitespace-pre-wrap">
+              {cleanText}
+            </span>
+          );
+        }
+        const hasLyrics = seg.text.trim().length > 0;
+        if (!hasLyrics) {
+          return (
+            <span
+              key={si}
+              className="relative inline-block leading-none mr-3"
+              style={{ minWidth: `${Math.max(chord.length + 0.5, 2.5)}ch` }}
+            >
+              <span className="font-mono font-bold text-primary text-[0.84em] absolute left-0 bottom-[calc(100%+2px)] leading-none whitespace-nowrap">
+                <span
+                  key={shiftDir === 'none' ? 'init' : shiftKey}
+                  data-shift-dir={shiftDir === 'none' ? undefined : shiftDir}
+                  className="chord-settle"
+                >
+                  {chord}
+                </span>
+              </span>
+              <span className="text-on-surface whitespace-pre leading-[1.36]">
+                {seg.text || '\u00A0'}
+              </span>
+            </span>
+          );
+        }
+        const wm = seg.text.match(/^(\s*)(\S+)(.*)$/);
+        const rawLead = wm ? wm[1] : '';
+        const leadSpace = si === 0 || prevEndedSpace ? '' : rawLead;
+        const anchor = wm ? wm[2] : seg.text;
+        const tail = wm ? wm[3] : '';
+        const tightToNext = nextHasChord && !tail.trim();
+        return (
+          <span key={si}>
+            {leadSpace && <span className="text-on-surface whitespace-pre">{leadSpace}</span>}
+            <span
+              className="relative inline-block leading-none"
+              style={{
+                minWidth:
+                  tightToNext && anchor.length < chord.length ? `${chord.length + 0.8}ch` : undefined,
+              }}
+            >
+              <span className="font-mono font-bold text-primary text-[0.84em] absolute left-0 bottom-[calc(100%+2px)] leading-none whitespace-nowrap">
+                <span
+                  key={shiftDir === 'none' ? 'init' : shiftKey}
+                  data-shift-dir={shiftDir === 'none' ? undefined : shiftDir}
+                  className="chord-settle"
+                >
+                  {chord}
+                </span>
+              </span>
+              <span className="text-on-surface whitespace-pre leading-[1.36]">{anchor}</span>
+            </span>
+            {tail && <span className="text-on-surface whitespace-pre-wrap">{tail}</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function SlideSectionCard({
+  chunk,
+  displayMode,
+  allowColumnAlign,
+  shiftDir,
+  shiftKey,
+  strokesByAnchor,
+  notesByAnchor,
+  annotateMode,
+  activeTool,
+  draggingNoteId,
+  onStartDragNote,
+  onTapNote,
+}: {
+  chunk: SlideChunk;
+  displayMode: DisplayMode;
+  allowColumnAlign: boolean;
+  shiftDir: 'none' | 'up' | 'down' | 'reset';
+  shiftKey: string;
+  strokesByAnchor: Map<string, InkStroke[]>;
+  notesByAnchor: Map<string, TextNote[]>;
+  annotateMode: boolean;
+  activeTool: AnnotateTool;
+  draggingNoteId: string | null;
+  onStartDragNote: (note: TextNote, e: React.PointerEvent<HTMLButtonElement>) => void;
+  onTapNote: (note: TextNote, rect: DOMRect) => void;
+}) {
+  const colors = SECTION_COLORS[chunk.type] || SECTION_COLORS.verse;
+  const isLyricsOnly = displayMode === 'lyrics-only';
+  const isChorus = chunk.type === 'chorus';
+  const labelText = formatSectionLabel(chunk.label);
+
+  const headerKey = anchorKey(chunk.sectionIdx, -1);
+  const headerStrokes = strokesByAnchor.get(headerKey) ?? EMPTY_STROKES;
+  const headerNotes = notesByAnchor.get(headerKey) ?? EMPTY_NOTES;
+
+  if (chunk.instrumentalOnly) {
+    return (
+      <section
+        data-slide-chunk="true"
+        data-section-idx={chunk.sectionIdx}
+        className="stage-card relative px-4 py-2 flex items-center gap-2 flex-shrink-0 bg-surface-container-low"
+      >
+        <div
+          data-slide-line-anchor="true"
+          data-section-idx={chunk.sectionIdx}
+          data-orig-line={-1}
+          className="relative isolate flex items-center gap-2 w-full"
+        >
+          <StrokeLayer strokes={headerStrokes} coordMode="em" renderKind="highlighter" />
+          <div className="relative z-[1] inline-flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-high px-2.5 py-0.5 whitespace-nowrap typescale-label-sm text-on-surface-variant">
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: colors.bd }}
+                aria-hidden="true"
+              />
+              {labelText}
+            </span>
+            <span className="typescale-body-sm text-on-surface-variant italic">
+              · trecho instrumental
+            </span>
+          </div>
+          <StrokeLayer strokes={headerStrokes} coordMode="em" renderKind="pen" />
+          <TextNoteList
+            notes={headerNotes}
+            coordMode="em"
+            annotateMode={annotateMode}
+            activeTool={activeTool}
+            draggingNoteId={draggingNoteId}
+            onStartDragNote={onStartDragNote}
+            onTapNote={onTapNote}
+          />
+        </div>
+      </section>
+    );
+  }
+
+  const flexGrow = allowColumnAlign
+    ? chunk.type === 'intro' && chunk.lines.length <= 2
+      ? 0.25
+      : Math.max(1, chunk.lines.length)
+    : 0;
+
+  return (
+    <section
+      data-slide-chunk="true"
+      data-section-idx={chunk.sectionIdx}
+      className={`stage-card relative flex flex-col justify-start min-h-0 ${
+        allowColumnAlign ? '' : 'flex-shrink-0'
+      } ${isChorus ? 'stage-card-chorus' : 'bg-surface'} ${
+        isLyricsOnly ? 'px-4 sm:px-5 xl:px-6 py-3 xl:py-3.5' : 'px-4 sm:px-5 xl:px-6 py-2.5 xl:py-3.5'
+      }`}
+      style={{ flexGrow }}
+    >
+      <div className="relative" data-slide-chunk-body="true">
+        <div
+          data-slide-line-anchor="true"
+          data-section-idx={chunk.sectionIdx}
+          data-orig-line={-1}
+          className="relative isolate flex items-center gap-2 mb-1.5"
+        >
+          <StrokeLayer strokes={headerStrokes} coordMode="em" renderKind="highlighter" />
+          <span
+            className={`relative z-[1] inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 whitespace-nowrap typescale-label-sm ${
+              isChorus
+                ? 'bg-primary-container text-on-primary-container'
+                : 'bg-surface-container-high text-on-surface-variant'
+            }`}
+          >
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: colors.bd }}
+              aria-hidden="true"
+            />
+            {labelText}
+            {chunk.continuation ? ' (cont.)' : ''}
+          </span>
+          <StrokeLayer strokes={headerStrokes} coordMode="em" renderKind="pen" />
+          <TextNoteList
+            notes={headerNotes}
+            coordMode="em"
+            annotateMode={annotateMode}
+            activeTool={activeTool}
+            draggingNoteId={draggingNoteId}
+            onStartDragNote={onStartDragNote}
+            onTapNote={onTapNote}
+          />
+        </div>
+
+        <div className={isLyricsOnly ? 'space-y-1.5' : 'space-y-0.5'}>
+          {chunk.lines.map((line, idx) => {
+            const origLineIdx = chunk.origLineIndices[idx] ?? chunk.startLineIdx + idx;
+            const lKey = anchorKey(chunk.sectionIdx, origLineIdx);
+            const lineStrokes = strokesByAnchor.get(lKey) ?? EMPTY_STROKES;
+            const lineNotes = notesByAnchor.get(lKey) ?? EMPTY_NOTES;
+            return (
+              <div
+                key={`${chunk.startLineIdx}-${origLineIdx}-${idx}`}
+                data-slide-line-anchor="true"
+                data-section-idx={chunk.sectionIdx}
+                data-orig-line={origLineIdx}
+                className="relative isolate"
+              >
+                <StrokeLayer strokes={lineStrokes} coordMode="em" renderKind="highlighter" />
+                <div className="relative z-[1]">
+                  <SlideChordLine
+                    line={line}
+                    displayMode={displayMode}
+                    shiftDir={shiftDir}
+                    shiftKey={shiftKey}
+                  />
+                </div>
+                <StrokeLayer strokes={lineStrokes} coordMode="em" renderKind="pen" />
+                <TextNoteList
+                  notes={lineNotes}
+                  coordMode="em"
+                  annotateMode={annotateMode}
+                  activeTool={activeTool}
+                  draggingNoteId={draggingNoteId}
+                  onStartDragNote={onStartDragNote}
+                  onTapNote={onTapNote}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type PendingPageTarget =
+  | { kind: 'first'; announceSong?: string }
+  | { kind: 'last'; announceSong?: string }
+  | { kind: 'anchor'; sectionIdx: number; lineIdx: number }
+  | null;
+
+interface DeckLayoutState {
+  songId: string;
+  pages: SlidePage[];
+  pageIdx: number;
+  effectiveFontSize: number;
+}
+
+interface MeasureProbeState {
+  key: string;
+  scale: number;
+  phase: 'shrink1' | 'shrink2' | 'grow1' | 'stepdown' | 'lock';
+  targetPages: number;
+  baselinePages: number;
+  baselineGrow: number | null;
+}
+
+interface ResolvedAnchorHit {
+  anchor: AnnotationAnchor;
+  originX: number;
+  originY: number;
+  noteX: number;
+  noteAlign: 'left' | 'right';
+  scalePx: number;
+}
+
+interface NoteComposerState {
+  mode: 'create' | 'edit';
+  noteId?: string;
+  anchor: AnnotationAnchor;
+  x: number;
+  y: number;
+  align: 'left' | 'right';
+  initialText: string;
+  initialTone: NoteTone;
+}
+
+interface ActiveDragNoteState {
+  songId: string;
+  note: TextNote;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  grabDx: number;
+  grabDy: number;
+  curX: number;
+  curY: number;
+  moved: boolean;
+  origRect: DOMRect;
+}
 
 export function SlidesView() {
   const route = useRoute();
@@ -52,17 +696,30 @@ export function SlidesView() {
   const songsLoaded = useSongStore((s) => s.isLoaded);
   const getSong = useSongStore((s) => s.getSong);
   const setlists = useSetlistStore((s) => s.setlists);
-  const { displayMode, setDisplayMode, capoDisplay, setCapoDisplay } = useDisplayStore();
-  const useFlats = usePlayerStore((s) => s.useFlats);
+  const playerTranspose = usePlayerStore((s) => s.transpose);
+  const playerUseFlats = usePlayerStore((s) => s.useFlats);
+  const {
+    displayMode,
+    setDisplayMode,
+    fontSize: globalFontSize,
+    theme,
+    setTheme,
+    capoDisplay,
+    setCapoDisplay,
+    singleKeyShortcuts,
+  } = useDisplayStore();
 
   const {
     bySong: annotationsBySong,
     historyBySong,
     fetchSongAnnotations,
+    flushPendingSync,
     addStroke,
     removeStroke,
     addTextNote,
+    updateTextNote,
     removeTextNote,
+    pushManualSnapshot,
     clearSongAnnotations,
     undo: undoAnnotation,
     redo: redoAnnotation,
@@ -87,127 +744,177 @@ export function SlidesView() {
     return [];
   }, [entries, activeSetlist, initialSongId, getSong]);
 
-  const initialIdx = useMemo(() => {
-    if (!initialSongId) return 0;
-    const found = deckSongs.findIndex((s) => s.id === initialSongId);
-    return found >= 0 ? found : 0;
+  const initialResolvedId = useMemo(() => {
+    if (initialSongId && deckSongs.some((s) => s.id === initialSongId)) return initialSongId;
+    return deckSongs[0]?.id ?? '';
   }, [deckSongs, initialSongId]);
 
-  const [songIdx, setSongIdx] = useState(initialIdx);
-  const [slideIdx, setSlideIdx] = useState(0);
-  const [turnDir, setTurnDir] = useState<'next' | 'prev' | 'none'>('none');
-  const [transpose, setTranspose] = useState(0);
-  const [autoFit, setAutoFit] = useState(true);
-  const [manualScale, setManualScale] = useState(1.0);
-  const [columns, setColumns] = useState<1 | 2>(() =>
-    typeof window !== 'undefined' && window.innerWidth >= 960 ? 2 : 1
+  const [activeSongId, setActiveSongId] = useState(initialResolvedId);
+  useEffect(() => {
+    if (!activeSongId && initialResolvedId) setActiveSongId(initialResolvedId);
+  }, [activeSongId, initialResolvedId]);
+
+  const [colsPref, setColsPref] = useState<'auto' | 1 | 2>('auto');
+  const [fitMode, setFitMode] = useState<'auto' | 'manual'>('auto');
+  const [manualFontSize, setManualFontSize] = useState(globalFontSize || 100);
+  const [stageBox, setStageBox] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [fontsTick, setFontsTick] = useState(0);
+  const [measureProbe, setMeasureProbe] = useState<MeasureProbeState | null>(null);
+  const [deckLayout, setDeckLayout] = useState<DeckLayoutState>({
+    songId: '',
+    pages: [],
+    pageIdx: 0,
+    effectiveFontSize: globalFontSize || 100,
+  });
+
+  const [slideTransposeBySong, setSlideTransposeBySong] = useState<
+    Record<string, { shift: number; useFlats?: boolean }>
+  >(() =>
+    initialResolvedId && playerTranspose !== 0
+      ? { [initialResolvedId]: { shift: playerTranspose, useFlats: playerUseFlats } }
+      : {}
   );
+
   const [deckOpen, setDeckOpen] = useState(false);
-  const [slideControlsOpen, setSlideControlsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [annotateMode, setAnnotateMode] = useState(false);
   const [activeTool, setActiveTool] = useState<AnnotateTool>('pen');
   const [activeTone, setActiveTone] = useState<NoteTone>('amber');
-  const [noteComposer, setNoteComposer] = useState<{ x: number; y: number } | null>(null);
-  const [noteText, setNoteText] = useState('');
+  const [liveStroke, setLiveStroke] = useState<{
+    tool: StrokeTool;
+    tone: NoteTone;
+    points: Array<{ x: number; y: number; pressure: number }>;
+  } | null>(null);
+  const [noteComposer, setNoteComposer] = useState<NoteComposerState | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteToneDraft, setNoteToneDraft] = useState<NoteTone>('amber');
+  const [dragNote, setDragNote] = useState<ActiveDragNoteState | null>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
-  const [viewport, setViewport] = useState(() => ({
-    w: typeof window !== 'undefined' ? window.innerWidth : 1280,
-    h: typeof window !== 'undefined' ? window.innerHeight : 820,
-  }));
-  const [stageSize, setStageSize] = useState<{ w: number; h: number } | null>(null);
+  const [turnAnim, setTurnAnim] = useState<{ dir: 'next' | 'prev' | 'none'; seq: number }>({
+    dir: 'none',
+    seq: 0,
+  });
+  const [songBanner, setSongBanner] = useState<{ text: string; seq: number } | null>(null);
+  const [undoSnackbar, setUndoSnackbar] = useState<{
+    songId: string;
+    message: string;
+    seq: number;
+  } | null>(null);
+  const [liveStatus, setLiveStatus] = useState('');
+
+  const stageInnerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const swipeLayerRef = useRef<HTMLDivElement>(null);
+  const settingsWrapRef = useRef<HTMLDivElement>(null);
+  const settingsTriggerRef = useRef<HTMLButtonElement>(null);
+  const keyPillTriggerRef = useRef<HTMLButtonElement>(null);
+  const settingsSourceRef = useRef<'settings' | 'key'>('settings');
+  const annotateToolbarRef = useRef<HTMLDivElement>(null);
+  const annotateToggleRef = useRef<HTMLButtonElement>(null);
+  const edgePulseLeftRef = useRef<HTMLDivElement>(null);
+  const edgePulseRightRef = useRef<HTMLDivElement>(null);
+
   const annotateModeRef = useRef(annotateMode);
   annotateModeRef.current = annotateMode;
-
-  const stageRef = useRef<HTMLDivElement>(null);
-  const stageInnerRef = useRef<HTMLDivElement>(null);
-  const annotateToolbarRef = useRef<HTMLDivElement>(null);
-  const wasAnnotatingRef = useRef(false);
-  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchRef = useRef<{ x: number; y: number; t: number; horizontal: boolean; moved: boolean } | null>(null);
   const drawingRef = useRef<{
-    pts: Array<{ x: number; y: number; pressure: number }>;
-    originX: number;
-    originY: number;
-  } | null>(null);
-  const [liveStrokeD, setLiveStrokeD] = useState<string>('');
-
-  const currentSong = deckSongs[songIdx] ?? null;
-  const rawTotalShift =
-    currentSong && capoDisplay === 'shapes' ? transpose - currentSong.capo : transpose;
-  const currentSongId = currentSong?.id ?? '';
-  const [shiftTracker, setShiftTracker] = useState<{
     songId: string;
-    shift: number;
-    dir: 'none' | 'up' | 'down' | 'reset';
-  }>({ songId: currentSongId, shift: rawTotalShift, dir: 'none' });
-  if (shiftTracker.songId !== currentSongId) {
-    setShiftTracker({ songId: currentSongId, shift: rawTotalShift, dir: 'none' });
-  } else if (shiftTracker.shift !== rawTotalShift) {
-    const dir =
-      rawTotalShift === 0 && shiftTracker.shift !== 0
-        ? 'reset'
-        : rawTotalShift > shiftTracker.shift
-          ? 'up'
-          : 'down';
-    setShiftTracker({ songId: currentSongId, shift: rawTotalShift, dir });
-  }
+    pointerId: number;
+    isPencilInstant: boolean;
+    tool: StrokeTool;
+    tone: NoteTone;
+    stageRect: DOMRect;
+    startHit: ResolvedAnchorHit;
+    startLocalX: number;
+    startLocalY: number;
+    points: Array<{ x: number; y: number; pressure: number }>;
+  } | null>(null);
+  const erasingRef = useRef<{
+    songId: string;
+    pointerId: number;
+    erasedIds: Set<string>;
+    preSnapshot: { strokes: InkStroke[]; notes: TextNote[] };
+    didErase: boolean;
+  } | null>(null);
 
-  useEffect(() => {
-    if (annotateMode && !wasAnnotatingRef.current) {
-      const firstControl = annotateToolbarRef.current?.querySelector<HTMLElement>(
-        'button:not(:disabled)'
-      );
-      firstControl?.focus({ preventScroll: true });
-    } else if (!annotateMode && wasAnnotatingRef.current) {
-      const visibleTrigger = [
-        ...document.querySelectorAll<HTMLElement>('[data-slides-annotate-trigger]'),
-      ].find((el) => el.offsetParent !== null);
-      visibleTrigger?.focus({ preventScroll: true });
-    }
-    wasAnnotatingRef.current = annotateMode;
-  }, [annotateMode]);
+  const lastSwipeAtRef = useRef(0);
+  const lastPenActivityAtRef = useRef(0);
+  const lastKeyAtRef = useRef(0);
+  const liveParityRef = useRef(false);
+  const pendingPageRef = useRef<PendingPageTarget>({ kind: 'first' });
+  const currentAnchorRef = useRef<{ sectionIdx: number; lineIdx: number }>({
+    sectionIdx: 0,
+    lineIdx: 0,
+  });
+  const bannerTimerRef = useRef<number | null>(null);
+  const snackbarTimerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    setSongIdx(initialIdx);
-    setSlideIdx(0);
-    setTurnDir('none');
-  }, [initialIdx]);
-
-  useEffect(() => {
-    if (currentSong?.id) {
-      void fetchSongAnnotations(currentSong.id);
-      const info = getDisplayTitleAndArtist(currentSong);
-      document.title = `Slides: ${info.title} - Jamshelf`;
-    }
-  }, [currentSong?.id, fetchSongAnnotations]);
-
-  useEffect(() => {
-    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+  const announce = useCallback((msg: string) => {
+    liveParityRef.current = !liveParityRef.current;
+    setLiveStatus(liveParityRef.current ? msg : `${msg}\u00A0`);
   }, []);
 
+  const showUndoToast = useCallback((songId: string, message: string, durationMs = 4500) => {
+    setUndoSnackbar((prev) => ({ songId, message, seq: (prev?.seq ?? 0) + 1 }));
+    if (snackbarTimerRef.current) window.clearTimeout(snackbarTimerRef.current);
+    snackbarTimerRef.current = window.setTimeout(() => setUndoSnackbar(null), durationMs);
+  }, []);
+
+  const pulseEdge = useCallback((side: 'left' | 'right') => {
+    if (prefersReduced()) return;
+    const el = side === 'left' ? edgePulseLeftRef.current : edgePulseRightRef.current;
+    if (!el) return;
+    el.getAnimations().forEach((a) => a.cancel());
+    el.animate(
+      [
+        { opacity: 0.48, transform: 'scaleX(1)' },
+        { opacity: 0, transform: 'scaleX(0.6)' },
+      ],
+      { duration: 240, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+    );
+  }, []);
+
+  const safeSongIdx = useMemo(() => {
+    const idx = deckSongs.findIndex((s) => s.id === activeSongId);
+    return idx >= 0 ? idx : 0;
+  }, [deckSongs, activeSongId]);
+
+  const currentSong = deckSongs[safeSongIdx] ?? deckSongs[0] ?? null;
+
+  // Hydrate & flush annotations
   useEffect(() => {
-    const el = stageRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const measure = () => {
-      const w = Math.floor(el.clientWidth / 4) * 4;
-      const h = Math.floor(el.clientHeight / 4) * 4;
-      if (w < 100 || h < 100) return;
-      // Preserve zero pagination reflow while annotating at stable width; still adapt on real viewport/orientation resize
-      setStageSize((prev) => {
-        if (annotateModeRef.current && prev && Math.abs(prev.w - w) <= 8) return prev;
-        return prev && prev.w === w && prev.h === h ? prev : { w, h };
-      });
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        void flushPendingSync(undefined, { keepalive: true });
+      }
     };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [currentSong?.id]);
+    const onPageHide = () => {
+      void flushPendingSync(undefined, { keepalive: true });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+      void flushPendingSync(undefined, { keepalive: true });
+    };
+  }, [flushPendingSync]);
 
   useEffect(() => {
+    if (!currentSong?.id) return;
+    void fetchSongAnnotations(currentSong.id);
+    const info = getDisplayTitleAndArtist(currentSong);
+    document.title = `Slides: ${info.title} - Jamshelf`;
+  }, [currentSong?.id, fetchSongAnnotations]);
+
+  // Wake Lock
+  useEffect(() => {
     let sentinel: { release: () => Promise<void> } | null = null;
-    const wl = (navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock;
+    const wl = (
+      navigator as unknown as {
+        wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> };
+      }
+    ).wakeLock;
     wl?.request('screen')
       .then((s) => {
         sentinel = s;
@@ -218,91 +925,577 @@ export function SlidesView() {
     };
   }, []);
 
-  // Auto-Fit solver using measured stage dimensions so 390px/768px/1024px/1440px never clip lyrics
-  const { slides, activeScale } = useMemo(() => {
-    if (!currentSong) return { slides: [], activeScale: 1 };
-    const prepared = prepareSlideSections(currentSong.sections, displayMode);
-    const padY = viewport.w >= 640 ? 48 : 36;
-    const padX = viewport.w >= 640 ? 48 : 32;
-    const budget = stageSize
-      ? Math.max(180, stageSize.h - padY - 12)
-      : Math.max(220, viewport.h - 200);
-    const usableW = stageSize
-      ? Math.max(260, stageSize.w - padX)
-      : Math.max(280, viewport.w - padX);
-    const effectiveCols: 1 | 2 = columns === 2 && viewport.w >= 1024 ? 2 : 1;
-    const colWidthPx =
-      effectiveCols === 2 ? (usableW - 16) / 2 - 44 : Math.min(896, usableW) - 44;
-
-    const buildForScale = (scale: number) => {
-      const colChars = Math.max(20, Math.floor(colWidthPx / (9.4 * scale)));
-      const chordPad = displayMode === 'both' ? 20 : 6;
-      const lineBodyH = displayMode === 'both' ? 26 * scale : 28 * scale;
-      const chromeH = 76;
-      const metrics: SlideSectionMetrics[] = prepared.map((sec) => {
-        const lineHeights = sec.lines.map((l) => {
-          if (!l.trim()) return 12 * scale;
-          const plainLen = l.replace(/\[[^\]]*\]/g, '').length;
-          const wrapped = Math.max(1, Math.ceil(plainLen / colChars));
-          return chordPad + lineBodyH * wrapped + 10;
-        });
-        return {
-          fullHeight: chromeH + lineHeights.reduce((a, b) => a + b, 0),
-          chromeHeight: chromeH,
-          lineHeights,
-        };
-      });
-      return packSectionsIntoSlides(prepared, metrics, budget, effectiveCols, 16);
+  // Dismiss Ajustes popover on outside click or Escape (restoring focus to trigger)
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        settingsWrapRef.current &&
+        !settingsWrapRef.current.contains(target) &&
+        !(keyPillTriggerRef.current && keyPillTriggerRef.current.contains(target))
+      ) {
+        setSettingsOpen(false);
+      }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setSettingsOpen(false);
+        const btn =
+          settingsSourceRef.current === 'key'
+            ? keyPillTriggerRef.current
+            : settingsTriggerRef.current;
+        btn?.focus({ preventScroll: true });
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [settingsOpen]);
 
-    if (!autoFit) {
-      return { slides: buildForScale(manualScale), activeScale: manualScale };
+  // Accurate transposition with per-song live override + capo shapes/sounding
+  const { displayedKey, shiftedSections, activeTranspose, activeUseFlats } = useMemo(() => {
+    if (!currentSong) {
+      return {
+        displayedKey: '',
+        shiftedSections: [],
+        activeTranspose: 0,
+        activeUseFlats: false,
+      };
     }
+    const effKey = getEffectiveKey(currentSong).key;
+    const override = slideTransposeBySong[currentSong.id];
+    const baseTranspose = override?.shift ?? 0;
+    const keyFlats =
+      override?.useFlats !== undefined ? override.useFlats : shouldPreferFlats(effKey);
+    const nextDisplayedKey =
+      effKey && baseTranspose ? transposeChord(effKey, baseTranspose, keyFlats) : effKey;
+    const chordShift =
+      baseTranspose + (currentSong.capo > 0 && capoDisplay === 'shapes' ? 0 : currentSong.capo);
+    const chordFlats =
+      override?.useFlats !== undefined ? override.useFlats : shouldPreferFlats(nextDisplayedKey);
+    const sections =
+      chordShift === 0
+        ? currentSong.sections
+        : currentSong.sections.map((sec) => ({
+            ...sec,
+            lines: sec.lines.map((line) => transposeLine(line, chordShift, chordFlats)),
+          }));
+    return {
+      displayedKey: nextDisplayedKey,
+      shiftedSections: sections,
+      activeTranspose: baseTranspose,
+      activeUseFlats: chordFlats,
+    };
+  }, [currentSong, slideTransposeBySong, capoDisplay]);
 
-    const baseSlides = buildForScale(0.96);
-    const basePages = baseSlides.length;
-    let bestSlides = baseSlides;
-    let bestScale = 0.96;
+  const currentSongId = currentSong?.id ?? '';
+  const [shiftTracker, setShiftTracker] = useState<{
+    songId: string;
+    shift: number;
+    flats: boolean;
+    dir: 'none' | 'up' | 'down' | 'reset';
+  }>({ songId: currentSongId, shift: activeTranspose, flats: activeUseFlats, dir: 'none' });
+  if (shiftTracker.songId !== currentSongId) {
+    setShiftTracker({
+      songId: currentSongId,
+      shift: activeTranspose,
+      flats: activeUseFlats,
+      dir: 'none',
+    });
+  } else if (shiftTracker.shift !== activeTranspose || shiftTracker.flats !== activeUseFlats) {
+    const dir =
+      activeTranspose === 0 && shiftTracker.shift !== 0
+        ? 'reset'
+        : activeTranspose > shiftTracker.shift
+          ? 'up'
+          : activeTranspose < shiftTracker.shift
+            ? 'down'
+            : 'reset';
+    setShiftTracker({
+      songId: currentSongId,
+      shift: activeTranspose,
+      flats: activeUseFlats,
+      dir,
+    });
+  }
 
-    for (const sc of AUTO_FIT_SCALES) {
-      const candidate = buildForScale(sc);
-      const stats = computeSlideFillStats(candidate, budget);
-      if (candidate.length <= basePages && stats.maxColFill <= 0.92) {
-        bestSlides = candidate;
-        bestScale = sc;
-        break;
+  const preparedSections = useMemo(
+    () => prepareSlideSections(shiftedSections, displayMode),
+    [shiftedSections, displayMode]
+  );
+
+  // Responsive 1 or 2 column layout matching main
+  const canUseTwoCols =
+    stageBox.width >= 900 || (stageBox.width >= 720 && stageBox.width > stageBox.height * 1.3);
+  const effectiveCols: 1 | 2 = useMemo(() => {
+    if (!canUseTwoCols) return 1;
+    if (colsPref === 1 || colsPref === 2) return colsPref;
+    return stageBox.width > stageBox.height || stageBox.width >= 960 ? 2 : 1;
+  }, [canUseTwoCols, colsPref, stageBox.width, stageBox.height]);
+
+  const colGapPx = stageBox.width >= 1280 ? 16 : COL_GAP_PX;
+  const cardGapPx = stageBox.height > 0 && stageBox.height < 420 ? 8 : CARD_GAP_PX;
+
+  const measureColWidth = useMemo(() => {
+    if (stageBox.width <= 0) return 0;
+    if (effectiveCols === 2) {
+      return Math.max(240, Math.floor((stageBox.width - colGapPx) / 2));
+    }
+    return Math.max(240, Math.floor(stageBox.width));
+  }, [stageBox.width, effectiveCols, colGapPx]);
+
+  // Observe stage box dimensions (0px reflow on annotate toggle!)
+  useEffect(() => {
+    const el = stageInnerRef.current;
+    if (!el) return;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      const w = Math.floor(rect.width);
+      const h = Math.floor(rect.height);
+      if (w < 100 || h < 100) return;
+      setStageBox((prev) => {
+        if (annotateModeRef.current && prev.width > 0 && Math.abs(prev.width - w) <= 8) return prev;
+        return prev.width === w && prev.height === h ? prev : { width: w, height: h };
+      });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('orientationchange', update);
+    };
+  }, [currentSong?.id]);
+
+  // Re-measure once webfonts settle
+  useEffect(() => {
+    if (typeof document === 'undefined' || !document.fonts?.ready) return;
+    let active = true;
+    document.fonts.ready.then(() => {
+      if (active) setFontsTick((t) => t + 1);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const baseFontSize = fitMode === 'manual' ? manualFontSize : 100;
+  const layoutKey = `${currentSong?.id ?? ''}|${displayMode}|${stageBox.width}x${stageBox.height}|${effectiveCols}|${baseFontSize}|${fitMode}|${fontsTick}`;
+  const activeProbe =
+    fitMode === 'auto' && measureProbe && measureProbe.key === layoutKey ? measureProbe : null;
+  const mirrorFontSize = activeProbe ? activeProbe.scale : baseFontSize;
+
+  // Deterministic multi-pass DOM-measured Auto-Fit solver (shrink tail fold + p90 width cap + grow)
+  useLayoutEffect(() => {
+    if (!currentSong || stageBox.height <= 0 || measureColWidth <= 0) return;
+    const targetSongId = currentSong.id;
+
+    const rafId = requestAnimationFrame(() => {
+      const mirror = measureRef.current;
+      if (!mirror) return;
+
+      const lineGap = displayMode === 'lyrics-only' ? 6 : 2;
+      const innerCardWidth = Math.max(160, measureColWidth - 40);
+      const sectionEls = mirror.querySelectorAll<HTMLElement>('[data-measure-section]');
+      const metrics: SlideSectionMetrics[] = [];
+      const lineWidthRatios: number[] = [];
+
+      sectionEls.forEach((secEl) => {
+        const secRect = secEl.getBoundingClientRect();
+        const linesWrap = secEl.querySelector<HTMLElement>('[data-measure-lines]');
+        const lineEls = secEl.querySelectorAll<HTMLElement>('[data-measure-line]');
+
+        const pureFullHeight = Math.ceil(secRect.height);
+        if (!linesWrap || lineEls.length === 0) {
+          metrics.push({ fullHeight: pureFullHeight, chromeHeight: pureFullHeight, lineHeights: [] });
+          return;
+        }
+
+        const wrapRect = linesWrap.getBoundingClientRect();
+        const chromeHeight = Math.ceil(secRect.height - wrapRect.height) + 2;
+        const lineHeights: number[] = [];
+        const textRange = typeof document !== 'undefined' ? document.createRange() : null;
+
+        lineEls.forEach((lineEl, idx) => {
+          const lr = lineEl.getBoundingClientRect();
+          lineHeights.push(Math.ceil(lr.height) + (idx > 0 ? lineGap : 0));
+
+          const inner = lineEl.firstElementChild as HTMLElement | null;
+          if (inner) {
+            let lineW = 0;
+            if (inner.children.length > 0) {
+              for (let c = 0; c < inner.children.length; c++) {
+                lineW += inner.children[c].getBoundingClientRect().width;
+              }
+            } else if (textRange && inner.textContent && inner.textContent.trim().length > 0) {
+              textRange.selectNodeContents(inner);
+              lineW = textRange.getBoundingClientRect().width;
+            }
+            if (lineW > 0) lineWidthRatios.push(lineW / innerCardWidth);
+          }
+        });
+        metrics.push({ fullHeight: pureFullHeight, chromeHeight, lineHeights });
+      });
+
+      let p90WidthRatio = 0;
+      if (lineWidthRatios.length > 0) {
+        lineWidthRatios.sort((a, b) => a - b);
+        p90WidthRatio = lineWidthRatios[Math.floor((lineWidthRatios.length - 1) * 0.9)];
+      }
+
+      const usableHeight = Math.max(140, stageBox.height - HEIGHT_SAFETY_PX);
+      const nextPages = packSectionsIntoSlides(
+        preparedSections,
+        metrics,
+        usableHeight,
+        effectiveCols,
+        cardGapPx
+      );
+      const stats = computeSlideFillStats(nextPages, usableHeight, effectiveCols);
+      const minAutoFont = stageBox.width >= 768 ? AUTO_FIT_MIN_FONT : 86;
+
+      const computeGrowCandidate = () => {
+        if (stageBox.height < 360 && stats.pageCount > 4) return null;
+        const effectiveFill =
+          stats.pageCount === 1
+            ? stats.maxColFill
+            : Math.min(stats.maxColFill, stats.avgColFill * 1.03);
+        if (effectiveFill <= 0.05 || effectiveFill >= 0.93) return null;
+        const targetFill = stats.pageCount === 1 ? 0.94 : 0.91;
+        const rawVertFactor = targetFill / Math.max(0.28, effectiveFill);
+        const vertFactor = 1 + (rawVertFactor - 1) * 0.88;
+        const horizCap =
+          p90WidthRatio > 0.05
+            ? Math.min(displayMode === 'both' ? 1.54 : 1.5, 0.98 / p90WidthRatio)
+            : displayMode === 'lyrics-only'
+              ? 1.5
+              : 1.46;
+        const maxFactor = effectiveCols === 2 && stageBox.width >= 1280 ? 1.46 : 1.54;
+        const boundedFactor = Math.max(1, Math.min(maxFactor, Math.min(vertFactor, horizCap)));
+        const candidate = Math.min(
+          AUTO_FIT_MAX_FONT,
+          Math.max(baseFontSize, Math.round((baseFontSize * boundedFactor) / 2) * 2)
+        );
+        return candidate >= baseFontSize + 4 ? candidate : null;
+      };
+
+      if (fitMode === 'auto') {
+        if (!activeProbe) {
+          const pageEquiv = stats.totalCapacityFill * stats.pageCount;
+          const spillPages = pageEquiv - (stats.pageCount - 1);
+          const hasFoldableTail =
+            stats.pageCount > 1 &&
+            (stats.lastSlideTotalFill < 0.38 ||
+              stats.lastSlideFill < 0.4 ||
+              spillPages < 0.3);
+          const baselineGrow = computeGrowCandidate();
+
+          if (hasFoldableTail) {
+            const excess = Math.max(0.05, spillPages);
+            const neededRatio = (stats.pageCount - 1) / (stats.pageCount - 1 + excess * 1.25);
+            const shrink1 = Math.max(
+              minAutoFont,
+              Math.min(94, Math.floor((baseFontSize * Math.sqrt(neededRatio)) / 2) * 2)
+            );
+            if (shrink1 < baseFontSize) {
+              setMeasureProbe({
+                key: layoutKey,
+                scale: shrink1,
+                phase: 'shrink1',
+                targetPages: stats.pageCount - 1,
+                baselinePages: stats.pageCount,
+                baselineGrow,
+              });
+              return;
+            }
+          }
+
+          if (baselineGrow) {
+            setMeasureProbe({
+              key: layoutKey,
+              scale: baselineGrow,
+              phase: 'grow1',
+              targetPages: stats.pageCount,
+              baselinePages: stats.pageCount,
+              baselineGrow,
+            });
+            return;
+          }
+        } else if (activeProbe.phase === 'shrink1') {
+          if (nextPages.length > activeProbe.targetPages) {
+            if (activeProbe.scale > minAutoFont) {
+              setMeasureProbe({ ...activeProbe, scale: minAutoFont, phase: 'shrink2' });
+              return;
+            }
+            const fallbackScale = activeProbe.baselineGrow ?? baseFontSize;
+            setMeasureProbe({
+              ...activeProbe,
+              scale: fallbackScale,
+              phase: activeProbe.baselineGrow ? 'grow1' : 'lock',
+              targetPages: activeProbe.baselinePages,
+            });
+            return;
+          }
+        } else if (activeProbe.phase === 'shrink2') {
+          if (nextPages.length > activeProbe.targetPages) {
+            const fallbackScale = activeProbe.baselineGrow ?? baseFontSize;
+            setMeasureProbe({
+              ...activeProbe,
+              scale: fallbackScale,
+              phase: activeProbe.baselineGrow ? 'grow1' : 'lock',
+              targetPages: activeProbe.baselinePages,
+            });
+            return;
+          }
+        } else if (activeProbe.phase === 'grow1') {
+          if (nextPages.length > activeProbe.targetPages) {
+            const stepDown = Math.max(
+              baseFontSize,
+              Math.floor(((baseFontSize + activeProbe.scale) / 2) / 2) * 2
+            );
+            setMeasureProbe({
+              ...activeProbe,
+              scale: stepDown,
+              phase: stepDown > baseFontSize ? 'stepdown' : 'lock',
+            });
+            return;
+          }
+        } else if (activeProbe.phase === 'stepdown') {
+          if (nextPages.length > activeProbe.targetPages && activeProbe.scale > baseFontSize) {
+            setMeasureProbe({ ...activeProbe, scale: baseFontSize, phase: 'lock' });
+            return;
+          }
+        }
+      }
+
+      const pending = pendingPageRef.current;
+      pendingPageRef.current = null;
+      let resolvedPageIdx = 0;
+      if (pending?.kind === 'first') {
+        resolvedPageIdx = 0;
+        if (pending.announceSong) {
+          announce(`${pending.announceSong}, página 1 de ${nextPages.length}`);
+        }
+      } else if (pending?.kind === 'last') {
+        resolvedPageIdx = Math.max(0, nextPages.length - 1);
+        if (pending.announceSong) {
+          announce(`${pending.announceSong}, página ${resolvedPageIdx + 1} de ${nextPages.length}`);
+        }
+      } else if (pending?.kind === 'anchor') {
+        resolvedPageIdx = findSlideIndexForAnchor(nextPages, pending.sectionIdx, pending.lineIdx);
+      } else {
+        const anchor = currentAnchorRef.current;
+        resolvedPageIdx = findSlideIndexForAnchor(nextPages, anchor.sectionIdx, anchor.lineIdx);
+      }
+
+      setDeckLayout({
+        songId: targetSongId,
+        pages: nextPages,
+        pageIdx: resolvedPageIdx,
+        effectiveFontSize: mirrorFontSize,
+      });
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [
+    currentSong,
+    preparedSections,
+    stageBox.height,
+    measureColWidth,
+    effectiveCols,
+    baseFontSize,
+    fitMode,
+    displayMode,
+    fontsTick,
+    layoutKey,
+    activeProbe,
+    mirrorFontSize,
+    cardGapPx,
+    stageBox.width,
+    announce,
+  ]);
+
+  const isLayoutSynced = Boolean(currentSong && deckLayout.songId === currentSong.id);
+  const pages = isLayoutSynced ? deckLayout.pages : [];
+  const totalPages = Math.max(1, pages.length);
+  const safePageIdx = isLayoutSynced
+    ? Math.min(Math.max(0, deckLayout.pageIdx), totalPages - 1)
+    : 0;
+  const activeSlide = isLayoutSynced ? pages[safePageIdx] ?? null : null;
+  const activeFontSize = isLayoutSynced ? deckLayout.effectiveFontSize : baseFontSize;
+
+  useEffect(() => {
+    if (!activeSlide) return;
+    currentAnchorRef.current = {
+      sectionIdx: activeSlide.anchorSectionIdx,
+      lineIdx: activeSlide.anchorLineIdx,
+    };
+  }, [activeSlide]);
+
+  const songAnnotations = currentSong ? annotationsBySong[currentSong.id] : undefined;
+  const songStrokes = songAnnotations?.strokes ?? EMPTY_STROKES;
+  const songNotes = songAnnotations?.notes ?? EMPTY_NOTES;
+  const totalAnnotationCount = songStrokes.length + songNotes.length;
+  const canUndo = Boolean(currentSong && (historyBySong[currentSong.id]?.past.length ?? 0) > 0);
+  const canRedo = Boolean(currentSong && (historyBySong[currentSong.id]?.future.length ?? 0) > 0);
+
+  const { strokesByAnchor, notesByAnchor, pageStrokes, pageNotes } = useMemo(() => {
+    const sMap = new Map<string, InkStroke[]>();
+    const nMap = new Map<string, TextNote[]>();
+    const pStrokes: InkStroke[] = [];
+    const pNotes: TextNote[] = [];
+
+    const visibleLineKeys = new Set<string>();
+    const visibleSectionSet = new Set<number>();
+    for (const sec of preparedSections) {
+      visibleSectionSet.add(sec.sectionIdx);
+      visibleLineKeys.add(anchorKey(sec.sectionIdx, -1));
+      for (const origIdx of sec.origLineIndices) {
+        visibleLineKeys.add(anchorKey(sec.sectionIdx, origIdx));
       }
     }
-    return { slides: bestSlides, activeScale: bestScale };
-  }, [currentSong, displayMode, viewport.w, viewport.h, stageSize, columns, autoFit, manualScale]);
 
-  const safeSlideIdx = Math.min(slideIdx, Math.max(0, slides.length - 1));
-
-  const goNext = () => {
-    if (safeSlideIdx < slides.length - 1) {
-      setTurnDir('next');
-      setSlideIdx(safeSlideIdx + 1);
-    } else if (songIdx < deckSongs.length - 1) {
-      setTurnDir('next');
-      setSongIdx(songIdx + 1);
-      setSlideIdx(0);
-      setTranspose(0);
+    for (const s of songStrokes) {
+      if (s.anchor.kind === 'section') {
+        const k = anchorKey(s.anchor.sectionIdx, s.anchor.origLineIdx);
+        const list = sMap.get(k);
+        if (list) list.push(s);
+        else sMap.set(k, [s]);
+      } else if (Math.min(s.anchor.pageIdx, totalPages - 1) === safePageIdx) {
+        pStrokes.push(s);
+      }
     }
-  };
 
-  const goPrev = () => {
-    if (safeSlideIdx > 0) {
-      setTurnDir('prev');
-      setSlideIdx(safeSlideIdx - 1);
-    } else if (songIdx > 0) {
-      setTurnDir('prev');
-      setSongIdx(songIdx - 1);
-      setSlideIdx(0);
-      setTranspose(0);
+    for (const n of songNotes) {
+      if (n.anchor.kind === 'section') {
+        const exactKey = anchorKey(n.anchor.sectionIdx, n.anchor.origLineIdx);
+        const resolvedKey =
+          visibleLineKeys.has(exactKey) || !visibleSectionSet.has(n.anchor.sectionIdx)
+            ? exactKey
+            : anchorKey(n.anchor.sectionIdx, -1);
+        const list = nMap.get(resolvedKey);
+        if (list) list.push(n);
+        else nMap.set(resolvedKey, [n]);
+      } else if (Math.min(n.anchor.pageIdx, totalPages - 1) === safePageIdx) {
+        pNotes.push(n);
+      }
     }
-  };
 
-  const handleExit = () => {
+    return { strokesByAnchor: sMap, notesByAnchor: nMap, pageStrokes: pStrokes, pageNotes: pNotes };
+  }, [songStrokes, songNotes, preparedSections, safePageIdx, totalPages]);
+
+  const atDeckStart = safeSongIdx === 0 && safePageIdx === 0;
+  const atDeckEnd = safeSongIdx === deckSongs.length - 1 && safePageIdx >= totalPages - 1;
+  const prevSong = safeSongIdx > 0 ? deckSongs[safeSongIdx - 1] : null;
+  const nextSong = safeSongIdx < deckSongs.length - 1 ? deckSongs[safeSongIdx + 1] : null;
+  const isLastPageOfSong = isLayoutSynced && safePageIdx >= totalPages - 1;
+
+  const cancelActiveGestures = useCallback(() => {
+    drawingRef.current = null;
+    erasingRef.current = null;
+    setLiveStroke(null);
+    setDragNote(null);
+    setNoteComposer(null);
+  }, []);
+
+  const showSongBoundaryBanner = useCallback(
+    (idx: number, s: ParsedSong) => {
+      const k = getEffectiveKey(s).key;
+      const prefix = deckSongs.length > 1 ? `${idx + 1}/${deckSongs.length} · ` : '';
+      setSongBanner((prev) => ({
+        text: `${prefix}${getDisplayTitleAndArtist(s).title}${k ? ` · ${k}` : ''}`,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
+      if (bannerTimerRef.current) window.clearTimeout(bannerTimerRef.current);
+      bannerTimerRef.current = window.setTimeout(() => setSongBanner(null), 1500);
+    },
+    [deckSongs.length]
+  );
+
+  const goNext = useCallback(() => {
+    if (!isLayoutSynced) return;
+    cancelActiveGestures();
+    if (safePageIdx < totalPages - 1) {
+      const nextP = safePageIdx + 1;
+      setDeckLayout((prev) => ({ ...prev, pageIdx: nextP }));
+      setTurnAnim((prev) => ({ dir: 'next', seq: prev.seq + 1 }));
+      pulseEdge('right');
+      announce(`Página ${nextP + 1} de ${totalPages}`);
+      return;
+    }
+    if (safeSongIdx < deckSongs.length - 1) {
+      const targetIdx = safeSongIdx + 1;
+      const targetSong = deckSongs[targetIdx];
+      pendingPageRef.current = { kind: 'first', announceSong: targetSong.title };
+      currentAnchorRef.current = { sectionIdx: 0, lineIdx: 0 };
+      setFitMode('auto');
+      setMeasureProbe(null);
+      setActiveSongId(targetSong.id);
+      setTurnAnim((prev) => ({ dir: 'next', seq: prev.seq + 1 }));
+      pulseEdge('right');
+      showSongBoundaryBanner(targetIdx, targetSong);
+      return;
+    }
+    announce('Fim da apresentação');
+  }, [
+    isLayoutSynced,
+    cancelActiveGestures,
+    safePageIdx,
+    totalPages,
+    safeSongIdx,
+    deckSongs,
+    pulseEdge,
+    announce,
+    showSongBoundaryBanner,
+  ]);
+
+  const goPrev = useCallback(() => {
+    if (!isLayoutSynced) return;
+    cancelActiveGestures();
+    if (safePageIdx > 0) {
+      const prevP = safePageIdx - 1;
+      setDeckLayout((prev) => ({ ...prev, pageIdx: prevP }));
+      setTurnAnim((prev) => ({ dir: 'prev', seq: prev.seq + 1 }));
+      pulseEdge('left');
+      announce(`Página ${prevP + 1} de ${totalPages}`);
+      return;
+    }
+    if (safeSongIdx > 0) {
+      const targetIdx = safeSongIdx - 1;
+      const targetSong = deckSongs[targetIdx];
+      pendingPageRef.current = { kind: 'last', announceSong: targetSong.title };
+      currentAnchorRef.current = { sectionIdx: 0, lineIdx: 0 };
+      setFitMode('auto');
+      setMeasureProbe(null);
+      setActiveSongId(targetSong.id);
+      setTurnAnim((prev) => ({ dir: 'prev', seq: prev.seq + 1 }));
+      pulseEdge('left');
+      showSongBoundaryBanner(targetIdx, targetSong);
+      return;
+    }
+    announce('Início da apresentação');
+  }, [
+    isLayoutSynced,
+    cancelActiveGestures,
+    safePageIdx,
+    totalPages,
+    safeSongIdx,
+    deckSongs,
+    pulseEdge,
+    announce,
+    showSongBoundaryBanner,
+  ]);
+
+  const handleExit = useCallback(() => {
+    if (currentSong) {
+      void flushPendingSync(currentSong.id, { keepalive: true });
+    }
     if (setlistId && !initialSongId) {
       navigate(`/setlists/${setlistId}`, { direction: 'backward' });
       return;
@@ -315,49 +1508,618 @@ export function SlidesView() {
       return;
     }
     navigate('/', { direction: 'backward' });
+  }, [currentSong, flushPendingSync, setlistId, initialSongId]);
+
+  const switchToCleanStage = () => {
+    if (!currentSong) return;
+    void flushPendingSync(currentSong.id, { keepalive: true });
+    navigate(
+      setlistId
+        ? `/song/${currentSong.id}?setlist=${setlistId}&clean=1`
+        : `/song/${currentSong.id}?clean=1`
+    );
   };
 
+  // Resolve section/line anchor for stylus/finger annotations
+  const resolveAnchorAtPoint = useCallback(
+    (clientX: number, clientY: number): ResolvedAnchorHit => {
+      const fallbackScalePx = Math.max(10, (16 * activeFontSize) / 100);
+      const stageEl = stageInnerRef.current;
+      if (!stageEl) {
+        return {
+          anchor: { kind: 'page', pageIdx: safePageIdx },
+          originX: 0.5,
+          originY: 0.5,
+          noteX: 0.5,
+          noteAlign: 'left',
+          scalePx: fallbackScalePx,
+        };
+      }
+
+      const anchors = stageEl.querySelectorAll<HTMLElement>('[data-slide-line-anchor="true"]');
+      let directEl: HTMLElement | null = null;
+      for (let i = 0; i < anchors.length; i++) {
+        const el = anchors[i];
+        const r = el.getBoundingClientRect();
+        if (
+          clientX >= r.left - 12 &&
+          clientX <= r.right + 12 &&
+          clientY >= r.top - 4 &&
+          clientY <= r.bottom + 4
+        ) {
+          directEl = el;
+          break;
+        }
+      }
+
+      if (!directEl) {
+        const chunks = stageEl.querySelectorAll<HTMLElement>('[data-slide-chunk="true"]');
+        let nearestCard: HTMLElement | null = null;
+        let nearestDist = Infinity;
+        for (let i = 0; i < chunks.length; i++) {
+          const cr = chunks[i].getBoundingClientRect();
+          const dx = Math.max(cr.left - clientX, 0, clientX - cr.right);
+          const dy = Math.max(cr.top - clientY, 0, clientY - cr.bottom);
+          const dist = Math.hypot(dx, dy);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestCard = chunks[i];
+          }
+        }
+        if (nearestCard) {
+          const cardAnchors = nearestCard.querySelectorAll<HTMLElement>('[data-slide-line-anchor="true"]');
+          let bestDist = Infinity;
+          cardAnchors.forEach((a) => {
+            const ar = a.getBoundingClientRect();
+            const d = Math.abs(clientY - (ar.top + ar.bottom) / 2);
+            if (d < bestDist) {
+              bestDist = d;
+              directEl = a;
+            }
+          });
+        }
+      }
+
+      if (directEl) {
+        const r = directEl.getBoundingClientRect();
+        const computedFont = parseFloat(getComputedStyle(directEl).fontSize);
+        const scalePx = Number.isFinite(computedFont) && computedFont >= 8 ? computedFont : fallbackScalePx;
+        const sectionIdx = Number(directEl.getAttribute('data-section-idx') ?? 0);
+        const origLineIdx = Number(directEl.getAttribute('data-orig-line') ?? -1);
+        const relXFrac = (clientX - r.left) / Math.max(1, r.width);
+        const noteAlign: 'left' | 'right' = relXFrac > 0.58 ? 'right' : 'left';
+        const leftEm = round3(Math.max(0, (clientX - r.left) / scalePx));
+        const rightEm = round3(Math.max(0, (r.right - clientX) / scalePx));
+        const maxYEm = Math.max(1.2, r.height / scalePx + 0.5);
+        const clampedY = round3(Math.max(-0.25, Math.min(maxYEm, (clientY - r.top) / scalePx)));
+        return {
+          anchor: { kind: 'section', sectionIdx, origLineIdx },
+          originX: leftEm,
+          originY: clampedY,
+          noteX: noteAlign === 'right' ? rightEm : leftEm,
+          noteAlign,
+          scalePx,
+        };
+      }
+
+      const stageRect = stageEl.getBoundingClientRect();
+      const xFrac = round3(Math.max(0.02, Math.min(0.98, (clientX - stageRect.left) / Math.max(1, stageRect.width))));
+      const yFrac = round3(Math.max(0.02, Math.min(0.98, (clientY - stageRect.top) / Math.max(1, stageRect.height))));
+      return {
+        anchor: { kind: 'page', pageIdx: safePageIdx },
+        originX: xFrac,
+        originY: yFrac,
+        noteX: xFrac,
+        noteAlign: xFrac > 0.62 ? 'right' : 'left',
+        scalePx: fallbackScalePx,
+      };
+    },
+    [activeFontSize, safePageIdx]
+  );
+
+  // Geometric batched eraser sweep across strokes and notes
+  const eraseAtPoint = useCallback(
+    (clientX: number, clientY: number) => {
+      const er = erasingRef.current;
+      if (!er || !stageInnerRef.current) return;
+      const root = stageInnerRef.current;
+
+      const noteEls = root.querySelectorAll<HTMLElement>('[data-note-id]');
+      for (let i = 0; i < noteEls.length; i++) {
+        const el = noteEls[i];
+        const id = el.getAttribute('data-note-id');
+        if (!id || er.erasedIds.has(id)) continue;
+        const r = el.getBoundingClientRect();
+        if (clientX >= r.left - 6 && clientX <= r.right + 6 && clientY >= r.top - 6 && clientY <= r.bottom + 6) {
+          er.erasedIds.add(id);
+          er.didErase = true;
+          removeTextNote(er.songId, id, { skipHistory: true });
+          announce('Nota apagada');
+          return;
+        }
+      }
+
+      const pathEls = root.querySelectorAll<SVGPathElement>('path[data-stroke-id]');
+      for (let i = 0; i < pathEls.length; i++) {
+        const pathEl = pathEls[i];
+        const id = pathEl.getAttribute('data-stroke-id');
+        if (!id || er.erasedIds.has(id)) continue;
+        const hitRadius = pathEl.getAttribute('data-stroke-tool') === 'highlighter' ? 22 : 16;
+        const r = pathEl.getBoundingClientRect();
+        if (
+          clientX < r.left - hitRadius ||
+          clientX > r.right + hitRadius ||
+          clientY < r.top - hitRadius ||
+          clientY > r.bottom + hitRadius
+        ) {
+          continue;
+        }
+        const ctm = pathEl.getScreenCTM();
+        if (!ctm) continue;
+        const totalLen = pathEl.getTotalLength();
+        const steps = Math.max(2, Math.min(80, Math.ceil(totalLen / 18)));
+        for (let s = 0; s <= steps; s++) {
+          const pt = pathEl.getPointAtLength((totalLen * s) / steps);
+          const sx = pt.x * ctm.a + pt.y * ctm.c + ctm.e;
+          const sy = pt.x * ctm.b + pt.y * ctm.d + ctm.f;
+          if (Math.hypot(clientX - sx, clientY - sy) <= hitRadius) {
+            er.erasedIds.add(id);
+            er.didErase = true;
+            removeStroke(er.songId, id, { skipHistory: true });
+            announce('Traço apagado');
+            return;
+          }
+        }
+      }
+    },
+    [removeTextNote, removeStroke, announce]
+  );
+
+  // Pointer handlers for Annotate Mode + Apple Pencil instant draw + palm rejection
+  const handleStagePointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (!currentSong || deckOpen || noteComposer || confirmClearOpen) return;
+    if (e.button > 0) return;
+    if (drawingRef.current || erasingRef.current || dragNote) return;
+
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('button, a, textarea, input, select, [role="dialog"]')) return;
+
+    const isApplePencil = e.pointerType === 'pen';
+    if (isApplePencil) {
+      lastPenActivityAtRef.current = Date.now();
+    } else if (Date.now() - lastPenActivityAtRef.current < 320) {
+      return;
+    }
+
+    if (!annotateMode && !isApplePencil) return;
+    const stageEl = stageInnerRef.current;
+    if (!stageEl) return;
+    const stageRect = stageEl.getBoundingClientRect();
+    const effectiveTool: AnnotateTool = !annotateMode && isApplePencil ? 'pen' : activeTool;
+
+    if (effectiveTool === 'text') {
+      e.preventDefault();
+      const hit = resolveAnchorAtPoint(e.clientX, e.clientY);
+      setNoteDraft('');
+      setNoteToneDraft(activeTone);
+      setNoteComposer({
+        mode: 'create',
+        anchor: hit.anchor,
+        x: hit.noteX,
+        y: hit.originY,
+        align: hit.noteAlign,
+        initialText: '',
+        initialTone: activeTone,
+      });
+      return;
+    }
+
+    if (effectiveTool === 'eraser') {
+      e.preventDefault();
+      erasingRef.current = {
+        songId: currentSong.id,
+        pointerId: e.pointerId,
+        erasedIds: new Set<string>(),
+        preSnapshot: { strokes: songStrokes, notes: songNotes },
+        didErase: false,
+      };
+      trySetPointerCapture(e.currentTarget, e.pointerId);
+      eraseAtPoint(e.clientX, e.clientY);
+      return;
+    }
+
+    e.preventDefault();
+    const startHit = resolveAnchorAtPoint(e.clientX, e.clientY);
+    const localX = e.clientX - stageRect.left;
+    const localY = e.clientY - stageRect.top;
+    const pressure = e.pressure > 0 ? e.pressure : 0.5;
+    const initialPts = [{ x: localX, y: localY, pressure }];
+    drawingRef.current = {
+      songId: currentSong.id,
+      pointerId: e.pointerId,
+      isPencilInstant: !annotateMode && isApplePencil,
+      tool: effectiveTool,
+      tone: activeTone,
+      stageRect,
+      startHit,
+      startLocalX: localX,
+      startLocalY: localY,
+      points: initialPts,
+    };
+    setLiveStroke({ tool: effectiveTool, tone: activeTone, points: initialPts });
+    trySetPointerCapture(e.currentTarget, e.pointerId);
+  };
+
+  const handleStagePointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (dragNote && dragNote.pointerId === e.pointerId) {
+      e.preventDefault();
+      const moved = dragNote.moved || Math.hypot(e.clientX - dragNote.startX, e.clientY - dragNote.startY) > 6;
+      setDragNote((prev) => (prev ? { ...prev, curX: e.clientX, curY: e.clientY, moved } : null));
+      return;
+    }
+    if (erasingRef.current && erasingRef.current.pointerId === e.pointerId) {
+      e.preventDefault();
+      eraseAtPoint(e.clientX, e.clientY);
+      return;
+    }
+    const draw = drawingRef.current;
+    if (!draw || draw.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    if (e.pointerType === 'pen') lastPenActivityAtRef.current = Date.now();
+    const localX = e.clientX - draw.stageRect.left;
+    const localY = e.clientY - draw.stageRect.top;
+    const last = draw.points[draw.points.length - 1];
+    if (last && Math.hypot(localX - last.x, localY - last.y) < 1.5) return;
+    draw.points.push({ x: localX, y: localY, pressure: e.pressure > 0 ? e.pressure : 0.5 });
+    setLiveStroke({ tool: draw.tool, tone: draw.tone, points: [...draw.points] });
+  };
+
+  const finishStagePointer = (e: React.PointerEvent<HTMLElement>, cancelled: boolean) => {
+    if (e.pointerType === 'pen') lastPenActivityAtRef.current = Date.now();
+
+    if (dragNote && dragNote.pointerId === e.pointerId) {
+      const finished = dragNote;
+      setDragNote(null);
+      if (!cancelled) {
+        if (finished.moved) {
+          const dropLeft = e.clientX - finished.grabDx;
+          const dropCenterY = e.clientY - finished.grabDy + finished.origRect.height / 2;
+          const dropProbeX =
+            finished.note.align === 'right' ? dropLeft + finished.origRect.width : dropLeft;
+          const hit = resolveAnchorAtPoint(dropProbeX, dropCenterY);
+          updateTextNote(finished.songId, finished.note.id, {
+            anchor: hit.anchor,
+            x: hit.noteX,
+            y: hit.originY,
+            align: hit.noteAlign,
+          });
+          announce('Nota reposicionada');
+        } else {
+          setNoteDraft(finished.note.text);
+          setNoteToneDraft(finished.note.tone);
+          setNoteComposer({
+            mode: 'edit',
+            noteId: finished.note.id,
+            anchor: finished.note.anchor,
+            x: finished.note.x,
+            y: finished.note.y,
+            align: finished.note.align ?? 'left',
+            initialText: finished.note.text,
+            initialTone: finished.note.tone,
+          });
+        }
+      }
+      return;
+    }
+
+    if (erasingRef.current && erasingRef.current.pointerId === e.pointerId) {
+      const fin = erasingRef.current;
+      erasingRef.current = null;
+      if (fin.didErase) pushManualSnapshot(fin.songId, fin.preSnapshot);
+      return;
+    }
+
+    const draw = drawingRef.current;
+    if (!draw || draw.pointerId !== e.pointerId) return;
+    drawingRef.current = null;
+    setLiveStroke(null);
+    if (cancelled || draw.points.length === 0) return;
+
+    const simplified = simplifyRawPoints(draw.points, 2.2);
+    const scalePx = draw.startHit.scalePx;
+    const relPoints: [number, number, number][] = simplified.map((pt) => [
+      round3((pt.x - draw.startLocalX) / scalePx),
+      round3((pt.y - draw.startLocalY) / scalePx),
+      round3(pt.pressure),
+    ]);
+
+    addStroke(draw.songId, {
+      id: makeId('ink'),
+      tool: draw.tool,
+      tone: draw.tone,
+      anchor: draw.startHit.anchor,
+      originX: draw.startHit.originX,
+      originY: draw.startHit.originY,
+      points: relPoints,
+      createdAt: Date.now(),
+    });
+
+    if (draw.isPencilInstant) {
+      showUndoToast(draw.songId, 'Traço salvo', 3500);
+    }
+  };
+
+  const handleStartDragNote = useCallback(
+    (note: TextNote, e: React.PointerEvent<HTMLButtonElement>) => {
+      if (!currentSong || !annotateMode) return;
+      if (drawingRef.current || erasingRef.current || dragNote) return;
+
+      if (activeTool === 'eraser') {
+        const preSnapshot = { strokes: songStrokes, notes: songNotes };
+        erasingRef.current = {
+          songId: currentSong.id,
+          pointerId: e.pointerId,
+          erasedIds: new Set<string>([note.id]),
+          preSnapshot,
+          didErase: true,
+        };
+        removeTextNote(currentSong.id, note.id, { skipHistory: true });
+        announce('Nota apagada');
+        trySetPointerCapture(stageInnerRef.current?.parentElement ?? null, e.pointerId);
+        return;
+      }
+
+      const origRect = e.currentTarget.getBoundingClientRect();
+      setDragNote({
+        songId: currentSong.id,
+        note,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        grabDx: e.clientX - origRect.left,
+        grabDy: e.clientY - origRect.top,
+        curX: e.clientX,
+        curY: e.clientY,
+        moved: false,
+        origRect,
+      });
+      trySetPointerCapture(stageInnerRef.current?.parentElement ?? null, e.pointerId);
+    },
+    [currentSong, annotateMode, activeTool, dragNote, songStrokes, songNotes, removeTextNote, announce]
+  );
+
+  const handleTapNote = useCallback(
+    (note: TextNote) => {
+      if (!currentSong || !annotateMode) return;
+      if (activeTool === 'eraser') {
+        removeTextNote(currentSong.id, note.id);
+        announce('Nota apagada');
+        return;
+      }
+      setNoteDraft(note.text);
+      setNoteToneDraft(note.tone);
+      setNoteComposer({
+        mode: 'edit',
+        noteId: note.id,
+        anchor: note.anchor,
+        x: note.x,
+        y: note.y,
+        align: note.align ?? 'left',
+        initialText: note.text,
+        initialTone: note.tone,
+      });
+    },
+    [currentSong, annotateMode, activeTool, removeTextNote, announce]
+  );
+
+  // Touch swipe & tap-zones on stage
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (annotateMode || deckOpen || noteComposer || drawingRef.current) return;
+    if (Date.now() - lastPenActivityAtRef.current < PEN_SUPPRESS_MS) return;
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (isStylusTouch(t)) {
+      lastPenActivityAtRef.current = Date.now();
+      return;
+    }
+    if (t.clientX < EDGE_GUARD_PX || t.clientX > window.innerWidth - EDGE_GUARD_PX) return;
+    touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now(), horizontal: false, moved: false };
+    if (swipeLayerRef.current) swipeLayerRef.current.style.transition = 'none';
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (annotateMode || drawingRef.current) return;
+    const start = touchRef.current;
+    if (!start || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (isStylusTouch(t)) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (!start.moved && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) start.moved = true;
+    if (!start.horizontal && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+      start.horizontal = true;
+    }
+    if (!start.horizontal || !swipeLayerRef.current || prefersReduced()) return;
+    const resist = (dx < 0 && atDeckEnd) || (dx > 0 && atDeckStart) ? 0.16 : 0.38;
+    const offset = Math.max(-72, Math.min(72, dx * resist));
+    swipeLayerRef.current.style.transform = `translate3d(${offset}px, 0, 0)`;
+  };
+
+  const resetSwipeLayer = (immediate = false) => {
+    const el = swipeLayerRef.current;
+    if (!el) return;
+    el.style.transition =
+      immediate || prefersReduced() ? 'none' : 'transform 220ms cubic-bezier(0.2, 0, 0, 1)';
+    el.style.transform = '';
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (annotateMode || drawingRef.current) {
+      touchRef.current = null;
+      resetSwipeLayer(false);
+      return;
+    }
+    const start = touchRef.current;
+    touchRef.current = null;
+    if (!start || e.changedTouches.length !== 1) {
+      resetSwipeLayer(false);
+      return;
+    }
+    if (Date.now() - lastPenActivityAtRef.current < PEN_SUPPRESS_MS) {
+      resetSwipeLayer(false);
+      return;
+    }
+    const t = e.changedTouches[0];
+    if (isStylusTouch(t)) {
+      resetSwipeLayer(false);
+      return;
+    }
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    const dt = Date.now() - start.t;
+    if (dt <= SWIPE_MAX_DT && Math.abs(dx) >= SWIPE_MIN_DX && Math.abs(dx) > Math.abs(dy) * SWIPE_DX_DY_RATIO) {
+      const canCommit = (dx < 0 && !atDeckEnd) || (dx > 0 && !atDeckStart);
+      resetSwipeLayer(canCommit);
+      lastSwipeAtRef.current = Date.now();
+      if (dx < 0) goNext();
+      else goPrev();
+    } else {
+      resetSwipeLayer(false);
+      if (start.moved) {
+        lastSwipeAtRef.current = Date.now();
+      }
+    }
+  };
+
+  const handleStageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (annotateMode || noteComposer || drawingRef.current) return;
+    if (Date.now() - lastPenActivityAtRef.current < PEN_SUPPRESS_MS) return;
+    if (Date.now() - lastSwipeAtRef.current < 360) return;
+    if (e.clientX < EDGE_GUARD_PX || e.clientX > window.innerWidth - EDGE_GUARD_PX) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('button, a, [role="dialog"]')) return;
+    if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / Math.max(1, rect.width);
+    const splitPoint = effectiveCols === 2 ? 0.5 : 0.32;
+    if (relX <= splitPoint) goPrev();
+    else goNext();
+  };
+
+  // Bluetooth pedal & keyboard shortcuts
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (deckOpen || noteComposer || confirmClearOpen) return;
-      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'z' && !noteComposer) {
+        if (currentSong && (annotateMode || canUndo || canRedo)) {
+          e.preventDefault();
+          const ok = e.shiftKey ? redoAnnotation(currentSong.id) : undoAnnotation(currentSong.id);
+          if (ok) {
+            setUndoSnackbar(null);
+            announce(e.shiftKey ? 'Anotação refeita' : 'Anotação desfeita');
+          }
+        }
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const target = e.target as HTMLElement | null;
+
+      const modalOpen = Boolean(
+        deckOpen ||
+          settingsOpen ||
+          noteComposer ||
+          confirmClearOpen ||
+          document.querySelector('[role="dialog"]')
+      );
+      if (e.key === 'Escape') {
+        if (modalOpen) return;
+        e.preventDefault();
+        if (annotateMode) {
+          cancelActiveGestures();
+          setAnnotateMode(false);
+          if (currentSong) void flushPendingSync(currentSong.id);
+          announce('Modo de anotação encerrado');
+          requestAnimationFrame(() => annotateToggleRef.current?.focus());
+          return;
+        }
+        handleExit();
+        return;
+      }
+      if (modalOpen) return;
+
+      const targetEl = e.target instanceof Element ? e.target : null;
       if (
-        target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+        targetEl &&
+        (targetEl.tagName === 'INPUT' ||
+          targetEl.tagName === 'TEXTAREA' ||
+          (targetEl instanceof HTMLElement && targetEl.isContentEditable))
       ) {
         return;
       }
-      const onInteractive = Boolean(target?.closest('button, a, [role="button"], summary'));
-      const inChrome = Boolean(target?.closest('header, footer, [role="toolbar"]'));
+      const onControl = Boolean(targetEl?.closest('button, a, select, [role="button"]'));
+      const allowSpace = singleKeyShortcuts && !onControl;
 
-      if (e.key === 'PageDown' || ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && !inChrome)) {
-        e.preventDefault();
-        goNext();
-      } else if (e.key === ' ' && !e.shiftKey) {
-        if (onInteractive) return;
-        e.preventDefault();
-        goNext();
-      } else if (e.key === 'PageUp' || ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && !inChrome)) {
-        e.preventDefault();
-        goPrev();
-      } else if (e.key === ' ' && e.shiftKey) {
-        if (onInteractive) return;
-        e.preventDefault();
-        goPrev();
-      } else if (e.key === 'Escape') {
-        if (annotateMode) setAnnotateMode(false);
-        else handleExit();
-      }
+      const isForward =
+        e.key === 'PageDown' ||
+        e.key === 'ArrowRight' ||
+        e.key === 'ArrowDown' ||
+        e.key === 'MediaTrackNext' ||
+        (!e.shiftKey && allowSpace && e.key === ' ') ||
+        (!e.shiftKey && !onControl && e.key === 'Enter');
+      const isBackward =
+        e.key === 'PageUp' ||
+        e.key === 'ArrowLeft' ||
+        e.key === 'ArrowUp' ||
+        e.key === 'Backspace' ||
+        e.key === 'MediaTrackPrevious' ||
+        (e.shiftKey && allowSpace && e.key === ' ');
+
+      if (!isForward && !isBackward) return;
+      e.preventDefault();
+      if (e.repeat) return;
+      const now = performance.now();
+      if (now - lastKeyAtRef.current < KEY_DEBOUNCE_MS) return;
+      lastKeyAtRef.current = now;
+      if (isForward) goNext();
+      else goPrev();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
+    window.addEventListener('keydown', onKeyDown, { passive: false });
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    deckOpen,
+    settingsOpen,
+    noteComposer,
+    confirmClearOpen,
+    annotateMode,
+    canUndo,
+    canRedo,
+    singleKeyShortcuts,
+    currentSong,
+    goNext,
+    goPrev,
+    handleExit,
+    cancelActiveGestures,
+    flushPendingSync,
+    undoAnnotation,
+    redoAnnotation,
+    announce,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (bannerTimerRef.current) window.clearTimeout(bannerTimerRef.current);
+      if (snackbarTimerRef.current) window.clearTimeout(snackbarTimerRef.current);
+    };
+  }, []);
 
   if (!currentSong) {
     return (
-      <main id="main" tabIndex={-1} className="flex-1 flex flex-col items-center justify-center p-8 gap-4 text-center">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="flex-1 flex flex-col items-center justify-center p-8 gap-4 text-center"
+      >
         <h1 className="typescale-headline-sm text-on-surface m-0">
           {!songsLoaded ? 'Carregando slides...' : 'Nenhuma música para apresentar'}
         </h1>
@@ -368,925 +2130,1014 @@ export function SlidesView() {
     );
   }
 
-  const page = slides[safeSlideIdx];
-  const { title: displayTitle, artist: displayArtist } = getDisplayTitleAndArtist(currentSong);
-  const effKey = getEffectiveKey(currentSong);
-  const totalShift =
-    capoDisplay === 'shapes' ? transpose - currentSong.capo : transpose;
-  const displayedKey = effKey.key
-    ? transposeChord(effKey.key, transpose, useFlats)
-    : '';
+  const { title: displayTitle } = getDisplayTitleAndArtist(currentSong);
+  const minorKey = isMinorKey(displayedKey);
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-  const songAnnotations = annotationsBySong[currentSong.id] ?? {
-    songId: currentSong.id,
-    strokes: [],
-    notes: [],
-    updatedAt: 0,
+  const slideTransposeDelta =
+    activeTranspose > 0 ? `+${activeTranspose}` : activeTranspose < 0 ? `${activeTranspose}` : '';
+  const hasCustomSlideSettings =
+    fitMode === 'manual' || activeTranspose !== 0 || colsPref !== 'auto';
+
+  const handleAdjustFont = (delta: number, e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    const base = fitMode === 'auto' ? Math.round(activeFontSize / 10) * 10 : manualFontSize;
+    const next = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, base + delta));
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setFitMode('manual');
+    setMeasureProbe(null);
+    setManualFontSize(next);
+    announce(`Fonte manual ${next}%`);
   };
-  const songHist = historyBySong[currentSong.id];
-  const canUndo = (songHist?.past.length ?? 0) > 0;
-  const canRedo = (songHist?.future.length ?? 0) > 0;
-  const hasAnyAnnotations = songAnnotations.strokes.length > 0 || songAnnotations.notes.length > 0;
 
-  const pageStrokes = songAnnotations.strokes.filter(
-    (st) => st.anchor.kind === 'page' && st.anchor.pageIdx === safeSlideIdx
-  );
-  const pageNotes = songAnnotations.notes.filter(
-    (n) => n.anchor.kind === 'page' && n.anchor.pageIdx === safeSlideIdx
-  );
+  const handleResetAutoFit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setFitMode('auto');
+    setMeasureProbe(null);
+    announce('Ajuste automático de tela ativado');
+  };
 
-  // Pointer handlers for touch swipe (performance mode) OR pen/highlighter/text note (annotate mode)
-  const handleStagePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    const rect = (stageInnerRef.current ?? stageRef.current)?.getBoundingClientRect();
-    if (!rect) return;
-
-    if (!annotateMode) {
-      swipeStartRef.current = { x: e.clientX, y: e.clientY };
-      return;
-    }
-
-    if (activeTool === 'text') {
-      const x = Math.max(0.05, Math.min(0.92, (e.clientX - rect.left) / rect.width));
-      const y = Math.max(0.08, Math.min(0.92, (e.clientY - rect.top) / rect.height));
-      setNoteComposer({ x, y });
-      setNoteText('');
-      return;
-    }
-
-    if (activeTool === 'pen' || activeTool === 'highlighter') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      drawingRef.current = {
-        originX: x / rect.width,
-        originY: y / rect.height,
-        pts: [{ x: 0, y: 0, pressure: e.pressure || 0.5 }],
+  const handleAdjustTranspose = (delta: number, e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setSlideTransposeBySong((prev) => {
+      const cur = prev[currentSong.id]?.shift ?? 0;
+      const mod = (((cur + delta) % 12) + 12) % 12;
+      const nextShift = mod > 6 ? mod - 12 : mod;
+      return {
+        ...prev,
+        [currentSong.id]: { shift: nextShift, useFlats: prev[currentSong.id]?.useFlats },
       };
-      setLiveStrokeD(`M ${x.toFixed(1)} ${y.toFixed(1)}`);
-    }
-  };
-
-  const handleStagePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!annotateMode) {
-      const start = swipeStartRef.current;
-      const inner = stageInnerRef.current;
-      if (!start || !inner) return;
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const dx = e.clientX - start.x;
-      const dy = e.clientY - start.y;
-      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
-        const clamped = Math.max(-36, Math.min(36, dx * 0.22));
-        inner.style.transition = 'none';
-        inner.style.transform = `translate3d(${clamped.toFixed(1)}px, 0, 0)`;
-      }
-      return;
-    }
-    if (!drawingRef.current) return;
-    const rect = (stageInnerRef.current ?? stageRef.current)?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const ox = drawingRef.current.originX * rect.width;
-    const oy = drawingRef.current.originY * rect.height;
-    drawingRef.current.pts.push({ x: x - ox, y: y - oy, pressure: e.pressure || 0.5 });
-    const absPts: [number, number, number][] = drawingRef.current.pts.map((p) => [
-      ox + p.x,
-      oy + p.y,
-      p.pressure,
-    ]);
-    setLiveStrokeD(buildSmoothSvgPath(absPts));
-  };
-
-  const resetSwipeTransform = () => {
-    const inner = stageInnerRef.current;
-    if (inner) {
-      inner.style.transition = '';
-      inner.style.transform = '';
-    }
-  };
-
-  const handleStagePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!annotateMode) {
-      const start = swipeStartRef.current;
-      swipeStartRef.current = null;
-      resetSwipeTransform();
-      if (!start) return;
-      const dx = e.clientX - start.x;
-      const dy = e.clientY - start.y;
-      if (Math.abs(dx) > 54 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        if (dx < 0) goNext();
-        else goPrev();
-        return;
-      }
-      // Tap left/right edges to turn slides on iPad/phone (outside interactive controls)
-      const target = e.target as HTMLElement | null;
-      if (
-        Math.hypot(dx, dy) < 12 &&
-        !target?.closest('button, a, input, textarea, [role="button"]')
-      ) {
-        const rect = stageRef.current?.getBoundingClientRect();
-        if (rect && rect.width > 0) {
-          const relX = (e.clientX - rect.left) / rect.width;
-          if (relX <= 0.24) goPrev();
-          else if (relX >= 0.72) goNext();
-        }
-      }
-      return;
-    }
-
-    if (!drawingRef.current) return;
-    const draft = drawingRef.current;
-    drawingRef.current = null;
-    setLiveStrokeD('');
-
-    if (draft.pts.length < 2) return;
-    const simplified = simplifyRawPoints(draft.pts, 2.4);
-    const pxPerEm = 16;
-    const points: [number, number, number][] = simplified.map((p) => [
-      Math.round((p.x / pxPerEm) * 1000) / 1000,
-      Math.round((p.y / pxPerEm) * 1000) / 1000,
-      Math.round(p.pressure * 100) / 100,
-    ]);
-
-    addStroke(currentSong.id, {
-      id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      tool: activeTool === 'highlighter' ? 'highlighter' : 'pen',
-      tone: activeTone,
-      anchor: { kind: 'page', pageIdx: safeSlideIdx },
-      originX: Math.round(draft.originX * 1000) / 1000,
-      originY: Math.round(draft.originY * 1000) / 1000,
-      points,
-      createdAt: Date.now(),
     });
   };
 
-  const commitTextNote = (textValue: string) => {
+  const handleResetTranspose = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setSlideTransposeBySong((prev) => {
+      const next = { ...prev };
+      delete next[currentSong.id];
+      return next;
+    });
+  };
+
+  const handleToggleFlats = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    const nextFlats = !activeUseFlats;
+    setSlideTransposeBySong((prev) => ({
+      ...prev,
+      [currentSong.id]: { shift: prev[currentSong.id]?.shift ?? 0, useFlats: nextFlats },
+    }));
+  };
+
+  const handleToggleCapo = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setCapoDisplay(capoDisplay === 'shapes' ? 'sounding' : 'shapes');
+  };
+
+  const handleToggleCols = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    const nextCols: 1 | 2 = effectiveCols === 2 ? 1 : 2;
+    pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+    setColsPref(nextCols);
+  };
+
+  const handleToggleAnnotate = (e: React.MouseEvent<HTMLButtonElement>) => {
+    blurOnPointer(e);
+    cancelActiveGestures();
+    setSettingsOpen(false);
+    setAnnotateMode((prev) => {
+      const next = !prev;
+      if (!next) void flushPendingSync(currentSong.id);
+      announce(next ? 'Modo de anotação ativado' : 'Modo de anotação encerrado');
+      return next;
+    });
+  };
+
+  const commitNote = (textValue: string) => {
     if (!noteComposer || !textValue.trim()) return;
-    addTextNote(currentSong.id, {
-      id: `nt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      text: textValue.trim(),
-      tone: activeTone,
-      anchor: { kind: 'page', pageIdx: safeSlideIdx },
-      x: Math.round(noteComposer.x * 1000) / 1000,
-      y: Math.round(noteComposer.y * 1000) / 1000,
-      align: noteComposer.x > 0.65 ? 'right' : 'left',
-      createdAt: Date.now(),
-    });
+    if (noteComposer.mode === 'edit' && noteComposer.noteId) {
+      updateTextNote(currentSong.id, noteComposer.noteId, {
+        text: textValue.trim(),
+        tone: noteToneDraft,
+      });
+    } else {
+      addTextNote(currentSong.id, {
+        id: makeId('note'),
+        text: textValue.trim(),
+        tone: noteToneDraft,
+        anchor: noteComposer.anchor,
+        x: noteComposer.x,
+        y: noteComposer.y,
+        align: noteComposer.align,
+        createdAt: Date.now(),
+      });
+    }
+    setActiveTone(noteToneDraft);
     setNoteComposer(null);
-    setNoteText('');
+    setNoteDraft('');
   };
 
-  const transposePillLabel = displayedKey
-    ? transpose === 0
-      ? displayedKey
-      : `${displayedKey} (${transpose > 0 ? `+${transpose}` : transpose})`
-    : transpose > 0
-      ? `+${transpose}`
-      : `${transpose}`;
+  const singleSpread = activeSlide && activeSlide.columns.length <= 1;
+  const usableStageH = Math.max(140, stageBox.height - HEIGHT_SAFETY_PX);
+  const dragToneMeta = dragNote ? NOTE_TONE_MAP[dragNote.note.tone] ?? NOTE_TONE_MAP.amber : null;
 
   return (
-    <main
-      id="main"
-      tabIndex={-1}
+    <div
       data-motion-scheme="standard"
-      className="fixed inset-0 bg-canvas text-on-surface flex flex-col focus:outline-none"
+      data-slides-mode="true"
+      data-fit-mode={fitMode}
+      data-effective-font={activeFontSize}
+      className="fixed inset-0 bg-canvas text-on-surface flex flex-col select-none overflow-hidden"
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
     >
       <div role="status" aria-live="polite" className="sr-only">
-        {displayTitle}, slide {safeSlideIdx + 1} de {slides.length}
-        {annotateMode ? ', modo anotação ativo' : ''}
+        {liveStatus || `${displayTitle}, página ${safePageIdx + 1} de ${totalPages}`}
       </div>
-      {/* Top tonal stage bar (slim 1-row on mobile < md, full inline on md+) */}
-      <header className="px-3 sm:px-6 py-2 bg-surface-container-low flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 md:flex-initial">
-          <AuroraIconButton
-            icon="close"
-            label="Sair dos slides"
-            variant="outlined"
-            className="md:hidden"
-            onClick={handleExit}
-          />
-          <AuroraButton
-            color="outlined"
-            icon="close"
-            className="hidden md:inline-flex lg:px-3"
-            onClick={handleExit}
-          >
-            Sair
-          </AuroraButton>
-          <div className="min-w-0">
-            <h1 className="typescale-title-md text-on-surface m-0 truncate">
-              {displayTitle}
-              {displayedKey ? ` · ${displayedKey}` : ''}
-            </h1>
-            <div className="typescale-body-sm text-on-surface-variant truncate">
-              {displayArtist || 'Sem artista'} · Slide {safeSlideIdx + 1} de {slides.length}
-              {deckSongs.length > 1 ? ` · Música ${songIdx + 1} de ${deckSongs.length}` : ''}
-              {autoFit && (
-                <span className="hidden sm:inline">
-                  {` · Autoajuste ${Math.round(activeScale * 100)}%`}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
 
-        {/* Mobile compact actions (< md) so header stays 1 slim row */}
-        <div className="flex md:hidden items-center gap-1 flex-shrink-0">
-          <AuroraIconButton
-            data-slides-annotate-trigger="true"
-            icon="draw"
-            label="Anotar no slide"
-            variant={annotateMode ? 'tonal' : 'outlined'}
-            aria-pressed={annotateMode}
-            aria-controls={annotateMode ? 'slides-annotate-toolbar' : undefined}
-            onClick={() => setAnnotateMode((v) => !v)}
-          />
-          {deckSongs.length > 1 && (
-            <AuroraIconButton
-              icon="queue_music"
-              label={`Lista de músicas (${deckSongs.length})`}
-              variant="tonal"
-              onClick={() => setDeckOpen(true)}
-            />
-          )}
-          <AuroraIconButton
-            icon="tune"
-            label="Ajustes dos slides"
-            variant="outlined"
-            onClick={() => setSlideControlsOpen(true)}
-          />
-        </div>
-
-        {/* Tablet & desktop inline controls (md+) */}
-        <div className="hidden md:flex items-center gap-1.5 flex-wrap">
-          <div className="inline-flex items-center rounded-full bg-surface-container-high px-0.5">
+      {/* Slim Single-Row Stage Top Bar (md+ single row, < md 2 balanced rows) */}
+      <header className="flex-shrink-0 bg-surface-container-low border-b border-outline-variant/50 px-2.5 sm:px-4 py-1.5">
+        <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-1.5 sm:gap-2">
+          {/* Left: Exit + Setlist counter + Title + Key (< lg) / direct - Tom + (lg+) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
             <button
               type="button"
-              aria-label="Descer meio tom"
-              title="Descer meio tom"
-              onClick={() => setTranspose((v) => v - 1)}
-              className="dock-stepper-btn"
+              onClick={(e) => {
+                blurOnPointer(e);
+                handleExit();
+              }}
+              aria-label="Sair dos slides"
+              title="Sair (Esc)"
+              className="stage-btn stage-btn-outlined h-10 min-h-[40px] px-2.5 xl:px-3 typescale-label-lg flex-shrink-0"
             >
-              <UiIcon name="remove" size={20} />
+              <UiIcon name="close" size={20} />
+              <span className="hidden xl:inline">Sair</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setTranspose(0)}
-              aria-label={`Tom atual ${transposePillLabel}. Ativar para restaurar tom original`}
-              title="Restaurar tom original"
-              className="transpose-reset-btn typescale-label-sm font-mono tabular-nums"
-            >
-              <span
-                key={shiftTracker.dir === 'none' ? 'init' : String(totalShift)}
-                data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
-                className="chord-settle"
+
+            {deckSongs.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  blurOnPointer(e);
+                  setDeckOpen(true);
+                }}
+                aria-haspopup="dialog"
+                aria-label={`Abrir setlist (${safeSongIdx + 1} de ${deckSongs.length})`}
+                className="stage-btn stage-btn-tonal h-10 min-h-[40px] px-2.5 font-mono typescale-label-sm tabular-nums flex-shrink-0"
               >
-                {transposePillLabel}
-              </span>
-            </button>
-            <button
-              type="button"
-              aria-label="Subir meio tom"
-              title="Subir meio tom"
-              onClick={() => setTranspose((v) => v + 1)}
-              className="dock-stepper-btn"
-            >
-              <UiIcon name="add" size={20} />
-            </button>
+                <UiIcon name="queue_music" size={20} />
+                <span>
+                  {safeSongIdx + 1}/{deckSongs.length}
+                </span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+              <h1 className="typescale-title-md text-on-surface m-0 truncate" title={displayTitle}>
+                {displayTitle}
+              </h1>
+
+              {displayedKey && (
+                <button
+                  ref={keyPillTriggerRef}
+                  type="button"
+                  aria-expanded={settingsOpen}
+                  aria-haspopup="dialog"
+                  onClick={(e) => {
+                    blurOnPointer(e);
+                    settingsSourceRef.current = 'key';
+                    setSettingsOpen((v) => !v);
+                  }}
+                  className={`lg:hidden inline-flex items-center justify-center min-h-[40px] min-w-[44px] stage-touch-44 px-2.5 rounded-full font-mono typescale-label-sm border-none flex-shrink-0 cursor-pointer ${
+                    minorKey
+                      ? 'bg-minor-bg text-minor-ink'
+                      : 'bg-primary-container text-on-primary-container'
+                  }`}
+                  aria-label={`Tom ${displayedKey}. Abrir ajustes`}
+                >
+                  {displayedKey}
+                </button>
+              )}
+
+              {/* Direct 1-tap Tonalidade stepper on iPad landscape & desktop (lg+) */}
+              <div
+                data-slides-transpose="true"
+                role="group"
+                aria-label="Ajustar tonalidade"
+                className="hidden lg:inline-flex items-center rounded-full bg-surface-container p-0.5 flex-shrink-0"
+              >
+                <button
+                  type="button"
+                  onClick={(e) => handleAdjustTranspose(-1, e)}
+                  aria-label="Baixar meio tom"
+                  title="Baixar meio tom"
+                  className="dock-stepper-btn"
+                >
+                  <UiIcon name="remove" size={20} />
+                </button>
+                <button
+                  type="button"
+                  disabled={activeTranspose === 0}
+                  onClick={handleResetTranspose}
+                  data-gm3-focal="true"
+                  className={`min-w-[42px] h-9 px-2 rounded-full font-mono typescale-label-sm tabular-nums border-none ${
+                    minorKey
+                      ? 'bg-minor-bg text-minor-ink'
+                      : 'bg-primary-container text-on-primary-container'
+                  } ${activeTranspose !== 0 ? 'cursor-pointer' : 'cursor-default'}`}
+                  title={
+                    activeTranspose !== 0
+                      ? `Tom ${displayedKey || slideTransposeDelta}. Toque para restaurar original`
+                      : `Tom ${displayedKey || 'original'}`
+                  }
+                >
+                  <span
+                    key={shiftTracker.dir === 'none' ? 'init' : `${activeTranspose}-${activeUseFlats}`}
+                    data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
+                    className="chord-settle"
+                  >
+                    {displayedKey || slideTransposeDelta || 'Tom'}
+                    {currentSong.capo > 0 && capoDisplay === 'shapes' ? `·C${currentSong.capo}` : ''}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleAdjustTranspose(1, e)}
+                  aria-label="Subir meio tom"
+                  title="Subir meio tom"
+                  className="dock-stepper-btn"
+                >
+                  <UiIcon name="add" size={20} />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {currentSong.capo > 0 && (
-            <AuroraChip
-              selected={capoDisplay === 'shapes'}
-              onClick={() => setCapoDisplay(capoDisplay === 'shapes' ? 'sounding' : 'shapes')}
+          {/* Right: Cifra|Letra|Acordes + direct Fonte (lg+) + Anotar + Ajustes */}
+          <div className="flex items-center justify-between md:justify-end gap-1.5 w-full md:w-auto flex-shrink-0">
+            <AuroraSegmented<DisplayMode>
+              ariaLabel="Modo de leitura nos slides"
+              blurOnPointer
+              value={displayMode}
+              onChange={(mode) => {
+                pendingPageRef.current = { kind: 'anchor', ...currentAnchorRef.current };
+                setDisplayMode(mode);
+              }}
+              options={[
+                { value: 'both', label: 'Cifra' },
+                { value: 'lyrics-only', label: 'Letra' },
+                { value: 'chords-only', label: 'Acordes' },
+              ]}
+            />
+
+            {/* Direct 1-tap Auto & Fonte stepper on lg+ */}
+            <div
+              data-slides-font="true"
+              role="group"
+              aria-label="Ajustar tamanho da fonte"
+              className="hidden lg:inline-flex items-center gap-1 flex-shrink-0"
             >
-              {capoDisplay === 'shapes' ? `Formas (Capo ${currentSong.capo})` : 'Som real'}
-            </AuroraChip>
-          )}
-
-          <AuroraChip
-            selected={autoFit}
-            icon="fit_screen"
-            onClick={() => setAutoFit((v) => !v)}
-            className="min-h-[44px]"
-          >
-            <span className="hidden xl:inline">Autoajuste</span>
-            <span className="xl:hidden">Ajuste</span>
-          </AuroraChip>
-
-          {!autoFit && (
-            <div className="inline-flex items-center rounded-full bg-surface-container-high px-1">
-              <AuroraIconButton
-                icon="text_decrease"
-                label="Diminuir zoom dos slides"
-                onClick={() => setManualScale((s) => Math.max(0.75, Number((s - 0.1).toFixed(2))))}
-              />
-              <span className="typescale-body-sm font-mono tabular-nums">
-                {Math.round(manualScale * 100)}%
-              </span>
-              <AuroraIconButton
-                icon="text_increase"
-                label="Aumentar zoom dos slides"
-                onClick={() => setManualScale((s) => Math.min(1.45, Number((s + 0.1).toFixed(2))))}
-              />
+              {fitMode === 'manual' && (
+                <button
+                  type="button"
+                  onClick={handleResetAutoFit}
+                  aria-label="Voltar para ajuste automático"
+                  title="Voltar para ajuste automático"
+                  className="stage-btn stage-btn-tonal h-10 min-h-[40px] px-3 typescale-label-sm"
+                >
+                  Auto
+                </button>
+              )}
+              <div className="inline-flex items-center rounded-full bg-surface-container p-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => handleAdjustFont(-10, e)}
+                  aria-label={`Diminuir fonte (atual ${activeFontSize}%)`}
+                  title={`Diminuir fonte (${activeFontSize}%)`}
+                  className="dock-stepper-btn font-mono typescale-label-sm"
+                >
+                  A-
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleAdjustFont(10, e)}
+                  aria-label={`Aumentar fonte (atual ${activeFontSize}%)`}
+                  title={`Aumentar fonte (${activeFontSize}%)`}
+                  className="dock-stepper-btn font-mono typescale-label-sm"
+                >
+                  A+
+                </button>
+              </div>
             </div>
-          )}
 
-          <span className="w-px h-5 bg-outline-variant/60 mx-0.5" aria-hidden="true" />
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                ref={annotateToggleRef}
+                id="slides-annotate-btn"
+                data-slides-annotate-trigger="true"
+                type="button"
+                aria-pressed={annotateMode}
+                aria-controls={annotateMode ? 'slides-annotate-toolbar' : undefined}
+                aria-label={
+                  totalAnnotationCount > 0
+                    ? `Anotar nos slides (${totalAnnotationCount})`
+                    : 'Anotar nos slides'
+                }
+                onClick={handleToggleAnnotate}
+                className={`relative stage-btn h-10 min-h-[40px] px-2.5 xl:px-3 typescale-label-lg ${
+                  annotateMode ? 'stage-btn-primary-tonal' : 'stage-btn-outlined'
+                }`}
+              >
+                <UiIcon name="draw" size={20} />
+                <span className="hidden xl:inline">Anotar</span>
+                {totalAnnotationCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-warn-bg text-warn-ink font-mono typescale-label-sm tabular-nums">
+                    {totalAnnotationCount}
+                  </span>
+                )}
+              </button>
 
-          <AuroraSegmented<DisplayMode>
-            ariaLabel="Modo dos slides"
-            value={displayMode}
-            onChange={setDisplayMode}
-            options={[
-              { value: 'both', label: 'Cifra' },
-              { value: 'lyrics-only', label: 'Letra' },
-              { value: 'chords-only', label: 'Acordes' },
-            ]}
-          />
+              {/* Unified Slides Ajustes popover */}
+              <div ref={settingsWrapRef} className="relative flex-shrink-0">
+                <button
+                  ref={settingsTriggerRef}
+                  type="button"
+                  data-slides-settings-trigger="true"
+                  aria-haspopup="dialog"
+                  aria-expanded={settingsOpen}
+                  aria-label="Ajustes dos slides"
+                  title="Ajustes (fonte, tonalidade, colunas, tema, Tela limpa)"
+                  onClick={(e) => {
+                    blurOnPointer(e);
+                    settingsSourceRef.current = 'settings';
+                    setSettingsOpen((v) => !v);
+                  }}
+                  className={`relative stage-btn h-10 min-h-[40px] px-2.5 xl:px-3 typescale-label-lg ${
+                    settingsOpen ? 'stage-btn-tonal' : 'stage-btn-outlined'
+                  }`}
+                >
+                  <UiIcon name="tune" size={20} />
+                  <span className="hidden xl:inline">Ajustes</span>
+                  {hasCustomSlideSettings && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-1.5 right-1.5 xl:static w-2 h-2 rounded-full bg-primary"
+                    />
+                  )}
+                </button>
 
-          <AuroraButton
-            id="slides-annotate-btn"
-            data-slides-annotate-trigger="true"
-            color={annotateMode ? 'tonal' : 'outlined'}
-            icon="draw"
-            aria-pressed={annotateMode}
-            aria-controls={annotateMode ? 'slides-annotate-toolbar' : undefined}
-            className="lg:px-3"
-            onClick={() => setAnnotateMode((v) => !v)}
-          >
-            Anotar
-          </AuroraButton>
+                {settingsOpen && (
+                  <div
+                    role="dialog"
+                    aria-label="Ajustes dos slides"
+                    data-slides-settings-popover="true"
+                    className="stage-popover absolute right-0 top-[calc(100%+8px)] z-50 w-[min(320px,calc(100vw-24px))] max-h-[min(80vh,580px)] overflow-y-auto rounded-[24px] bg-surface border border-outline-variant p-4 space-y-3 text-left"
+                    style={{ boxShadow: 'var(--ui-elevation-overlay)' }}
+                  >
+                    {/* 1. Fonte & Auto-Fit */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="typescale-label-sm text-on-surface-variant">Fonte</span>
+                        {fitMode === 'manual' ? (
+                          <button
+                            type="button"
+                            onClick={handleResetAutoFit}
+                            className="stage-btn stage-btn-tonal stage-touch-44 h-8 min-h-[36px] px-3 typescale-label-sm"
+                          >
+                            Voltar para Auto
+                          </button>
+                        ) : (
+                          <span className="typescale-body-sm text-on-surface-variant">
+                            Autoajuste ativo
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between rounded-full bg-surface-container p-0.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleAdjustFont(-10, e)}
+                          aria-label="Diminuir fonte"
+                          className="dock-stepper-btn flex-1 font-mono typescale-label-sm"
+                        >
+                          A-
+                        </button>
+                        <span className="font-mono typescale-label-sm tabular-nums text-on-surface px-3">
+                          {activeFontSize}%
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleAdjustFont(10, e)}
+                          aria-label="Aumentar fonte"
+                          className="dock-stepper-btn flex-1 font-mono typescale-label-sm"
+                        >
+                          A+
+                        </button>
+                      </div>
+                    </div>
 
-          <AuroraIconButton
-            icon="view_column_2"
-            label="Layout em 2 colunas"
-            variant={columns === 2 ? 'tonal' : 'standard'}
-            aria-pressed={columns === 2}
-            onClick={() => setColumns(columns === 2 ? 1 : 2)}
-            className="hidden lg:inline-flex"
-          />
+                    <div className="border-t border-outline-variant/50" />
 
-          {deckSongs.length > 1 && (
-            <AuroraButton color="tonal" icon="queue_music" onClick={() => setDeckOpen(true)}>
-              Lista ({deckSongs.length})
-            </AuroraButton>
-          )}
+                    {/* 2. Tonalidade & Capo */}
+                    <div className="space-y-2">
+                      <div className="typescale-label-sm text-on-surface-variant">Tonalidade</div>
+                      <div className="flex items-center gap-1.5 w-full">
+                        <div className="inline-flex items-center justify-between flex-1 rounded-full bg-surface-container p-0.5">
+                          <button
+                            type="button"
+                            onClick={(e) => handleAdjustTranspose(-1, e)}
+                            aria-label="Baixar meio tom"
+                            className="dock-stepper-btn"
+                          >
+                            <UiIcon name="remove" size={20} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={activeTranspose === 0}
+                            onClick={handleResetTranspose}
+                            aria-label={
+                              activeTranspose !== 0
+                                ? `Tom ${displayedKey || slideTransposeDelta}. Restaurar tom original`
+                                : `Tom ${displayedKey || 'original'}`
+                            }
+                            title={
+                              activeTranspose !== 0
+                                ? 'Toque para restaurar o tom original'
+                                : 'Tom atual'
+                            }
+                            className={`min-w-[68px] h-9 px-2 rounded-full font-mono typescale-label-sm tabular-nums border-none ${
+                              activeTranspose !== 0
+                                ? 'bg-primary-container text-on-primary-container cursor-pointer'
+                                : 'bg-transparent text-on-surface cursor-default'
+                            }`}
+                          >
+                            {displayedKey || '0'}
+                            {slideTransposeDelta ? ` (${slideTransposeDelta})` : ''}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleAdjustTranspose(1, e)}
+                            aria-label="Subir meio tom"
+                            className="dock-stepper-btn"
+                          >
+                            <UiIcon name="add" size={20} />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          aria-pressed={activeUseFlats}
+                          onClick={handleToggleFlats}
+                          aria-label={activeUseFlats ? 'Mudar para sustenidos' : 'Mudar para bemóis'}
+                          title="Alternar sustenidos (#) e bemóis (b)"
+                          className={`stage-touch-44 inline-flex items-center justify-center w-9 h-9 rounded-full border-none font-mono typescale-label-lg cursor-pointer flex-shrink-0 transition-colors ${
+                            activeUseFlats
+                              ? 'bg-primary text-on-primary'
+                              : 'bg-surface-container text-on-surface hover:bg-surface-container-high'
+                          }`}
+                        >
+                          {activeUseFlats ? '♭' : '♯'}
+                        </button>
+                      </div>
+
+                      {currentSong.capo > 0 && (
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <span className="typescale-body-sm text-on-surface-variant">
+                            Capo {currentSong.capo}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleToggleCapo}
+                            aria-pressed={capoDisplay === 'shapes'}
+                            className={`stage-btn h-9 min-h-[36px] px-3 typescale-label-sm ${
+                              capoDisplay === 'shapes' ? 'stage-btn-primary-tonal' : 'stage-btn-outlined'
+                            }`}
+                          >
+                            {capoDisplay === 'shapes' ? 'Formas no capo' : 'Tom real'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-outline-variant/50" />
+
+                    {/* 3. Visual: Colunas & Tema */}
+                    <div className="space-y-2">
+                      <div className="typescale-label-sm text-on-surface-variant">Visual</div>
+                      <div className="flex items-center gap-2">
+                        {canUseTwoCols && (
+                          <button
+                            type="button"
+                            aria-pressed={effectiveCols === 2}
+                            onClick={handleToggleCols}
+                            className={`stage-btn h-10 min-h-[40px] flex-1 px-2.5 typescale-label-sm ${
+                              effectiveCols === 2 ? 'stage-btn-tonal' : 'stage-btn-outlined'
+                            }`}
+                          >
+                            <UiIcon name="view_column_2" size={20} />
+                            {effectiveCols === 2 ? '2 colunas' : '1 coluna'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            blurOnPointer(e);
+                            const next = isDark ? 'light' : 'dark';
+                            setTheme(next);
+                            applyColorScheme(next);
+                          }}
+                          className="stage-btn stage-btn-outlined h-10 min-h-[40px] flex-1 px-2.5 typescale-label-sm"
+                        >
+                          <UiIcon name={isDark ? 'light_mode' : 'dark_mode'} size={20} />
+                          {isDark ? 'Tema claro' : 'Tema escuro'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-outline-variant/50 pt-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          blurOnPointer(e);
+                          setSettingsOpen(false);
+                          switchToCleanStage();
+                        }}
+                        className="stage-btn stage-btn-outlined w-full justify-center h-10 min-h-[40px] typescale-label-sm"
+                      >
+                        <UiIcon name="fullscreen" size={20} />
+                        Trocar para Tela limpa (rolagem)
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Slide canvas + annotations layer (0px occlusion and constant height budget!) */}
-      <div
-        ref={stageRef}
+      {/* Optional compact single-line stage cue strip */}
+      {currentSong.notes.trim() && (
+        <aside aria-label="Deixa de palco" className="flex-shrink-0 px-3 sm:px-4 pt-1.5">
+          <div className="rounded-xl bg-warn-bg text-warn-ink px-3 py-1 typescale-body-sm truncate">
+            <span className="typescale-label-sm mr-1.5">Deixa:</span>
+            {currentSong.notes}
+          </div>
+        </aside>
+      )}
+
+      {/* Full-bleed Slide Stage (zero reflow on Annotate toggle!) */}
+      <main
+        id="main"
+        tabIndex={-1}
+        data-slides-stage="true"
+        onClick={handleStageClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => {
+          touchRef.current = null;
+          resetSwipeLayer();
+        }}
         onPointerDown={handleStagePointerDown}
         onPointerMove={handleStagePointerMove}
-        onPointerUp={handleStagePointerUp}
-        onPointerCancel={() => {
-          swipeStartRef.current = null;
-          drawingRef.current = null;
-          setLiveStrokeD('');
-          resetSwipeTransform();
-        }}
-        className={`relative flex-1 overflow-hidden p-4 sm:p-6 transition-shadow ${
-          annotateMode ? 'touch-none cursor-crosshair ring-2 ring-inset ring-primary/75' : ''
+        onPointerUp={(e) => finishStagePointer(e, false)}
+        onPointerCancel={(e) => finishStagePointer(e, true)}
+        className={`relative flex-1 min-h-0 overflow-hidden px-3 sm:px-4 py-2 focus:outline-none ${
+          annotateMode ? 'touch-none cursor-crosshair ring-2 ring-inset ring-primary/70' : 'cursor-pointer'
         }`}
       >
+        {/* Subtle WAAPI edge turn feedback */}
         <div
-          ref={stageInnerRef}
-          key={`${currentSong.id}-${safeSlideIdx}`}
-          data-turn={turnDir}
-          className="slide-turn-stage relative h-full"
-        >
+          ref={edgePulseLeftRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-3 left-1 w-1.5 rounded-full bg-primary z-20"
+          style={{ opacity: 0 }}
+        />
+        <div
+          ref={edgePulseRightRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-3 right-1 w-1.5 rounded-full bg-primary z-20"
+          style={{ opacity: 0 }}
+        />
+
+        {/* Song boundary cue pill */}
+        {songBanner && (
           <div
-            className={`h-full grid gap-4 ${
-              columns === 2 && (page?.columns.length ?? 1) > 1
-                ? 'grid-cols-1 lg:grid-cols-2'
-                : 'grid-cols-1 max-w-4xl mx-auto'
-            }`}
+            key={songBanner.seq}
+            aria-hidden="true"
+            className="stage-toast pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-32px)] rounded-full bg-inverse-surface text-inverse-on-surface px-4 py-1.5 typescale-label-sm truncate"
+            style={{ boxShadow: 'var(--ui-elevation-overlay)' }}
           >
-            {page?.columns.map((col, ci) => (
-              <div key={ci} className="flex flex-col gap-3.5 overflow-y-auto no-scrollbar pb-5">
-                {col.map((chunk, chi) => (
+            {songBanner.text}
+          </div>
+        )}
+
+        {/* Undo snackbar for Apple Pencil / Clear All */}
+        {undoSnackbar && undoSnackbar.songId === currentSong.id && canUndo && (
+          <div
+            key={undoSnackbar.seq}
+            role="status"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="dock-enter-bottom fixed bottom-[64px] left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2 rounded-full bg-inverse-surface text-inverse-on-surface pl-4 pr-1.5 py-1 typescale-body-sm"
+            style={{ boxShadow: 'var(--ui-elevation-overlay)' }}
+          >
+            <span>{undoSnackbar.message}</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                blurOnPointer(e);
+                undoAnnotation(currentSong.id);
+                setUndoSnackbar(null);
+              }}
+              className="stage-btn stage-btn-primary-tonal h-9 min-h-[36px] px-3 typescale-label-sm"
+            >
+              Desfazer
+            </button>
+          </div>
+        )}
+
+        <div ref={stageInnerRef} className="relative w-full h-full overflow-visible">
+          {/* Hidden exact-width measurement mirror driving deterministic multi-pass Auto-Fit */}
+          {measureColWidth > 0 && (
+            <div
+              ref={measureRef}
+              aria-hidden="true"
+              inert
+              className="pointer-events-none invisible absolute top-0 left-0 -z-10"
+              style={{ width: `${measureColWidth}px`, fontSize: `${mirrorFontSize}%` }}
+            >
+              {preparedSections.map((sec) => {
+                const isLyricsOnly = displayMode === 'lyrics-only';
+                if (sec.instrumentalOnly) {
+                  return (
+                    <section
+                      key={sec.sectionIdx}
+                      data-measure-section={sec.sectionIdx}
+                      className="stage-card px-4 py-2 flex items-center gap-2"
+                    >
+                      <span className="typescale-label-sm">{formatSectionLabel(sec.label)}</span>
+                      <span className="typescale-body-sm">· trecho instrumental</span>
+                    </section>
+                  );
+                }
+                return (
                   <section
-                    key={`${chunk.sectionIdx}-${chi}`}
-                    className={`stage-card p-5 space-y-3 ${
-                      chunk.type === 'chorus' ? 'stage-card-chorus' : 'bg-surface'
+                    key={sec.sectionIdx}
+                    data-measure-section={sec.sectionIdx}
+                    className={`stage-card ${
+                      isLyricsOnly ? 'px-4 sm:px-5 xl:px-6 py-3 xl:py-3.5' : 'px-4 sm:px-5 xl:px-6 py-2.5 xl:py-3.5'
                     }`}
                   >
-                    <span
-                      className={`inline-flex px-3 py-1 rounded-full typescale-label-sm ${
-                        chunk.type === 'chorus'
-                          ? 'bg-primary-container text-on-primary-container'
-                          : 'bg-surface-container-high text-on-surface-variant'
-                      }`}
+                    <div className="mb-1.5">
+                      <span className="inline-flex rounded-full px-2.5 py-0.5 typescale-label-sm">
+                        {formatSectionLabel(sec.label)}
+                      </span>
+                    </div>
+                    <div
+                      data-measure-lines="true"
+                      className={isLyricsOnly ? 'space-y-1.5' : 'space-y-0.5'}
                     >
-                      {chunk.label}
-                      {chunk.continuation ? ' (cont.)' : ''}
-                    </span>
-
-                    {chunk.instrumentalOnly ? (
-                      <p className="typescale-body-sm text-on-surface-variant m-0 italic">
-                        Trecho instrumental
-                      </p>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {chunk.lines.map((line, li) => {
-                          if (!line.trim()) return <div key={li} className="h-1.5" />;
-                          const segs = parseLine(line);
-                          if (displayMode === 'lyrics-only') {
-                            return (
-                              <p
-                                key={li}
-                                className="text-on-surface m-0 py-0.5 leading-relaxed"
-                                style={{ fontSize: `${1.05 * activeScale}rem` }}
-                              >
-                                {segs.map((s) => s.text).join('').replace(/^\s+/, '')}
-                              </p>
-                            );
-                          }
-                          if (displayMode === 'chords-only') {
-                            return (
-                              <div
-                                key={li}
-                                className="flex flex-wrap gap-3 font-mono font-bold text-primary py-1"
-                                style={{ fontSize: `${1.02 * activeScale}rem` }}
-                              >
-                                {segs
-                                  .filter((s) => s.chord)
-                                  .map((s, si) => (
-                                    <span
-                                      key={`${si}-${shiftTracker.dir === 'none' ? 'init' : totalShift}`}
-                                      data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
-                                      className="chord-settle"
-                                    >
-                                      {transposeChord(s.chord!, totalShift, useFlats)}
-                                    </span>
-                                  ))}
-                              </div>
-                            );
-                          }
-                          return (
-                            <div
-                              key={li}
-                              className="pt-5 leading-[1.38]"
-                              style={{ fontSize: `${1.0 * activeScale}rem` }}
-                            >
-                              {segs.map((seg, si) => {
-                                const chord = seg.chord
-                                  ? transposeChord(seg.chord, totalShift, useFlats)
-                                  : null;
-                                const nextHasChord = Boolean(segs[si + 1]?.chord);
-                                const prevEndedSpace = si > 0 && /\s$/.test(segs[si - 1].text);
-                                if (!chord) {
-                                  const cleanText = si === 0 ? seg.text.replace(/^\s+/, '') : seg.text;
-                                  return (
-                                    <span key={si} className="text-on-surface whitespace-pre-wrap">
-                                      {cleanText}
-                                    </span>
-                                  );
-                                }
-                                const hasLyrics = seg.text.trim().length > 0;
-                                if (!hasLyrics) {
-                                  return (
-                                    <span
-                                      key={si}
-                                      className="relative inline-block leading-none mr-3"
-                                      style={{ minWidth: `${Math.max(chord.length + 0.5, 2.5)}ch` }}
-                                    >
-                                      <span
-                                        className="font-mono font-bold text-primary absolute left-0 bottom-[calc(100%+3px)] leading-none whitespace-nowrap"
-                                        style={{ fontSize: `${0.86 * activeScale}rem` }}
-                                      >
-                                        <span
-                                          key={shiftTracker.dir === 'none' ? 'init' : String(totalShift)}
-                                          data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
-                                          className="chord-settle"
-                                        >
-                                          {chord}
-                                        </span>
-                                      </span>
-                                      <span className="text-on-surface whitespace-pre leading-[1.38]">
-                                        {seg.text || '\u00A0'}
-                                      </span>
-                                    </span>
-                                  );
-                                }
-                                const wm = seg.text.match(/^(\s*)(\S+)(.*)$/);
-                                const rawLead = wm ? wm[1] : '';
-                                const leadSpace = si === 0 || prevEndedSpace ? '' : rawLead;
-                                const anchor = wm ? wm[2] : seg.text;
-                                const tail = wm ? wm[3] : '';
-                                const tightToNext = nextHasChord && !tail.trim();
-                                return (
-                                  <span key={si}>
-                                    {leadSpace && (
-                                      <span className="text-on-surface whitespace-pre">{leadSpace}</span>
-                                    )}
-                                    <span
-                                      className="relative inline-block leading-none"
-                                      style={{
-                                        minWidth:
-                                          tightToNext && anchor.length < chord.length
-                                            ? `${chord.length + 0.8}ch`
-                                            : undefined,
-                                      }}
-                                    >
-                                      <span
-                                        className="font-mono font-bold text-primary absolute left-0 bottom-[calc(100%+3px)] leading-none whitespace-nowrap"
-                                        style={{ fontSize: `${0.86 * activeScale}rem` }}
-                                      >
-                                        <span
-                                          key={shiftTracker.dir === 'none' ? 'init' : String(totalShift)}
-                                          data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
-                                          className="chord-settle"
-                                        >
-                                          {chord}
-                                        </span>
-                                      </span>
-                                      <span className="text-on-surface whitespace-pre leading-[1.38]">
-                                        {anchor}
-                                      </span>
-                                    </span>
-                                    {tail && (
-                                      <span className="text-on-surface whitespace-pre-wrap">{tail}</span>
-                                    )}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                      {sec.lines.map((line, li) => (
+                        <div key={li} data-measure-line={li}>
+                          <SlideChordLine
+                            line={line}
+                            displayMode={displayMode}
+                            shiftDir="none"
+                            shiftKey="m"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </section>
-                ))}
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Persisted freehand strokes overlay (bounding-box SVG for visible focus outline & 24px eraser hit-path) */}
-          {pageStrokes.map((stroke) => {
-            const tone = NOTE_TONE_MAP[stroke.tone] ?? NOTE_TONE_MAP.amber;
-            const color = stroke.tool === 'highlighter' ? tone.hiVar : tone.inkVar;
-            const scaledPts: [number, number, number][] = stroke.points.map(([x, y, p]) => [
-              x * 16,
-              y * 16,
-              p,
-            ]);
-            const d = buildSmoothSvgPath(scaledPts);
-            const sw = computeStrokeWidthEm(stroke.tool, stroke.points) * 16;
-            const pad = Math.max(sw / 2 + 6, 14);
-            let minX = 0;
-            let maxX = 0;
-            let minY = 0;
-            let maxY = 0;
-            scaledPts.forEach(([px, py]) => {
-              if (px < minX) minX = px;
-              if (px > maxX) maxX = px;
-              if (py < minY) minY = py;
-              if (py > maxY) maxY = py;
-            });
-            const vx = minX - pad;
-            const vy = minY - pad;
-            const vw = Math.max(28, maxX - minX + pad * 2);
-            const vh = Math.max(28, maxY - minY + pad * 2);
-            const erasable = annotateMode && activeTool === 'eraser';
-            return (
-              <svg
-                key={stroke.id}
-                role={erasable ? 'button' : undefined}
-                tabIndex={erasable ? 0 : undefined}
-                aria-label={erasable ? 'Apagar traço desenhado' : undefined}
-                aria-hidden={!erasable ? true : undefined}
-                viewBox={`${vx} ${vy} ${vw} ${vh}`}
-                className={`absolute overflow-visible rounded-lg ${
-                  erasable ? 'cursor-pointer' : 'pointer-events-none'
+          {/* Visible full-bleed paginated slide */}
+          <div ref={swipeLayerRef} className="relative w-full h-full flex items-stretch">
+            {isLayoutSynced && (
+              <div
+                key={`${currentSong.id}-${safePageIdx}-${turnAnim.seq}`}
+                data-turn={turnAnim.dir}
+                className={`slide-turn-stage relative isolate w-full h-full ${
+                  effectiveCols === 2 && !singleSpread
+                    ? 'grid grid-cols-2 gap-3 xl:gap-4 items-stretch'
+                    : 'flex items-stretch'
                 }`}
-                style={{
-                  left: `calc(${stroke.originX * 100}% + ${vx}px)`,
-                  top: `calc(${stroke.originY * 100}% + ${vy}px)`,
-                  width: `${vw}px`,
-                  height: `${vh}px`,
-                }}
-                onClick={(ev) => {
-                  if (erasable) {
-                    ev.stopPropagation();
-                    removeStroke(currentSong.id, stroke.id);
-                  }
-                }}
-                onKeyDown={(ev) => {
-                  if (erasable && (ev.key === 'Enter' || ev.key === ' ')) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    removeStroke(currentSong.id, stroke.id);
-                    window.requestAnimationFrame(() => {
-                      annotateToolbarRef.current
-                        ?.querySelector<HTMLElement>('button:not(:disabled)')
-                        ?.focus({ preventScroll: true });
-                    });
-                  }
-                }}
+                style={{ fontSize: `${activeFontSize}%` }}
               >
-                {erasable && (
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke="transparent"
-                    strokeWidth={Math.max(sw, 24)}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                <StrokeLayer strokes={pageStrokes} coordMode="page" renderKind="highlighter" />
+
+                {activeSlide && activeSlide.columns.some((c) => c.length > 0) ? (
+                  activeSlide.columns.map((colChunks, colIdx) => {
+                    const colNaturalH = activeSlide.columnHeights[colIdx] ?? 0;
+                    const colNaturalFill = colNaturalH / usableStageH;
+                    const allowColumnAlign =
+                      effectiveCols === 2 &&
+                      activeSlide.columns.length === 2 &&
+                      colNaturalFill >= 0.65;
+                    return (
+                      <div
+                        key={colIdx}
+                        data-slide-column={colIdx}
+                        className={`relative z-[1] h-full overflow-hidden flex flex-col min-w-0 w-full ${
+                          annotateMode ? 'touch-none' : ''
+                        }`}
+                        style={{ gap: `${cardGapPx}px` }}
+                      >
+                        {colChunks.map((chunk) => (
+                          <SlideSectionCard
+                            key={`${chunk.sectionIdx}-${chunk.startLineIdx}`}
+                            chunk={chunk}
+                            displayMode={displayMode}
+                            allowColumnAlign={allowColumnAlign}
+                            shiftDir={shiftTracker.dir}
+                            shiftKey={`${activeTranspose}-${activeUseFlats}`}
+                            strokesByAnchor={strokesByAnchor}
+                            notesByAnchor={notesByAnchor}
+                            annotateMode={annotateMode}
+                            activeTool={activeTool}
+                            draggingNoteId={dragNote?.moved ? dragNote.note.id : null}
+                            onStartDragNote={handleStartDragNote}
+                            onTapNote={(n) => handleTapNote(n)}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center typescale-body-md text-on-surface-variant">
+                    {displayMode === 'chords-only'
+                      ? 'Esta música não tem acordes marcados.'
+                      : 'Nenhum conteúdo para exibir neste modo.'}
+                  </div>
                 )}
+
+                <StrokeLayer strokes={pageStrokes} coordMode="page" renderKind="pen" />
+                <TextNoteList
+                  notes={pageNotes}
+                  coordMode="page"
+                  annotateMode={annotateMode}
+                  activeTool={activeTool}
+                  draggingNoteId={dragNote?.moved ? dragNote.note.id : null}
+                  onStartDragNote={handleStartDragNote}
+                  onTapNote={(n) => handleTapNote(n)}
+                />
+              </div>
+            )}
+
+            {/* Zero-latency live drawing stroke preview */}
+            {liveStroke && liveStroke.points.length > 0 && (
+              <svg className="pointer-events-none absolute inset-0 w-full h-full z-30 overflow-visible">
                 <path
-                  d={d}
+                  d={buildSmoothSvgPath(liveStroke.points.map((p) => [p.x, p.y, p.pressure]))}
                   fill="none"
-                  stroke={color}
-                  strokeWidth={sw}
+                  stroke={
+                    liveStroke.tool === 'highlighter'
+                      ? NOTE_TONE_MAP[liveStroke.tone].hiVar
+                      : NOTE_TONE_MAP[liveStroke.tone].inkVar
+                  }
+                  strokeWidth={
+                    computeStrokeWidthEm(
+                      liveStroke.tool,
+                      liveStroke.points.map((p) => [p.x, p.y, p.pressure])
+                    ) * Math.max(10, (16 * activeFontSize) / 100)
+                  }
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
-            );
-          })}
-
-          {/* Persisted stage text notes (semantic button only when erasable) */}
-          {pageNotes.map((note) => {
-            const tone = NOTE_TONE_MAP[note.tone] ?? NOTE_TONE_MAP.amber;
-            const erasable = annotateMode && activeTool === 'eraser';
-            const posStyle =
-              note.align === 'right'
-                ? { right: `${Math.max(2, (1 - note.x) * 100)}%`, top: `${note.y * 100}%` }
-                : { left: `${note.x * 100}%`, top: `${note.y * 100}%` };
-            if (erasable) {
-              return (
-                <button
-                  key={note.id}
-                  type="button"
-                  aria-label={`Apagar nota: ${note.text}`}
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    removeTextNote(currentSong.id, note.id);
-                    window.requestAnimationFrame(() => {
-                      annotateToolbarRef.current
-                        ?.querySelector<HTMLElement>('button:not(:disabled)')
-                        ?.focus({ preventScroll: true });
-                    });
-                  }}
-                  className="icon-pop-in absolute min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-full border-none typescale-label-sm cursor-pointer inline-flex items-center justify-center transition-transform hover:scale-105"
-                  style={{
-                    ...posStyle,
-                    background: tone.chipBg,
-                    color: tone.chipFg,
-                  }}
-                  title="Toque para apagar nota"
-                >
-                  {note.text}
-                </button>
-              );
-            }
-            return (
-              <span
-                key={note.id}
-                className="icon-pop-in absolute px-3.5 py-1.5 rounded-full typescale-label-sm pointer-events-none"
-                style={{
-                  ...posStyle,
-                  background: tone.chipBg,
-                  color: tone.chipFg,
-                }}
-              >
-                {note.text}
-              </span>
-            );
-          })}
-
-          {/* Active live drawing stroke aligned in the exact same coordinate frame as persisted marks */}
-          {liveStrokeD && (
-            <svg className="absolute inset-0 w-full h-full pointer-events-none">
-              <path
-                d={liveStrokeD}
-                fill="none"
-                stroke={
-                  activeTool === 'highlighter'
-                    ? NOTE_TONE_MAP[activeTone].hiVar
-                    : NOTE_TONE_MAP[activeTone].inkVar
-                }
-                strokeWidth={activeTool === 'highlighter' ? 14 : 3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Bottom pedal/touch bar: single-row on sm+, stacked zero-clipping on mobile < sm */}
-      <footer className="relative px-3 sm:px-6 py-2 bg-surface-container-low">
+        {/* Floating dragged note chip (GPU-composited translate3d, zero layout thrashing) */}
+        {dragNote && dragNote.moved && dragToneMeta && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none fixed left-0 top-0 z-50 inline-flex items-start gap-1.5 px-2.5 py-1 rounded-xl w-max max-w-[220px]"
+            style={{
+              transform: `translate3d(${dragNote.curX - dragNote.grabDx}px, ${dragNote.curY - dragNote.grabDy}px, 0)${prefersReduced() ? '' : ' scale(1.03)'}`,
+              backgroundColor: dragToneMeta.chipBg,
+              color: dragToneMeta.chipFg,
+              boxShadow: 'var(--ui-elevation-overlay)',
+            }}
+          >
+            <span className="mt-[4px]">
+              <ToneShapeGlyph shape={dragToneMeta.shape} color={dragToneMeta.dotColor} size={8} />
+            </span>
+            <span className="typescale-label-sm break-words whitespace-pre-wrap">
+              {dragNote.note.text}
+            </span>
+          </div>
+        )}
+      </main>
+
+      {/* Constant 56px bottom navigation footer (opacity cross-fade while annotating -> 0px reflow!) */}
+      <footer
+        aria-hidden={annotateMode || undefined}
+        className={`slides-footer relative flex-shrink-0 h-[56px] bg-surface-container-low border-t border-outline-variant/50 px-3 sm:px-5 flex items-center justify-between gap-2 ${
+          annotateMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
         <span
           aria-hidden="true"
-          className="absolute top-0 inset-x-0 h-[2px] bg-primary/70 origin-left pointer-events-none transition-transform duration-300 ease-out"
+          className="slide-progress-fill absolute top-0 inset-x-0 h-[2px] bg-primary/70 origin-left pointer-events-none"
           style={{
-            transform: `scaleX(${Math.max(0.04, (safeSlideIdx + 1) / Math.max(1, slides.length))})`,
+            transform: `scaleX(${Math.max(0.04, (safePageIdx + 1) / Math.max(1, totalPages))})`,
           }}
         />
-        {annotateMode ? (
+
+        <button
+          type="button"
+          tabIndex={annotateMode ? -1 : 0}
+          disabled={atDeckStart}
+          onClick={(e) => {
+            blurOnPointer(e);
+            goPrev();
+          }}
+          className="stage-btn stage-btn-tonal h-10 min-h-[40px] px-3 sm:px-4 typescale-label-lg"
+        >
+          <UiIcon name="chevron_left" size={20} />
+          <span className="hidden sm:inline">
+            {safePageIdx === 0 && prevSong ? 'Música anterior' : 'Anterior'}
+          </span>
+          <span className="sm:hidden">Ant.</span>
+        </button>
+
+        <div className="flex items-center justify-center gap-2.5 min-w-0 flex-1">
+          {totalPages <= 8 && !(isLastPageOfSong && nextSong) && (
+            <div className="hidden sm:flex items-center gap-2.5" aria-hidden="true">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <span
+                  key={i}
+                  data-active={i === safePageIdx ? 'true' : undefined}
+                  className={`slide-page-dot ${i === safePageIdx ? 'bg-primary' : 'bg-outline'}`}
+                />
+              ))}
+            </div>
+          )}
+
+          <span className="px-2.5 py-0.5 rounded-full bg-surface-container-high font-mono typescale-label-sm tabular-nums text-on-surface whitespace-nowrap">
+            Pág {safePageIdx + 1}/{totalPages}
+          </span>
+
+          {isLastPageOfSong && nextSong && (
+            <span className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 typescale-body-sm text-on-surface-variant truncate max-w-[260px]">
+              <span className="truncate">Próx: {getDisplayTitleAndArtist(nextSong).title}</span>
+              {getEffectiveKey(nextSong).key && (
+                <span className="font-mono text-on-surface flex-shrink-0">
+                  · {getEffectiveKey(nextSong).key}
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          tabIndex={annotateMode ? -1 : 0}
+          disabled={atDeckEnd}
+          onClick={(e) => {
+            blurOnPointer(e);
+            goNext();
+          }}
+          className="stage-btn stage-btn-filled h-10 min-h-[40px] px-3 sm:px-4 typescale-label-lg"
+        >
+          <span className="hidden sm:inline">
+            {isLastPageOfSong && nextSong ? 'Próxima música' : 'Próxima'}
+          </span>
+          <span className="sm:hidden">Próx.</span>
+          <UiIcon name="chevron_right" size={20} />
+        </button>
+      </footer>
+
+      {/* Floating Annotation Dock overlay (0px stage height impact!) */}
+      {annotateMode && (
+        <nav
+          aria-label="Barra de ferramentas de anotação"
+          className="fixed bottom-1.5 inset-x-0 z-40 px-2 sm:px-4 pointer-events-none flex justify-center"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
           <div
-            key="annotate-bar"
-            className="dock-enter-bottom w-full flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2"
+            ref={annotateToolbarRef}
+            id="slides-annotate-toolbar"
+            role="toolbar"
+            aria-label="Ferramentas de anotação"
+            className="dock-enter-bottom stage-floating-bar pointer-events-auto flex flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 rounded-[24px] px-2.5 py-1.5 max-w-full"
           >
-            <AuroraIconButton
-              icon="chevron_left"
-              label="Slide anterior"
-              variant="tonal"
-              disabled={safeSlideIdx === 0 && songIdx === 0}
-              onClick={goPrev}
-              className="hidden sm:inline-flex"
+            <AuroraSegmented<AnnotateTool>
+              ariaLabel="Ferramenta de anotação"
+              blurOnPointer
+              className="slides-tool-segmented"
+              value={activeTool}
+              onChange={setActiveTool}
+              options={[
+                { value: 'pen', label: 'Caneta', shortLabel: 'Caneta', icon: 'edit' },
+                { value: 'highlighter', label: 'Marca-texto', shortLabel: 'Marca', icon: 'ink_highlighter' },
+                { value: 'text', label: 'Nota', shortLabel: 'Nota', icon: 'sticky_note_2' },
+                { value: 'eraser', label: 'Apagar', shortLabel: 'Apagar', icon: 'ink_eraser' },
+              ]}
             />
 
             <div
-              ref={annotateToolbarRef}
-              id="slides-annotate-toolbar"
-              role="toolbar"
-              aria-label="Ferramentas de anotação"
-              className="flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 min-w-0 w-full sm:w-auto"
+              role="group"
+              aria-label="Cor da anotação"
+              aria-hidden={activeTool === 'eraser' || undefined}
+              className={`slides-footer flex items-center gap-0.5 ${
+                activeTool === 'eraser' ? 'opacity-30 pointer-events-none' : 'opacity-100'
+              }`}
             >
-              <div className="w-full sm:w-auto">
-                <AuroraSegmented<AnnotateTool>
-                  ariaLabel="Ferramenta de anotação"
-                  className="slides-tool-segmented"
-                  value={activeTool}
-                  onChange={setActiveTool}
-                  options={[
-                    { value: 'pen', label: 'Caneta', shortLabel: 'Caneta', icon: 'edit' },
-                    { value: 'highlighter', label: 'Marca-texto', shortLabel: 'Marca', icon: 'ink_highlighter' },
-                    { value: 'text', label: 'Nota', shortLabel: 'Nota', icon: 'sticky_note_2' },
-                    { value: 'eraser', label: 'Apagar', shortLabel: 'Apagar', icon: 'ink_eraser' },
-                  ]}
-                />
-              </div>
-
-              {activeTool === 'text' && (
-                <AuroraButton
-                  color="tonal"
-                  icon="add_comment"
-                  className="icon-pop-in"
-                  onClick={() => {
-                    setNoteComposer({ x: 0.5, y: 0.2 });
-                    setNoteText('');
-                  }}
-                >
-                  Inserir nota
-                </AuroraButton>
-              )}
-
-              <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-2 flex-wrap">
-                {activeTool === 'eraser' ? (
-                  <span className="typescale-body-sm text-on-surface-variant px-1">
-                    Toque em um traço ou nota para apagar
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-1" role="group" aria-label="Cor da anotação">
-                    {NOTE_TONES.map((tone) => {
-                      const label = TONE_LABELS_PT[tone.id];
-                      return (
-                        <button
-                          key={tone.id}
-                          type="button"
-                          aria-label={`Cor ${label}`}
-                          title={label}
-                          aria-pressed={activeTone === tone.id}
-                          onClick={() => setActiveTone(tone.id)}
-                          className="swatch-btn"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                            {tone.shape === 'circle' && (
-                              <circle cx="8" cy="8" r="6.5" fill={tone.dotColor} />
-                            )}
-                            {tone.shape === 'diamond' && (
-                              <polygon points="8,1 15,8 8,15 1,8" fill={tone.dotColor} />
-                            )}
-                            {tone.shape === 'square' && (
-                              <rect x="2" y="2" width="12" height="12" rx="2.5" fill={tone.dotColor} />
-                            )}
-                            {tone.shape === 'triangle' && (
-                              <polygon points="8,1.5 14.8,13.8 1.2,13.8" fill={tone.dotColor} />
-                            )}
-                          </svg>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-0.5">
-                  <AuroraIconButton
-                    icon="undo"
-                    label="Desfazer anotação"
-                    disabled={!canUndo}
-                    onClick={() => undoAnnotation(currentSong.id)}
-                  />
-                  <AuroraIconButton
-                    icon="redo"
-                    label="Refazer anotação"
-                    disabled={!canRedo}
-                    onClick={() => redoAnnotation(currentSong.id)}
-                  />
-                  {hasAnyAnnotations && (
-                    <AuroraIconButton
-                      icon="delete_sweep"
-                      label="Limpar anotações desta música"
-                      onClick={() => setConfirmClearOpen(true)}
-                    />
-                  )}
-                  <AuroraButton
-                    color="filled"
-                    icon="check"
-                    className="hidden sm:inline-flex"
-                    onClick={() => setAnnotateMode(false)}
+              {NOTE_TONES.map((tone) => {
+                const label = TONE_LABELS_PT[tone.id];
+                return (
+                  <button
+                    key={tone.id}
+                    type="button"
+                    tabIndex={activeTool === 'eraser' ? -1 : 0}
+                    disabled={activeTool === 'eraser'}
+                    aria-label={`Cor ${label}`}
+                    title={label}
+                    aria-pressed={activeTone === tone.id}
+                    onClick={(e) => {
+                      blurOnPointer(e);
+                      setActiveTone(tone.id);
+                    }}
+                    className="swatch-btn"
                   >
-                    Concluir
-                  </AuroraButton>
-                </div>
-              </div>
+                    <ToneShapeGlyph shape={tone.shape} color={tone.dotColor} size={14} />
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="flex sm:hidden items-center justify-between gap-2 w-full">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5">
+              <AuroraIconButton
+                icon="undo"
+                label="Desfazer anotação"
+                disabled={!canUndo}
+                onClick={(e) => {
+                  blurOnPointer(e);
+                  undoAnnotation(currentSong.id);
+                }}
+              />
+              <AuroraIconButton
+                icon="redo"
+                label="Refazer anotação"
+                disabled={!canRedo}
+                onClick={(e) => {
+                  blurOnPointer(e);
+                  redoAnnotation(currentSong.id);
+                }}
+              />
+              {totalAnnotationCount > 0 && (
                 <AuroraIconButton
-                  icon="chevron_left"
-                  label="Slide anterior"
-                  variant="tonal"
-                  disabled={safeSlideIdx === 0 && songIdx === 0}
-                  onClick={goPrev}
+                  icon="delete_sweep"
+                  label="Limpar anotações desta música"
+                  onClick={(e) => {
+                    blurOnPointer(e);
+                    setConfirmClearOpen(true);
+                  }}
                 />
-                <span className="px-2.5 py-0.5 rounded-full bg-surface-container-high typescale-label-sm font-mono tabular-nums text-on-surface">
-                  {safeSlideIdx + 1} / {slides.length}
-                </span>
-                <AuroraIconButton
-                  icon="chevron_right"
-                  label="Próximo slide"
-                  variant="tonal"
-                  disabled={safeSlideIdx >= slides.length - 1 && songIdx >= deckSongs.length - 1}
-                  onClick={goNext}
-                />
-              </div>
-              <AuroraButton color="filled" icon="check" onClick={() => setAnnotateMode(false)}>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  const viaKeyboard = e.detail === 0;
+                  blurOnPointer(e);
+                  cancelActiveGestures();
+                  setAnnotateMode(false);
+                  void flushPendingSync(currentSong.id);
+                  if (viaKeyboard) {
+                    requestAnimationFrame(() => annotateToggleRef.current?.focus());
+                  }
+                }}
+                className="stage-btn stage-btn-filled h-10 min-h-[40px] px-3.5 typescale-label-lg"
+              >
+                <UiIcon name="check" size={20} />
                 Concluir
-              </AuroraButton>
+              </button>
             </div>
-
-            <AuroraIconButton
-              icon="chevron_right"
-              label="Próximo slide"
-              variant="tonal"
-              disabled={safeSlideIdx >= slides.length - 1 && songIdx >= deckSongs.length - 1}
-              onClick={goNext}
-              className="hidden sm:inline-flex"
-            />
           </div>
-        ) : (
-          <div
-            key="nav-bar"
-            className="dock-enter-bottom w-full flex items-center justify-between gap-2 flex-wrap"
-          >
-            <AuroraButton
-              color="tonal"
-              icon="chevron_left"
-              disabled={safeSlideIdx === 0 && songIdx === 0}
-              onClick={goPrev}
-              className="min-h-[48px]"
-            >
-              {safeSlideIdx === 0 && songIdx > 0 ? 'Música anterior' : 'Anterior'}
-            </AuroraButton>
+        </nav>
+      )}
 
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="px-2.5 py-0.5 rounded-full bg-surface-container-high typescale-label-sm font-mono tabular-nums text-on-surface flex-shrink-0">
-                {safeSlideIdx + 1} / {slides.length}
-              </span>
-              <span className="hidden sm:inline typescale-body-sm text-on-surface-variant truncate">
-                Use setas, espaço, deslize, toque nas bordas ou pedal Bluetooth
-              </span>
-            </div>
-
-            <AuroraButton
-              color="filled"
-              trailingIcon="chevron_right"
-              disabled={safeSlideIdx >= slides.length - 1 && songIdx >= deckSongs.length - 1}
-              onClick={goNext}
-              className="min-h-[48px]"
-            >
-              {safeSlideIdx >= slides.length - 1 && songIdx < deckSongs.length - 1
-                ? 'Próxima música'
-                : 'Próximo'}
-            </AuroraButton>
-          </div>
-        )}
-      </footer>
-
-      {/* Confirm clear all song annotations */}
+      {/* Confirm clear all annotations */}
       <AuroraDialog
         open={confirmClearOpen}
         onClose={() => setConfirmClearOpen(false)}
+        motionScheme="standard"
         title="Limpar anotações desta música?"
         subtitle="Remove todos os traços e notas de palco salvos nos slides desta música."
         maxWidth="max-w-md"
@@ -1300,6 +3151,7 @@ export function SlidesView() {
             onClick={() => {
               clearSongAnnotations(currentSong.id);
               setConfirmClearOpen(false);
+              showUndoToast(currentSong.id, 'Anotações limpas', 5000);
             }}
           >
             Limpar tudo
@@ -1307,29 +3159,45 @@ export function SlidesView() {
         </div>
       </AuroraDialog>
 
-      {/* Text note composer modal */}
+      {/* Text note composer modal (create & edit + tone picker + quick cues) */}
       <AuroraDialog
         open={Boolean(noteComposer)}
         onClose={() => setNoteComposer(null)}
-        title="Adicionar nota de palco no slide"
-        subtitle="Escolha uma deixa rápida ou digite seu lembrete"
+        motionScheme="standard"
+        title={noteComposer?.mode === 'edit' ? 'Editar nota de palco' : 'Adicionar nota de palco'}
+        subtitle="Escolha uma deixa rápida ou escreva seu lembrete"
         maxWidth="max-w-md"
       >
         <div className="space-y-4">
           <div className="flex flex-wrap gap-1.5">
             {QUICK_NOTE_CUES.map((cue) => (
-              <AuroraChip key={cue} onClick={() => commitTextNote(cue)}>
+              <AuroraChip key={cue} onClick={() => commitNote(cue)}>
                 {cue}
               </AuroraChip>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5" role="group" aria-label="Cor da nota">
+            {NOTE_TONES.map((tone) => (
+              <button
+                key={tone.id}
+                type="button"
+                aria-label={`Cor ${TONE_LABELS_PT[tone.id]}`}
+                aria-pressed={noteToneDraft === tone.id}
+                onClick={() => setNoteToneDraft(tone.id)}
+                className="swatch-btn"
+              >
+                <ToneShapeGlyph shape={tone.shape} color={tone.dotColor} size={14} />
+              </button>
             ))}
           </div>
 
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              commitTextNote(noteText);
+              commitNote(noteDraft);
             }}
-            className="flex gap-2"
+            className="flex flex-wrap gap-2"
           >
             <label htmlFor="slide-note-text" className="sr-only">
               Texto da anotação
@@ -1338,124 +3206,40 @@ export function SlidesView() {
               id="slide-note-text"
               type="text"
               autoFocus
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
               placeholder="Ex.: Crescer no 2o refrão"
-              className="stage-field flex-1"
+              className="stage-field text-base lg:text-sm flex-1 min-w-[180px]"
             />
-            <AuroraButton type="submit" color="filled" disabled={!noteText.trim()}>
+            {noteComposer?.mode === 'edit' && noteComposer.noteId && (
+              <AuroraButton
+                color="danger"
+                onClick={() => {
+                  removeTextNote(currentSong.id, noteComposer.noteId!);
+                  setNoteComposer(null);
+                }}
+              >
+                Excluir
+              </AuroraButton>
+            )}
+            <AuroraButton type="submit" color="filled" disabled={!noteDraft.trim()}>
               Salvar
             </AuroraButton>
           </form>
         </div>
       </AuroraDialog>
 
-      {/* Mobile slide controls sheet (< md) */}
-      <AuroraSheet
-        open={slideControlsOpen}
-        onClose={() => setSlideControlsOpen(false)}
-        title="Ajustes dos slides"
-        subtitle={displayTitle}
-      >
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <div className="typescale-label-lg text-on-surface">Transposição</div>
-            <div className="inline-flex items-center rounded-full bg-surface-container-high px-1">
-              <AuroraIconButton
-                icon="remove"
-                label="Descer meio tom"
-                onClick={() => setTranspose((v) => v - 1)}
-              />
-              <button
-                type="button"
-                onClick={() => setTranspose(0)}
-                aria-label={`Tom atual ${transposePillLabel}. Ativar para restaurar tom original`}
-                className="transpose-reset-btn typescale-label-sm font-mono tabular-nums"
-              >
-                <span
-                  key={shiftTracker.dir === 'none' ? 'init' : totalShift}
-                  data-shift-dir={shiftTracker.dir === 'none' ? undefined : shiftTracker.dir}
-                  className="chord-settle"
-                >
-                  {transposePillLabel}
-                </span>
-              </button>
-              <AuroraIconButton
-                icon="add"
-                label="Subir meio tom"
-                onClick={() => setTranspose((v) => v + 1)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="typescale-label-lg text-on-surface">Modo de leitura</div>
-            <AuroraSegmented<DisplayMode>
-              ariaLabel="Modo dos slides no celular"
-              value={displayMode}
-              onChange={setDisplayMode}
-              options={[
-                { value: 'both', label: 'Cifra' },
-                { value: 'lyrics-only', label: 'Letra' },
-                { value: 'chords-only', label: 'Acordes' },
-              ]}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="typescale-label-lg text-on-surface">Escala do slide</div>
-            <div className="flex flex-wrap items-center gap-2">
-              <AuroraChip
-                selected={autoFit}
-                icon="fit_screen"
-                onClick={() => setAutoFit((v) => !v)}
-              >
-                Autoajuste
-              </AuroraChip>
-              {!autoFit && (
-                <div className="inline-flex items-center rounded-full bg-surface-container-high px-1">
-                  <AuroraIconButton
-                    icon="text_decrease"
-                    label="Diminuir zoom dos slides"
-                    onClick={() => setManualScale((s) => Math.max(0.75, Number((s - 0.1).toFixed(2))))}
-                  />
-                  <span className="typescale-body-sm font-mono tabular-nums px-1">
-                    {Math.round(manualScale * 100)}%
-                  </span>
-                  <AuroraIconButton
-                    icon="text_increase"
-                    label="Aumentar zoom dos slides"
-                    onClick={() => setManualScale((s) => Math.min(1.45, Number((s + 0.1).toFixed(2))))}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {currentSong.capo > 0 && (
-            <div className="space-y-2">
-              <div className="typescale-label-lg text-on-surface">Capotraste</div>
-              <AuroraChip
-                selected={capoDisplay === 'shapes'}
-                onClick={() => setCapoDisplay(capoDisplay === 'shapes' ? 'sounding' : 'shapes')}
-              >
-                {capoDisplay === 'shapes' ? `Formas (Capo ${currentSong.capo})` : 'Som real'}
-              </AuroraChip>
-            </div>
-          )}
-        </div>
-      </AuroraSheet>
-
       {/* Setlist deck drawer */}
       <AuroraSheet
         open={deckOpen}
         onClose={() => setDeckOpen(false)}
+        motionScheme="standard"
         title={activeSetlist?.name ?? 'Sequência'}
         subtitle={`${deckSongs.length} ${deckSongs.length === 1 ? 'música' : 'músicas'} neste conjunto`}
       >
         <ol className="m-0 p-0 list-none space-y-1.5">
           {deckSongs.map((s, idx) => {
-            const active = idx === songIdx;
+            const active = idx === safeSongIdx;
             const info = getDisplayTitleAndArtist(s);
             const key = getEffectiveKey(s).key;
             return (
@@ -1464,10 +3248,15 @@ export function SlidesView() {
                   type="button"
                   aria-current={active ? 'true' : undefined}
                   onClick={() => {
-                    setTurnDir('none');
-                    setSongIdx(idx);
-                    setSlideIdx(0);
-                    setTranspose(0);
+                    pendingPageRef.current = { kind: 'first', announceSong: info.title };
+                    currentAnchorRef.current = { sectionIdx: 0, lineIdx: 0 };
+                    setFitMode('auto');
+                    setMeasureProbe(null);
+                    setActiveSongId(s.id);
+                    setTurnAnim((prev) => ({
+                      dir: idx > safeSongIdx ? 'next' : 'prev',
+                      seq: prev.seq + 1,
+                    }));
                     setDeckOpen(false);
                   }}
                   className={`stage-list-row w-full min-h-[48px] px-4 py-2.5 rounded-2xl border-none flex items-center justify-between gap-3 text-left cursor-pointer ${
@@ -1479,15 +3268,13 @@ export function SlidesView() {
                   <span className="typescale-title-md truncate">
                     {idx + 1}. {info.title}
                   </span>
-                  <span className="typescale-label-sm font-mono flex-shrink-0">
-                    {key || '-'}
-                  </span>
+                  <span className="typescale-label-sm font-mono flex-shrink-0">{key || '-'}</span>
                 </button>
               </li>
             );
           })}
         </ol>
       </AuroraSheet>
-    </main>
+    </div>
   );
 }

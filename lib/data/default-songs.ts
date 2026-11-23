@@ -110,7 +110,7 @@ Dona da situação
 [Bm6] [E/A] [Bm6] [E/A]
 [Bm6] [E/A] [Bm6] [E/A]
 
-[Verse 1]
+[Verso 1]
 [Bm6] Pra poder vi[E/A]ver o amor
 [Bm6] Tem primeiro [E/A]que se amar
 [G6] Se for de verdade
@@ -119,7 +119,7 @@ Dona da situação
 [Intro]
 [Bm6] [E/A] [Bm6] [E/A]
 
-[Verse 2]
+[Verso 2]
 [Bm6] Candeeiro in[E/A]terior
 [Bm6] Nunca pode [E/A]se apagar
 [G6] Tanta tempestade
@@ -128,7 +128,7 @@ Dona da situação
 [Intro]
 [Bm6] [E/A] [Bm6] [E/A]
 
-[Chorus 1]
+[Refrão 1]
 [G6] Eu queria muito
 [F#7] Era só você e eu
 [E/G#] Fui ficando mudo
@@ -139,7 +139,7 @@ Dona da situação
 [Intro]
 [Bm6] [E/A] [Bm6] [E/A]
 
-[Verse 3]
+[Verso 3]
 [Bm6] Se deixei acon[E/A]tecer
 [Bm6] Foi meu jeito [E/A]de lidar
 [G6] O que a gente sente
@@ -148,7 +148,7 @@ Dona da situação
 [Intro]
 [Bm6] [E/A] [Bm6] [E/A]
 
-[Chorus 2]
+[Refrão 2]
 [G6] Cada um é um mundo
 [F#7] No meu mundo mando eu
 [E/G#] Fui perdendo o rumo
@@ -158,7 +158,7 @@ Dona da situação
 [E/G#] Quanto mais deixar me levar
 [A] Muito mais eu vou me perder
 
-[Chorus 3]
+[Refrão 3]
 [G6] Eu queria muito
 [F#7] Era só você e eu
 [E/G#] Foi ficando fundo
@@ -167,7 +167,7 @@ Dona da situação
 [F#7] Mas assistir o amor partir
 Eu não [Bm6]vou
 
-[Outro]
+[Final]
 [Bm6] [E/A] [Bm6] [E/A]
 [Bm6] [E/A] [Bm6] [E/A]
 [Bm6] [E/A] [Bm6] [E/A]`,
@@ -181,7 +181,7 @@ Eu não [Bm6]vou
 
 {comment: Main Chords: Gm, Eb, Cm, D, F}
 
-[Verse 1]
+[Verso 1]
 [Gm] Have you got colour in your cheeks?
 [Gm] Do you ever get that fear that you can't shift the type
 That [Gm] sticks around like summat in your teeth?
@@ -194,7 +194,7 @@ That [Gm] sticks around like summat in your teeth?
 [Eb] Until I [Cm] fall asleep
 [D] Spilling drinks on my settee
 
-[Pre-Chorus]
+[Pré-refrão]
 [Eb] (Do I wanna know)
 If this [Cm] feeling flows both ways?
 [Gm] (Sad to see you go)
@@ -203,7 +203,7 @@ Was sorta [Gm] hoping that you'd stay
 That the [Cm] nights were mainly made
 For [Gm] saying things that you can't [Gm] say tomorrow day
 
-[Chorus]
+[Refrão]
 [Gm] Crawling back to you
 [Eb] Ever thought of calling when [Cm] you've had a few?
 [Gm] 'Cause I always do
@@ -211,7 +211,7 @@ For [Gm] saying things that you can't [Gm] say tomorrow day
 [Gm] Now I've thought it through
 [Eb] Crawling [Cm] back to you
 
-[Verse 2]
+[Verso 2]
 [Gm] So have you got the guts?
 [Gm] Been wondering if your heart's still open and if so
 I [Gm] wanna know what time it shuts
@@ -221,7 +221,7 @@ I'm [Gm] sorry to interrupt
 [Gm] Well, I don't know if you feel the same as I do
 [Eb] But we could be [Cm] together if you [D] wanted to
 
-[Pre-Chorus]
+[Pré-refrão]
 [Eb] (Do I wanna know)
 If this [Cm] feeling flows both ways?
 [Gm] (Sad to see you go)
@@ -230,7 +230,7 @@ Was sorta [Gm] hoping that you'd stay
 That the [Cm] nights were mainly made
 For [Gm] saying things that you can't [Gm] say tomorrow day
 
-[Chorus]
+[Refrão]
 [Gm] Crawling back to you
 [Eb] Ever thought of calling when [Cm] you've had a few?
 [Gm] 'Cause I always do
@@ -238,7 +238,7 @@ For [Gm] saying things that you can't [Gm] say tomorrow day
 [Gm] Now I've thought it through
 [Eb] Crawling [Cm] back to you
 
-[Bridge]
+[Ponte]
 [Eb] (Do I wanna know)
 If this [Cm] feeling flows both ways?
 [Gm] (Sad to see you go)
@@ -247,7 +247,7 @@ Was sorta [Gm] hoping that you'd stay
 That the [Cm] nights were mainly made
 For [Gm] saying things that you can't [Gm] say tomorrow day
 
-[Outro]
+[Final]
 [Eb] (Do I wanna know)
 Too busy [Cm] being yours to fall
 [Gm] (Sad to see you go)
@@ -274,7 +274,7 @@ Am:  x02210
 [Em] [D] [C] [B7]
 [Em] [D] [C] [B7]
 
-{start_of_verse: Verse 1}
+{start_of_verse: Verso 1}
 [Em] You got the lights on [D] in the afternoon
 And the [C] nights are drawn out [B7] long
 [Em] And you're kissing to [D] cut through the gloom
@@ -286,14 +286,14 @@ In a [C] small world [B7] on an exceptionally rainy Tuesday night
 In the [B7] right place and time
 {end_of_verse}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 [Em] When the zeros line [D] up on the 24-hour clock
 [C] When you know who's [B7] calling even though the number is blocked
 [Em] When you walked around [D] your house wearing my sky blue Lacoste
 [C] And your [B7] knee socks
 {end_of_chorus}
 
-{start_of_verse: Verse 2}
+{start_of_verse: Verso 2}
 [Em] Well, you cured my [D] January blues
 [C] Yeah, you made it [B7] all alright
 [Em] I got a feeling I [D] might've lit the very fuse
@@ -305,20 +305,20 @@ I was [C] acting like I [B7] knew
 [B7] Ain't it funny what you'll do?
 {end_of_verse}
 
-{comment: Chorus}
+{comment: Refrão}
 [Em] When the zeros line [D] up on the 24-hour clock
 [C] When you know who's [B7] calling even though the number is blocked
 [Em] When you walked around [D] your house wearing my sky blue Lacoste
 [C] And your [B7] knee socks
 
-{start_of_bridge: Bridge}
+{start_of_bridge: Ponte}
 [Am] The late afternoon, the [C] ghost in your room
 That you [Em] always thought didn't [D] approve of you knocking boots
 [C] Never stopped you letting me get [B7] hold of the sweet spot
 By the [Em] scruff of your knee socks
 {end_of_bridge}
 
-{start_of_outro: Outro}
+{start_of_outro: Final}
 [Em] You and me could've been a team
 [Em] Each had a half of a king-and-queen seat
 [Em] Like the beginning of Mean Streets
@@ -352,7 +352,7 @@ By the [Em] scruff of your knee socks
 [Intro]
 [F#m] [D] [Bm] (x4)
 
-[Verse 1]
+[Verso 1]
 [F#m]I'm a puppet on a [D]string[Bm]
 [F#m]Tracy Island, time-traveling diamond
 [F#m]Cutter-shaped heartaches that [D]come to [Bm]find ya
@@ -361,7 +361,7 @@ By the [Em] scruff of your knee socks
 [F#m]Through an open [D]space, [Bm]in my mind
 When she's [F#m]not right there beside me
 
-[Chorus]
+[Refrão]
 [F#m]I go crazy [D]'cause here isn't where I wanna [Bm]be
 [F#m]And satisfaction feels [D]like a distant [Bm]memory
 [F#m]And I can't help [D]myself, [Bm]all I wanna hear [F#m]her [D]say is "Are [Bm]you mine?"
@@ -369,14 +369,14 @@ When she's [F#m]not right there beside me
 [F#m]Are you [D]mine?[Bm]
 [F#m]Are you [D]mine?[Bm]
 
-[Verse 2]
+[Verso 2]
 [F#m]I guess what I'm trying to say is I [D]need [Bm]the deep end
 [F#m]Keep imagining meeting, wished away entire [D]lifetimes[Bm]
 [F#m]Unfair we're not somewhere misbehaving for [D]days[Bm]
 [F#m]Great escape lost track of time and space
 [F#m]She's a silver [D]lining [Bm]climbing on my [F#m]desire
 
-[Chorus]
+[Refrão]
 [F#m]And I go crazy [D]'cause here isn't where I wanna [Bm]be
 [F#m]And satisfaction feels [D]like a distant [Bm]memory
 [F#m]And I can't help [D]myself, [Bm]all I wanna hear [F#m]her [D]say is "Are [Bm]you mine?"
@@ -387,7 +387,7 @@ When she's [F#m]not right there beside me
 [F#m]Are you [D]mine?[Bm]
 (Are you mine tomorrow, or just mine tonight?)
 
-[Bridge]
+[Ponte]
 [Bm]And the thrill of the [D]chase moves in [F#m]mysterious [A]ways
 [Bm]So in case I'm [D]mistaken, [C#]I just wanna hear you [Bm]say you got me baby
 [Am]Are you [F#m]mine?
@@ -395,10 +395,10 @@ When she's [F#m]not right there beside me
 [Solo]
 [F#m] [D] [Bm] (x4)
 
-[Outro]
+[Final]
 [N.C.]She's a silver lining lone ranger riding through an open space
 [N.C.]In my mind when she's not right there beside me
-[Chorus]
+[Refrão]
 [F#m]I go crazy [D]'cause here isn't where I wanna [Bm]be
 [F#m]And satisfaction feels [D]like a distant [Bm]memory
 [F#m]And I can't help [D]myself, [Bm]all I wanna hear [F#m]her [D]say is "Are [Bm]you mine?"
@@ -459,7 +459,7 @@ When she's [F#m]not right there beside me
 [Dm]Shoot me [Dm]
 [Dm]Shoot me [Dm]
 
-{comment: Guitar Solo}
+{comment: Solo de guitarra}
 [Dm]   [Dm]   [Dm]   [Dm]
 [A7]   [A7]   [G7]   [G7]
 [Dm]   [Dm]
@@ -483,23 +483,23 @@ When she's [F#m]not right there beside me
 [C]  [G]  [Am]  [F]
 [C]  [G]  [F]  [C]
 
-{section: Verse 1}
+{section: Verso 1}
 When I [C]find myself in [G]times of trouble, [Am]Mother Mary [F]comes to me
 [C]Speaking words of [G]wisdom, let it [F]be [C]
 And [C]in my hour of [G]darkness, she is [Am]standing right in [F]front of me
 [C]Speaking words of [G]wisdom, let it [F]be [C]
 
-{section: Chorus}
+{section: Refrão}
 Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
 [C]Whisper words of [G]wisdom, let it [F]be [C]
 
-{section: Verse 2}
+{section: Verso 2}
 And [C]when the broken-[G]hearted people [Am]living in the [F]world agree
 [C]There will be an [G]answer, let it [F]be [C]
 For [C]though they may be [G]parted, there is [Am]still a chance that [F]they will see
 [C]There will be an [G]answer, let it [F]be [C]
 
-{section: Chorus}
+{section: Refrão}
 Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
 There [C]will be an [G]answer, let it [F]be [C]
 Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
@@ -509,19 +509,19 @@ Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
 [F]  [C]  [G] [F] [C]
 [F]  [C]  [G] [F] [C]
 
-{section: Verse 3}
+{section: Verso 3}
 And [C]when the night is [G]cloudy, there is [Am]still a light that [F]shines on me
 [C]Shine until to[G]morrow, let it [F]be [C]
 I [C]wake up to the [G]sound of music, [Am]Mother Mary [F]comes to me
 [C]Speaking words of [G]wisdom, let it [F]be [C]
 
-{section: Chorus}
+{section: Refrão}
 Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
 There [C]will be an [G]answer, let it [F]be [C]
 Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
 [C]Whisper words of [G]wisdom, let it [F]be [C]
 
-{section: Outro}
+{section: Final}
 [F] [C] [G] [F] [C]`,
   },
   {
@@ -538,7 +538,7 @@ Let it [Am]be, let it [G]be, let it [F]be, let it [C]be
 {comment: Intro}
 [Cmaj7]  [Bm7]  [Em]
 
-{start_of_verse: Verse 1}
+{start_of_verse: Verso 1}
 [Cmaj7]Things fall a[Bm7]part
 And [Em]time breaks your heart
 I wasn't there but I know
@@ -547,7 +547,7 @@ You [Em]showed her the world
 You fell out of love and you [Bm7]both let [Cmaj7]go
 {end_of_verse}
 
-{start_of_prechorus: Pre-Chorus}
+{start_of_prechorus: Pré-refrão}
 [Bm7]She was cryin' on my shoulder
 [Em]All I could do was hold her
 [Cmaj7]Only made us closer until July
@@ -556,14 +556,14 @@ You fell out of love and you [Bm7]both let [Cmaj7]go
 [N.C.]I should put it all behind me, shouldn't I?
 {end_of_prechorus}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 But I [Cmaj7]see her in the [D]back of my [B7]mind [Em]all the [D]time
 [Cmaj7]Like a [D]fever, like I'm [B7]burning a[Em]live, like a sign
 [D]Did I [Cmaj7]cross the line?
 [Bm7]  [Em]  [D](Mm) Hmm
 {end_of_chorus}
 
-{start_of_verse: Verse 2}
+{start_of_verse: Verso 2}
 [Cmaj7]Well, good [Bm7]things don't last
 And [Em]life moves so fast
 [Bm7]I'd [Cmaj7]never ask who was better
@@ -572,19 +572,19 @@ And [Em]life moves so fast
 [Bm7]Hap[Cmaj7]py and free in leather
 {end_of_verse}
 
-{start_of_prechorus: Pre-Chorus}
+{start_of_prechorus: Pré-refrão}
 [Bm7]And I know that you love me
 [Em]You don't need to remind me
 [N.C.]Wanna put it all behind me, but baby
 {end_of_prechorus}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 I [Cmaj7]see her in the [D]back of my [B7]mind [Em]all the [D]time
 Feels [Cmaj7]like a [D]fever, like I'm [B7]burning a[Em]live, like a sign
 [D]Did I [Cmaj7]cross the [D]line?
 {end_of_chorus}
 
-{start_of_bridge: Bridge}
+{start_of_bridge: Ponte}
 [Cmaj7]You say [D]no one knows you so well (Oh)
 [B7]But every time you touch me, I just [Em]wonder [D]how she felt
 [Cmaj7]Valentine's [D]Day, cryin' in the hotel
@@ -593,7 +593,7 @@ And I [Cmaj7]wonder[D]
 Do you [B7]see her in the [Em]back of your mind in my [D]eyes?
 {end_of_bridge}
 
-{start_of_outro: Outro}
+{start_of_outro: Final}
 [Cmaj7]You say [D]no one knows you so well
 [B7]But every time you touch me [Em] [D]
 [Cmaj7]I just [D]wonder how she felt
@@ -616,7 +616,7 @@ Do you [B7]see her in the [Em]back of your mind in my [D]eyes?
 {section: Intro}
 [B] [Bmaj7] [G#m] [F#] (x2)
 
-{section: Verse 1}
+{section: Verso 1}
 [B] Hello there, the [Bmaj7] angel from my nightmare
 [G#m] The shadow in the background [F#] of the morgue
 [B] The unsuspecting [Bmaj7] victim of [G#m] darkness in the [F#] valley
@@ -626,11 +626,11 @@ And we'll [G#m] have Halloween on [F#] Christmas
 And in the [B] night we'll wish this [Bmaj7] never [G#m] ends [F#]
 We'll [B] wish this never [Bmaj7] ends [G#m] [F#]
 
-{section: Interlude}
+{section: Interlúdio}
 (I miss [B] you, I miss [Bmaj7] you) [G#m] [F#]
 (I miss [B] you, I miss [Bmaj7] you) [G#m] [F#]
 
-{section: Verse 2}
+{section: Verso 2}
 [B] Where are you? And [Bmaj7] I'm so sorry
 I [G#m] cannot sleep, I cannot [F#] dream tonight
 [B] I need some[Bmaj7]body and [G#m] always [F#]
@@ -644,7 +644,7 @@ And [G#m] hear your voice of [F#] treason
 Will you [B] come home and [Bmaj7] stop this [G#m] pain to[F#]night?
 [B] Stop this [Bmaj7] pain to[G#m]night [F#]
 
-{section: Chorus}
+{section: Refrão}
 [B] Don't waste your [E] time on me
 You're al[B]ready the voice in[E]side my head (I miss [B] you, miss [E] you)
 [B] Don't waste your [E] time on me
@@ -654,7 +654,7 @@ You're al[B]ready the voice in[E]side my head (I miss [B] you, miss [E] you)
 [B] Don't waste your [E] time on me
 You're al[B]ready the voice in[E]side my head (I miss [B] you, miss [E] you)
 
-{section: Outro}
+{section: Final}
 [B] I miss you (I miss you)
 [E] I miss you (I miss you)
 [B] I miss you (I miss you)
@@ -677,13 +677,13 @@ You're al[B]ready the voice in[E]side my head (I miss [B] you, miss [E] you)
 [Intro]
 [B] [F#] [C#] [D#m] (x4)
 
-[Verse 1]
+[Verso 1]
 [B]I took her [F#]out, it [C#]was a Friday [D#m]night
 [B]I wore co[F#]logne to [C#]get the feeling [D#m]right
 [B]We started [F#]making out and [C#]she took off my [D#m]pants
 [B]But then I [F#]turned on the [C#]TV
 
-[Chorus 1]
+[Refrão 1]
 [B]And that's about the [F#]time she walked away from [C#]me [D#m]
 [B]Nobody likes you [F#]when you're twenty-[C#]three [D#m]
 [B]And are still more [F#]amused by [C#]TV shows [D#m]
@@ -692,16 +692,16 @@ My friends say I [C#]should act my age
 [D#m]What's my age again? [C#]
 What's my age again?
 
-[Post-Chorus]
+[Pós-refrão]
 [B] [F#] [C#] [D#m]
 
-[Verse 2]
+[Verso 2]
 [B]Then later [F#]on, [C#]on the drive [D#m]home
 [B]I called her [F#]mom [C#]from a pay [D#m]phone
 [B]I said I [F#]was the cops [C#]and your husband's in [D#m]jail
 [B]This state looks [F#]down on [C#]sodomy
 
-[Chorus 2]
+[Refrão 2]
 [B]And that's about the [F#]time that bitch hung up on [C#]me [D#m]
 [B]Nobody likes you [F#]when you're twenty-[C#]three [D#m]
 [B]And are still more [F#]amused by [C#]prank phone calls [D#m]
@@ -710,11 +710,11 @@ My friends say I [C#]should act my age
 [D#m]What's my age again? [C#]
 What's my age again?
 
-[Interlude]
+[Interlúdio]
 [D#m] [C#] [B] [C#] (x3)
 [D#m] [C#] [B] [B]
 
-[Chorus 3]
+[Refrão 3]
 [C#]And that's about the [F#]time she [C#]walked away from [D#m]me [B]
 Nobody [F#]likes you when [C#]you're twenty-three [D#m] [B]
 And you still [F#]act like you're in [C#]freshman [D#m]year
@@ -722,7 +722,7 @@ What the hell [B]is wrong with me? [F#]
 My friends say I [C#]should act my age
 [D#m]What's my age again?
 
-[Chorus 4]
+[Refrão 4]
 [C#]And that's about the [F#]time she [C#]broke up with [D#m]me [B]
 No one should [F#]take them[C#]selves so seriously [D#m] [B]
 With many [F#]years ahead to [C#]fall in [D#m]line
@@ -731,7 +731,7 @@ I never [C#]want to act my [D#m]age
 What's my age again? [C#]
 What's my age again?
 
-[Outro]
+[Final]
 [F#] [C#] [D#m] [B] (x3)
 [F#] [C#] [D#m] [C#]
 [B]What's my age again?`,
@@ -882,7 +882,7 @@ Oh I [Fm]beg, I beg and plead - singing
 [Bm]Mas já tem uns [D]também que eu vou te falar, [C#7]viu... [C7]
 [Bm]Só por [D]Deus, viu! [C#7]Ave Ma[C7]ria!
 
-{section: Verse 1}
+{section: Verso 1}
 [Bm]Mandei fa[D]lar pra não ar[G7]rastar [F#7]
 [Bm]Não botaram [D]fé, subirus[G7]dois[F#7]tiozin
 [Bm]O baguio é [D]louco, o sol tá de ra[G7]char [F#7]
@@ -896,11 +896,11 @@ Oh I [Fm]beg, I beg and plead - singing
 [Bm]É, é... [D]justo é Deus, o [G7]homem não [F#7]
 [Bm]Ouse me jul[D]gar, tente a [G7]sorte, fi [F#7]
 
-{section: Chorus}
+{section: Refrão}
 [Bm]Para pa [D]pa, para pa [G7]pa, [F#7]
 [Bm]Para pa [D]pa, para para [G7]para [F#7]
 
-{section: Verse 2}
+{section: Verso 2}
 [Bm]Só fun[D]ção no 12, na ga[G7]ragem um [F#7]Golf
 [Bm]Boni[D]tão na praia de hor[G7]net, fi [F#7]
 [Bm]Tudo [D]isso tem e o a[G7]petite vai [F#7]
@@ -914,15 +914,15 @@ Oh I [Fm]beg, I beg and plead - singing
 [Bm]E co[D]varde são quem tem [G7]tudo de bom [F#7]
 [Bm]E for[D]nece o mal, pra fa[G7]vela morrer [F#7]
 
-{section: Bridge}
+{section: Ponte}
 [Bm]Uns acham [D]que são... [G7]mas nunca [F#7]vão ser
 [Bm]Feio é ar[D]rastar [G7]e nem per[F#7]ceber
 
-{section: Chorus}
+{section: Refrão}
 [Bm]Para pa [D]pa, para pa [G7]pa, [F#7]
 [Bm]Para pa [D]pa, para para [G7]para [F#7]
 
-{section: Outro}
+{section: Final}
 [Bm] [D] [C#7] [C7]
 [Bm]Acostumado com su[D]crilhos no prato, né, [C#7]moleque? [C7]
 [Bm]Falar o [D]quê? [C#7] [C7]
@@ -941,37 +941,37 @@ Oh I [Fm]beg, I beg and plead - singing
 [Intro]
 [A]  [D/A]  [A]  [D/A]
 
-[Verse 1]
+[Verso 1]
 [A] Pai e [D/A]mãe, [A]ouro de mi[D/A]na
 [A] Coração, [E7/G#]desejo e si[F#m7]na
 Tudo [C#m7]mais, pura ro[D7M]tina, [D#dim]jazz... [A] [D/A]
 
-[Verse 2]
+[Verso 2]
 [A] Tocarei seu [D/A]nome pra po[A]der falar de [D/A]amor
 Minha prin[E7/G#]cesa art-nu[F#m7]veau
 Da natu[C#m7]reza tudo [D7M]mais, pura be[D#dim]leza, [E7(4/9)]jazz...
 
-[Bridge]
+[Ponte]
 [E7(4/9)] A luz de um grande pra[D7(4/9)]zer [D7(9)]
 [C#7(#9)] É irre[G7(#11)]medi[F#m7]ável néon
 [E7(4/9)] Quando o grito do pra[D7(4/9)]zer
 Açoitar o [E7(4/9)] ar, [E7(9)] réveillon
 
-[Chorus]
+[Refrão]
 [A] O lu[D/A]ar, [A]estrela-do-[D/A]mar
 O [A]Sol e o [E7/G#]dom
 [F#m7] Quiçá um [C#m7]dia, a fúria desse [D7M]front
 [F#m7] Virá lapi[C#m7]dar o sonho até ge[D7M]rar o som
 Como querer caetane[E7(4/9)]ar o que há de [A]bom [D/A]
 
-[Chorus]
+[Refrão]
 [A] O lu[D/A]ar, [A]estrela-do-[D/A]mar
 O [A]Sol e o [E7/G#]dom
 [F#m7] Quiçá um [C#m7]dia, a fúria desse [D7M]front
 [F#m7] Virá lapi[C#m7]dar o sonho até ge[D7M]rar o som
 Como querer caetane[E7(4/9)]ar o que há de [A]bom [D/A]
 
-[Outro]
+[Final]
 [A]  [D/A]  [A]  [D/A]  [A]`,
   },
   {
@@ -984,7 +984,7 @@ Como querer caetane[E7(4/9)]ar o que há de [A]bom [D/A]
 
 {comment: Main Chords Used: Em, Bm7, Am, B7}
 
-[Verse 1]
+[Verso 1]
 [Em]I was out on my [Bm7]own in a place that ain't [Am]home
 Ain't [B7]nobody to hold in this [Em]town
 Stumbling a[Bm7]round, always lost, never [Am]found
@@ -993,7 +993,7 @@ But darling my [Bm7]mind has been broken
 By the [Am]nights, and the fights, and the [B7]notion
 That the [Em]stains on my soul they just [Bm7]won't wash a[Am]way, [B7]yeah
 
-[Chorus]
+[Refrão]
 I need you to [Em]heal me
 To [Bm7]feel me
 It's [Am]murder when you're [B7]not around
@@ -1001,7 +1001,7 @@ I need you to [Em]heal me
 Be [Bm7]near me
 Never [Am]needed you [B7]closer than now
 
-[Verse 2]
+[Verso 2]
 [Em]Oh the silence has [Bm7]spoken, it's dark and it's [Am]hopeless
 And I [B7]don't know how it plays [Em]out
 So I bathe in the [Bm7]river and pray it de[Am]livers me
@@ -1010,7 +1010,7 @@ From [B7]all my shadowing [Em]doubts, oh
 By the [Am]nights, and the fights, and the [B7]notion
 That the [Em]stains on my soul they just [Bm7]won't wash a[Am]way, [B7]yeah
 
-[Chorus]
+[Refrão]
 I need you to [Em]heal me
 To [Bm7]feel me
 It's [Am]murder when you're [B7]not around
@@ -1018,11 +1018,11 @@ I need you to [Em]heal me
 Be [Bm7]near me
 Never [Am]needed you [B7]closer than now
 
-[Bridge]
+[Ponte]
 [Em]I'm holding on [Bm7]tight but I might hit the [Am]ground, [B7]yeah
 And [Em]I... I [Bm7]need you to [Am]heal [B7]me
 
-[Chorus]
+[Refrão]
 I need you to [Em]heal me
 To [Bm7]feel me
 It's [Am]murder when you're [B7]not around
@@ -1030,10 +1030,95 @@ I need you to [Em]heal me
 Be [Bm7]near me
 Never [Am]needed you [B7]closer than now
 
-[Outro]
+[Final]
 [Em]Heal me [Bm7]
 [Am]Heal me [B7]
 [Em]`,
+  },
+  {
+    id: "first-to-eleven-dont-stop-me-now",
+    text: `{title: Don't Stop Me Now}
+{artist: First to Eleven}
+{key: F}
+{tempo: 156}
+{duration: 225}
+{notes: Cover rock (Queen) · Intro lenta no rubato, banda entra explosiva no Verso 1}
+
+[Intro]
+To[F]night, I'm gonna have my[Am]self a real good [Dm]time
+I feel a[Gm]li[C]ve
+And the [F]world, I'll [F7]turn it inside [Bb]out, yeah
+I'm [Gm7]floating around in [D7]ecstasy
+So [Gm]don't [F]stop [C]me [Gm]now
+[Gm]Don't [F]stop [C]me [Gm]
+'Cause I'm [Gm]having a good time, [C7]having a good time
+
+[Verso 1]
+I'm a [F]shooting star leaping through the [Am]sky, like a tiger
+De[Dm]fying the laws of [Gm]gravi[C]ty
+I'm a [F]racing car passing [Am]by, like Lady Go[Dm]diva
+I'm gonna [Gm]go, go, [C]go, there's no stopping [F]me
+
+[Pré-refrão 1]
+I'm [F7]burning through the [Bb]sky, yeah
+Two hundred de[Gm7]grees, that's why they call me Mister [D7]Fahren[Gm]heit
+I'm [D7]travelling at the speed of [Gm]light
+I wanna make a [Gm7]supersonic [F/A]man out of [Bb]you [C]
+
+[Refrão 1]
+Don't [F]stop me [Gm]now
+I'm [Am]having such a [Dm]good time, I'm [Gm7]having a [C7]ball
+Don't [F]stop me [Gm]now
+If you [Am]wanna have a [Dm]good time, just [Gm7]give me a [D7]call
+Don't [Gm]stop [F]me [C]now ('cause I'm [Gm]having a good time)
+Don't [Gm]stop [F]me [C]now (yes, I'm [Gm]having a good time)
+I [C7]don't wanna stop at [Eb]all, yeah
+
+[Verso 2]
+I'm a [F]rocket ship on my way to [Am]Mars, on a collision [Dm]course
+I am a [Gm]satellite, I'm out of con[C]trol
+I am a [F]sex machine ready to re[Am]load, like an atom [Dm]bomb
+About to [Gm]oh, oh, oh, oh, [C]oh, ex[F]plode
+
+[Pré-refrão 2]
+I'm [F7]burning through the [Bb]sky, yeah
+Two hundred de[Gm7]grees, that's why they call me Mister [D7]Fahren[Gm]heit
+I'm [D7]travelling at the speed of [Gm]light
+I wanna make a [Gm7]supersonic [F/A]woman of [Bb]you [C]
+
+[Ponte]
+[N.C.]Don't stop me, don't stop me, don't stop me (hey, hey, hey)
+[N.C.]Don't stop me, don't stop me (ooh, ooh, ooh, I like it)
+[N.C.]Don't stop me, don't stop me, have a good time, good time
+[N.C.]Don't stop me, don't stop me, ah
+
+[Solo]
+| [F] | [Am] | [Dm] | [Gm] [C] |
+| [F] | [Am] | [Dm] | [Gm] [C] |
+| [F] [F7] | [Bb] | [Gm7] | [D7] |
+| [Gm] | [D7] | [Gm] | [Gm7] [F/A] [Bb] [C] |
+
+[Pré-refrão 3]
+Oh, I'm [F7]burning through the [Bb]sky, yeah
+Two hundred de[Gm7]grees, that's why they call me Mister [D7]Fahren[Gm]heit
+I'm [D7]travelling at the speed of [Gm]light
+I wanna make a [Gm7]supersonic [F/A]man out of [Bb]you [C]
+
+[Refrão 2]
+Don't [F]stop me [Gm]now
+I'm [Am]having such a [Dm]good time, I'm [Gm7]having a [C7]ball
+Don't [F]stop me [Gm]now
+If you [Am]wanna have a [Dm]good time, just [Gm7]give me a [D7]call
+Don't [Gm]stop [F]me [C]now ('cause I'm [Gm]having a good time)
+Don't [Gm]stop [F]me [C]now (yes, I'm [Gm]having a good time)
+I [C7]don't wanna stop at [Eb]all
+
+[Final]
+[F]La da da da [Am]daa, da da da [Dm]haa
+Da da [Gm]da ha ha [C]haa
+[F]La da da da [F7]daa, [Bb]da da da [Gm7]haa [D7]
+[Gm]La da da da [F]daa [C]da da [Gm]da
+[F]`,
   },
   {
     id: "foo-fighters-asking-for-a-friend",
@@ -1053,7 +1138,7 @@ B, F#m, E, G, A, D
 [B]  [F#m]  [E]
 [B]  [F#m]  [E]
 
-{section: Verse 1}
+{section: Verso 1}
 [B]Run and tell [F#m]all of the [E]angels
 [B]This could [F#m]take all [E]night
 [B]Think I need a [F#m]devil to [E]help me get things right
@@ -1061,7 +1146,7 @@ B, F#m, E, G, A, D
 [B]Cause [F#m]this one is a [E]lie
 [B]We sat around [F#m]laughing and [E]watched the last one die
 
-{section: Chorus}
+{section: Refrão}
 [B]Now I'm looking to the [F#m]sky to save me
 [E]Looking for a sign of life
 [B]Looking for [F#m]something to [E]help me burn out bright
@@ -1070,7 +1155,7 @@ B, F#m, E, G, A, D
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]
 
-{section: Verse 2}
+{section: Verso 2}
 [B]Think I'm done [F#m]nursing [E]patience
 [B]It can [F#m]wait one [E]night
 [B]Give it all a[F#m]way if you [E]give me one last try
@@ -1078,7 +1163,7 @@ B, F#m, E, G, A, D
 [B]If you [F#m]just save my [E]life
 [B]Run and tell the [F#m]angels that [E]everything's alright
 
-{section: Chorus}
+{section: Refrão}
 [B]Now I'm looking to the [F#m]sky to save me
 [E]Looking for a sign of life
 [B]Looking for [F#m]something to [E]help me burn out bright
@@ -1087,13 +1172,13 @@ B, F#m, E, G, A, D
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]
 
-{section: Bridge}
+{section: Ponte}
 [B]Fly along with [G]me, I [D]can't quite [E]make it alone
 [G]Try to [A]make this life my own
 [B]Fly along with [G]me, I [D]can't quite [E]make it alone
 [G]Try to [A]make this life my own
 
-{section: Chorus}
+{section: Refrão}
 [B]Now I'm looking to the [F#m]sky to save me
 [E]Looking for a sign of life
 [B]Looking for [F#m]something to [E]help me burn out bright
@@ -1102,7 +1187,7 @@ B, F#m, E, G, A, D
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E] (high)
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]
 
-{section: Outro}
+{section: Final}
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]
 [G]Make my way back [A]home when I learn to [B]fly [F#m] [E]`,
@@ -1124,35 +1209,35 @@ B, F#m, E, G, A, D
 [Bm7] [D/F#] [F] [E7]
 [Bm7] [D/F#] [F] [E7]
 
-{section: Verse 1}
+{section: Verso 1}
 [Bm7]God damn this [D/F#]dusty room, this [F]hazy after[E7]noon
 I'm [Bm7]breathing in this [D/F#]silence like [F]never be[E7]fore
 This [Bm7]feeling that I [D/F#]get, this [F]one last ciga[E7]rette
 As I [Bm7]lay awake and [D/F#]wait for you to [F]come through the [E7]door
 
-{section: Verse 2}
+{section: Verso 2}
 Oh [Bm7]maybe, maybe, [D/F#]maybe I can [F]share it with [E7]you
 I be[Bm7]have, I be[D/F#]have, I be[F]have so I can [E7]share it with you
 
-{section: Chorus 1}
+{section: Refrão 1}
 [Bm]You are not a[F#m]lone dear loneliness
 [G]You forgot but [E]I remember this
 [D]Oh [F#m]stranger, [F]stranger, [E]stranger, things have [Esus4]happened [E]I know
 [D]Oh [F#m]stranger, [F]stranger, [E]stranger, things have [Esus4]happened [E]I know
 
-{section: Bridge}
+{section: Ponte}
 We'll [Bm7]dream about some[D/F#]where our [F]smoke will fill the [E7]air
 As I [Bm7]lay awake and [D/F#]wait for you to [F]walk out that [E7]door
 I can [Bm7]change, I can [D/F#]change, I can [F]change, but [E7]who you want me to be?
 I'm the [Bm7]same, I'm the [D/F#]same, I'm the [F]same, what [E7]do you want me to be?
 
-{section: Chorus 2}
+{section: Refrão 2}
 [Bm]You are not a[F#m]lone dear loneliness
 [G]I forgot that [E]I remember this
 [D]Oh [F#m]stranger, [F]stranger, [E]stranger, things have [Esus4]happened [E]I know
 [D]Oh [F#m]stranger, [F]stranger, [E]stranger, things have [Esus4]happened [E]I know
 
-{section: Outro}
+{section: Final}
 [Bm]You are not a[F#m]lone dear loneliness
 [G]You forgot but [E]I remember this
 [D]Oh [F#m]stranger, [F]stranger, [E]stranger, things have [Esus4]happened [E]I know
@@ -1225,19 +1310,19 @@ Você nem vai perceber
 [C]  [G]  [Am]  [F]
 [C]  [G]  [Am]  [F]
 
-[Verse 1]
+[Verso 1]
 [C]O que você vai [G]ser quando crescer?
 [Am]O que a gente vai fa[F]zer quando se ver, de novo?
 [C]O que será que a[G]contece pra gente, um [Am]dia, não se querer [F]mais?
 Eu só queri[Am]a um po[G]uco de [F]paz
 
-[Verse 2]
+[Verso 2]
 [C]Eu sou o que eu que[G]ria ser quando crescer
 [Am]E eu me enxergo em todo lu[F]gar, exceto aonde você está
 [C]Pois tudo ao meu re[G]dor é estranho, a[Am]gora que eu já não te [F]tenho mais
 Eu só queri[Am]a... mas eu [G]nem sei [F]mais
 
-[Chorus]
+[Refrão]
 Então es[F]colha de que [G]lado vai jogar
 Pois ao meu [Am]lado está so[C/E]brando um lugar
 Ele é [F]seu, [G]eu sou [Am]seu [C/E]
@@ -1245,13 +1330,13 @@ Então me [F]diga onde é [G]que você está
 No meu pas[Am]sado você [C/E]não pode ficar
 Aca[F]bou, aca[G]bou... [Am] [G]
 
-[Verse 3]
+[Verso 3]
 [C]O que o mundo vai di[G]zer, quando o amor vencer?
 [Am]Em quem a gente vai pen[F]sar quando a luz se apagar?
 [C]Eu quero um se[G]gundo de silêncio, se[Am]rá que é pedir de[F]mais?
 Não... [Am]eu só que[G]ria, mas eu [F]não sei mais como é você
 
-[Chorus]
+[Refrão]
 Então es[F]colha de que [G]lado vai jogar
 Pois ao meu [Am]lado está so[C/E]brando um lugar
 Ele é [F]seu, [G]e eu sou [Am]seu [C/E]
@@ -1259,7 +1344,7 @@ Então me [F]diga onde é [G]que você está
 No meu pas[Am]sado você [C/E]não pode ficar
 Aca[F]bou, e eu não [G]sou o seu can[Am]tor
 
-[Outro]
+[Final]
 [F]  [G]  [Am]  [C/E]
 [F]  [G]  [Am]  [C/E]
 [F]  [G]  [Am]  [G]  [C]`,
@@ -1277,7 +1362,7 @@ Aca[F]bou, e eu não [G]sou o seu can[Am]tor
 {section: Intro}
 ([Bbm7] [Ab7] [F7] [Bbm7] [B6] [Ebm7]) x2
 
-{section: Verse 1}
+{section: Verso 1}
 [Bbm7] [Ebm7] 
 Ahhhhhhhhh
 [Bbm7] As neblinas das ma[Ebm7]nhãs
@@ -1291,7 +1376,7 @@ Ahhhhhhhhh
 [Ebm7] E o coração re[Bbm7]encon[Ebm7]trar
 [Bbm7] [Bb7] 
 
-{section: Chorus}
+{section: Refrão}
 [Ebm7] O amor é como um peda[Ab7]cinho de céu
 Sou todo [F7] Love Love
 São lábios de [Gb7M] mel, ah
@@ -1301,10 +1386,10 @@ Porque se[Ebm7]rá [Ab7]
 Amor é onde eu que[Db7M]ria estar com vo[Gb7M]cê
 [Gdim] E amar espalha [Ab7] brisa em alto mar
 
-{section: Interlude}
+{section: Interlúdio}
 ([Bbm7] [Ab7] [F7] [Bbm7] [B6] [Ebm7]) x2
 
-{section: Verse 2}
+{section: Verso 2}
 [Bbm7] [Ebm7] 
 Ahhhhhhhhh
 [Bbm7] Noite me faz imagi[Ebm7]nar
@@ -1318,7 +1403,7 @@ Ahhhhhhhhh
 [Ebm7] Seu coração res[Bbm7]pon[Ebm7]der
 [Bbm7] [Bb7] 
 
-{section: Chorus}
+{section: Refrão}
 [Ebm7] O amor é como um peda[Ab7]cinho de céu
 Sou todo [F7] Love Love
 São lábios de [Gb7M] mel, ah
@@ -1328,7 +1413,7 @@ Porque se[Ebm7]rá [Ab7]
 Amor é onde eu que[Db7M]ria estar com vo[Gb7M]cê
 [Gdim] E amar espalha [Ab7] brisa em alto mar
 
-{section: Outro}
+{section: Final}
 [Bbm7] [Bb7] Porque se[Ebm7]rá [Ab7]
 Amor é onde eu que[Db7M]ria estar com vo[Gb7M]cê
 [Gdim] E amar espalha [Ab7] brisa em alto mar
@@ -1354,44 +1439,44 @@ D: xx0232
 {section: Intro}
 [E]   [B]   [C#m]   [G#m]   [A]   [E]   [B]
 
-{section: Verse 1}
+{section: Verso 1}
 [E] Do you have the [B] time to [C#m] listen to me [G#m] whine
 A[A]bout nothing and [E] everything [B] all at once
 [E] I am one of [B] those [C#m] melodramatic [G#m] fools
 [A] Neurotic to the [E] bone, no doubt a[B]bout it
 
-{section: Chorus 1}
+{section: Refrão 1}
 [A] Sometimes I [B] give myself the [E] creeps
 [A] Sometimes my [B] mind plays tricks on [E] me
 [A] It all keeps [B] adding up, [E] I think I'm [C#m] cracking up
 [A] Am I just [B] paranoid? Or am I just [E] stoned?
 
-{section: Verse 2}
+{section: Verso 2}
 [E] I went to a [B] shrink to [C#m] analyze my [G#m] dreams
 She [A] says it's lack of [E] sex that's bringing me [B] down
 [E] I went to a [B] whore, she [C#m] said my life's a [G#m] bore
 So [A] quit my whining [E] 'cause it's bringing [B] her down
 
-{section: Chorus 2}
+{section: Refrão 2}
 [A] Sometimes I [B] give myself the [E] creeps
 [A] Sometimes my [B] mind plays tricks on [E] me
 [A] It all keeps [B] adding up, [E] I think I'm [C#m] cracking up
 [A] Am I just [B] paranoid? Or am I just [E] stoned?
 
-{section: Bridge}
+{section: Ponte}
 [A] Grasping to [B] control, [E] so I better [C#m] hold [A] on [B] [E]
 [A] Grasping to [B] control, [E] so I better [C#m] hold [A] on [B] [E]
 
 {section: Instrumental}
 [E]  [D]  [C#m]  [B] (x4)
 
-{section: Chorus 3}
+{section: Refrão 3}
 [A] Sometimes I [B] give myself the [E] creeps
 [A] Sometimes my [B] mind plays tricks on [E] me
 [A] It all keeps [B] adding up, [E] I think I'm [C#m] cracking up
 [A] Am I just [B] paranoid? Or am I just [E] stoned?
 
-{section: Outro}
+{section: Final}
 [E] [B] [C#m] [B] (x4)
 [E]`,
   },
@@ -1406,18 +1491,18 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
 {comment: Capo 3rd fret}
 {comment: Main Chords: Am, C, F, G}
 
-{comment: Verse 1}
+{comment: Verso 1}
 [Am] Walk in your [C] rainbow paradise [F] [G]
 [Am] Strawberry [C] lipstick state of mind [F] [G]
 [Am] I get so [C] lost inside your eyes [F]
 [G] Would you believe it?
 
-{comment: Pre-Chorus}
+{comment: Pré-refrão}
 [Am] You don't have to [C] say you love me
 [F] You don't have to [G] say nothing
 [Am] You don't have to [C] say you're mine [F] [G]
 
-{comment: Chorus}
+{comment: Refrão}
 [Am] Honey [C] (Ah)
 [F] I'd walk through [G] fire for you
 [Am] Just let me [C] adore you
@@ -1427,19 +1512,19 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
 [Am] Like it's the [C] only thing I'll [F] ever do
 [G] Like it's the [Am] only thing [C] I'll ever [F] do [G]
 
-{comment: Verse 2}
+{comment: Verso 2}
 [Am] Your wonder [C] under summer skies [F] [G]
 [Am] Brown skin and [C] lemon over ice [F] [G]
 [Am] You don't have to [C] say you love me
 [F] I just wanna [G] tell you somethin'
 [Am] Lately you've [C] been on my [F] mind [G]
 
-{comment: Pre-Chorus}
+{comment: Pré-refrão}
 [Am] You don't have to [C] say you love me
 [F] You don't have to [G] say nothing
 [Am] You don't have to [C] say you're mine [F] [G]
 
-{comment: Chorus}
+{comment: Refrão}
 [Am] Honey [C] (Ah)
 [F] I'd walk through [G] fire for you
 [Am] Just let me [C] adore you
@@ -1449,11 +1534,11 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
 [Am] Like it's the [C] only thing I'll [F] ever do
 [G] Like it's the [Am] only thing [C] I'll ever [F] do [G]
 
-{comment: Bridge}
+{comment: Ponte}
 [Am] [C] [F] [G]
 [Am] [C] [F] [G]
 
-{comment: Chorus}
+{comment: Refrão}
 [Am] Honey [C] (Ah)
 [F] I'd walk through [G] fire for you
 [Am] Just let me [C] adore you
@@ -1463,7 +1548,7 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
 [Am] Like it's the [C] only thing I'll [F] ever do
 [G] Like it's the [Am] only thing [C] I'll ever [F] do [G]
 
-{comment: Outro}
+{comment: Final}
 [Am] Just let me [C] adore you [F] [G]
 [Am] Like it's the [C] only thing I'll [F] ever do [G]
 [Am] [C] [F] [G]
@@ -1486,45 +1571,45 @@ So [A] quit my whining [E] 'cause it's bringing [B] her down
 [Em7]  [Em9]  [Cmaj7]  [A7]
 [Em7]  [Em9]  [Cmaj7]  [A7]
 
-[Verse 1]
+[Verso 1]
 [Em7]  Some[Em9]times I [Cmaj7]feel the [A7]fear of
 [Em7]  Uncer[Em9]tainty [Cmaj7]stinging [A7]clear
 [Em7]  And I [Em9]can't help but [Cmaj7]ask my[A7]self
 How [Em7]much I let the [Em9]fear take the [Cmaj7]wheel and [A7]steer
 
-[Pre-Chorus]
+[Pré-refrão]
 It's [Cmaj7]driven me be[A7]fore
 And it [Cmaj7]seems to have a [A7]vague, haunting [Cmaj7]mass ap[A7]peal
 But [Cmaj7]lately I am [A7]beginning to find
 That [Cmaj7]I should be the [A7]one behind the [Cmaj7]wheel [A7]
 
-[Chorus]
+[Refrão]
 [Em7]  What[Em9]ever to[Cmaj7]morrow [A7]brings
 I'll be [Em7]there with [Em9]open arms and [Cmaj7]open [A7]eyes
 [Em7]  What[Em9]ever to[Cmaj7]morrow [A7]brings
 I'll be [Em7]there [Em9] [Cmaj7] [A7]
 I'll be [Em7]there [Em9] [Cmaj7] [A7]
 
-[Verse 2]
+[Verso 2]
 [Em7]  So [Em9]if I de[Cmaj7]cide to [A7]waiver
 [Em7]  My [Em9]chance to [Cmaj7]be one [A7]of the hive
 [Em7]  Will I [Em9]choose [Cmaj7]water over [A7]wine
 And [Em7]hold my [Em9]own and [Cmaj7]drive? [A7]
 
-[Pre-Chorus]
+[Pré-refrão]
 It's [Cmaj7]driven me be[A7]fore
 And it [Cmaj7]seems to be the [A7]way that every[Cmaj7]one else gets a[A7]round
 But [Cmaj7]lately I am [A7]beginning to find
 That [Cmaj7]when I drive my[A7]self my light is [Cmaj7]found [A7]
 
-[Chorus]
+[Refrão]
 [Em7]  What[Em9]ever to[Cmaj7]morrow [A7]brings
 I'll be [Em7]there with [Em9]open arms and [Cmaj7]open [A7]eyes
 [Em7]  What[Em9]ever to[Cmaj7]morrow [A7]brings
 I'll be [Em7]there [Em9] [Cmaj7] [A7]
 I'll be [Em7]there [Em9] [Cmaj7] [A7]
 
-[Bridge]
+[Ponte]
 [Em7]  [Em9]  [Cmaj7]  [A7]
 [Em7]  [Em9]  [Cmaj7]  [A7]
 [Em7]  [Em9]  [Cmaj7]  [A7]
@@ -1534,14 +1619,14 @@ I'll be [Em7]there [Em9] [Cmaj7] [A7]
 [Cmaj7]  Would you choose [A7]water over wine?
 [Cmaj7]  Hold the [A7]wheel and [Cmaj7]drive [A7]
 
-[Chorus]
+[Refrão]
 [Em7]  What[Em9]ever to[Cmaj7]morrow [A7]brings
 I'll be [Em7]there with [Em9]open arms and [Cmaj7]open [A7]eyes
 [Em7]  What[Em9]ever to[Cmaj7]morrow [A7]brings
 I'll be [Em7]there [Em9] [Cmaj7] [A7]
 I'll be [Em7]there [Em9] [Cmaj7] [A7]
 
-[Outro]
+[Final]
 [Em7]  [Em9]  [Cmaj7]  [A7]
 I'll be there [Em7] [Em9] [Cmaj7] [A7]
 I'll be there [Em7] [Em9] [Cmaj7] [A7]
@@ -1560,30 +1645,30 @@ I'll be there [Em7] [Em9] [Cmaj7] [A7]`,
 [Intro]
 [Eb] [Gm7] [Cm] [Bbm] [Eb] [Gm] [Cm] [Ab] [Fm7]
 
-[Verse 1]
+[Verso 1]
 [Bb] When you [Eb]try your [Ebmaj7]best but you [Cm7]don't [Cm7/Ab]suc[Fm7]ceed
 [Eb] When you [Bb]get what you want but not [Cm7]what [Bb]you [Eb]ne[Fm]ed
 [Eb] When you [Gm7]feel so [Cm7]tired but you [Bbsus4]can't [Eb]sleep
 [Eb] Stuck [Gm7]in re[Eb]verse
 
-[Verse 2]
+[Verso 2]
 [Eb] When the tears come streaming [Ab]down your [Eb]face
 [G] [Gm7] 'Cause you lose something you [Cm7]can't [Bb]replace
 [Eb] When you [Gm7]love some[Cm7]one but it goes to waste
 [Fm7] [Eb] [Gm] [Cm] [Eb] [Ab] Oh, can it be worse?
 
-[Chorus]
+[Refrão]
 [Ab] [Eb] Lights will [Bb]guide you [Fm7]home
 [Bb] [Ab] And ig[Fm]nite your [Bb]bones
 [Eb] [Gm7] [Cm7] [Fm] [F] And I will try to [Gm7]fix [Cm7/Bb]you [B] [B7]
 
-[Verse 3]
+[Verso 3]
 [E] But high up [D#maj7]above [D#maj7/G#]or [C#m7]down below
 [F#m7] [E] When you are [C#m7]too in love to let it show
 [E] Oh but [C#m7]if you never try you'll never know
 [F#] [Emaj7] [E] [C#m7] [A] Just what you're worth
 
-[Chorus 2]
+[Refrão 2]
 [A] [B] Lights will [F#m7]guide you home
 [B] [F#m7] And ignite your bones
 [Am7] [D] And I----- [I------]
@@ -1593,12 +1678,12 @@ I----- will [B]fix [Em7]you [G]
 [Instrumental]
 [G/F] [C] [D7] [G] [Cm7] [Bb] [Ebm7] [Db] [Gb] [Ab] [A] [E] [C#m7] [Bm] [E] [F#] [B] [A] [B] [C#m7] [D#dim7] [F#m]
 
-[Chorus 3]
+[Refrão 3]
 [F#m] [E] [B] [C#m7] Lights will guide you home
 [F#m7] [B] [C#m] And ignite your bones
 [F#m] [B] [A] [B] [G#m] [C#] I-------- I--- will try to fix you
 
-[Outro]
+[Final]
 [Fm] [Bbm] [Gb] [Ab] [Db] [Ab] [Ebm] [Ab] [Ab7] [Db]`,
   },
   {
@@ -1618,7 +1703,7 @@ I----- will [B]fix [Em7]you [G]
 [Bm] [A] [Em] [G]
 [Bm] [A] [Em] [G]
 
-[Chorus]
+[Refrão]
 [Bm] Tô querendo te beijar de novo
 [A] O teu beijo me enlouqueceu
 [Em] Tudo que a gente já fez foi pouco
@@ -1628,7 +1713,7 @@ I----- will [B]fix [Em7]you [G]
 [Em] Tudo que a gente já fez foi pouco
 [G] Quero sentir o seu corpo no meu
 
-[Verse]
+[Verso]
 [Bm] Meu pedaço de pecado
 [A] De corpo colado, vem dançar comigo
 [Em] Quero ser teu namorado
@@ -1640,7 +1725,7 @@ I----- will [B]fix [Em7]you [G]
 [Bm] Vem, me mata logo de beijo
 [A] Que quando eu te vejo acabou com a saudade
 
-[Chorus]
+[Refrão]
 [Bm] Tô querendo te beijar de novo
 [A] O teu beijo me enlouqueceu
 [Em] Tudo que a gente já fez foi pouco
@@ -1650,7 +1735,7 @@ I----- will [B]fix [Em7]you [G]
 [Em] Tudo que a gente já fez foi pouco
 [G] Quero sentir o seu corpo no meu
 
-[Outro]
+[Final]
 [Bm] An, an, [A] an, an
 [Em] An, an, [G] an, an
 [Bm] An, an, [A] an, an
@@ -1667,14 +1752,14 @@ I----- will [B]fix [Em7]you [G]
 [Am7]  [F]  [C]  [G]
 [Am7]  [F]  [C]  [G]
 
-{section: Verse}
+{section: Verso}
 [Am7] Olha aí, o [F]mundo girando
 E a [C]gente se esbarrando [G]outra vez
 [Am7] Olha aí, o [F]meu coração
 Indo [C]contra a razão
 [G]Sentimento não se des[Dm]fez
 
-{section: Pre-Chorus}
+{section: Pré-refrão}
 Re[F]caí quando te [G]vi
 A [Dm]paixão veio à tona
 Fui a [F]nocaute, beijei a [G]lona
@@ -1682,19 +1767,19 @@ O meu corpo tre[F]meu [G]
 O tempo pas[F]sou, a vida mu[G]dou
 Mas eu conti[F]nuo seu [G]
 
-{section: Chorus}
+{section: Refrão}
 Ainda sou o [Dm]mesmo, [F]bobo apaixonado
 Se eu estou er[C]rado, não [G]quero nem saber
 Eu só sei que a [Dm]vida é [F]mais colorida
 Com vo[C]cê, com vo[G]cê
 
-{section: Chorus}
+{section: Refrão}
 Ainda sou o [Dm]mesmo, [F]bobo apaixonado
 Se eu estou er[C]rado, não [G]quero nem saber
 Eu só sei que a [Dm]vida é [F]mais colorida
 Com vo[C]cê, com vo[G]cê
 
-{section: Outro}
+{section: Final}
 [Am7]  [F]  [C]  [G]
 Com vo[Am7]cê  [F]  [C]  [G]`,
   },
@@ -1801,35 +1886,35 @@ Por [F]pouco de [C]vez em [G]vez`,
 [C] [Em] [F] [F]
 [C] [Em] [F] [F]
 
-{section: Verse 1}
+{section: Verso 1}
 [C] I've been roaming a[Em]round, always looking [F]down at all I see
 [C] Painted faces [Em]filled with places I [F]can't reach
 [Am] You know that [C]I could use some[F]body
 [Am] You know that [C]I could use some[F]body
 
-{section: Verse 2}
+{section: Verso 2}
 [C] Someone like you and [Em]all you know and [F]how you speak
 [C] Countless lovers [Em]undercover [F]of the street
 [Am] You know that [C]I could use some[F]body
 [Am] You know that [C]I could use some[F]body
 
-{section: Chorus}
+{section: Refrão}
 [C] Someone like [Em]you [F]
 (Woah-ah-[C]ohh, Woah-ah-[Em]ohhh, [F]Woah-ah-ohhh)
 
-{section: Verse 3}
+{section: Verso 3}
 [C] Off in the night while [Em]you live it up I'm [F]off to sleep
 [C] Waging wars to [Em]shake the poet and the [F]beat
 [Am] I hope it's gonna [C]make you [F]notice
 [Am] I hope it's gonna [C]make you [F]notice
 
-{section: Chorus}
+{section: Refrão}
 [C] Someone like [Em]me [F]
 (Woah-ah-[C]ohh, Woah-ah-[Em]ohhh, [F]Woah-ah-ohhh)
 [C] Someone like [Em]me [F]
 (Woah-ah-[C]ohh, Woah-ah-[Em]ohhh, [F]Woah-ah-ohhh)
 
-{section: Bridge}
+{section: Ponte}
 [D] I'm ready now
 [F#m] I'm ready now
 [D] I'm ready now
@@ -1842,12 +1927,12 @@ Por [F]pouco de [C]vez em [G]vez`,
 [C] [Em] [F] [F]
 [C] [Em] [F] [F]
 
-{section: Chorus}
+{section: Refrão}
 [Am] Someone like [C]you, some[F]body
 [Am] Someone like [C]you, some[F]body
 [Am] Someone like [C]you, some[F]body
 
-{section: Outro}
+{section: Final}
 [C] I've been roaming a[Em]round, always looking [F]down at all I see [C]`,
   },
   {
@@ -1864,18 +1949,18 @@ Por [F]pouco de [C]vez em [G]vez`,
 [Intro]
 [C]
 
-[Verse 1]
+[Verso 1]
 [C]I fell by the wayside like everyone else
 [Am]I hate you, I hate you, I hate you but I was just kidding myself
 [F]Our every moment, I start to replace
 'Cause [G]now that they're gone, all I hear are the words that I needed to say
 
-[Pre-Chorus]
+[Pré-refrão]
 [C]When you hurt under the surface
 [Am]   [F]Like troubled water running cold
 Well, [G]time can heal, but this won't
 
-[Chorus]
+[Refrão]
 [C]So, [G]before you [Am]go
 Was there something I could've said to make your heart beat better?
 [F]If only I'd have known you had a storm to weather
@@ -1884,18 +1969,18 @@ Was there something I could've said to make it all stop hurting?
 [F]It kills me how your mind can make you feel so worthless
 [G]So, before you [C]go
 
-[Verse 2]
+[Verso 2]
 [C]Was never the right time, whenever you called
 [Am]Went little by little by little until there was nothing at all
 [F]Our every moment, I start to replay
 But [G]all I can think about is seeing that look on your face
 
-[Pre-Chorus]
+[Pré-refrão]
 [C]When you hurt under the surface
 [Am]   [F]Like troubled water running cold
 Well, [G]time can heal, but this won't
 
-[Chorus]
+[Refrão]
 [C]So, [G]before you [Am]go
 Was there something I could've said to make your heart beat better?
 [F]If only I'd have known you had a storm to weather
@@ -1904,13 +1989,13 @@ Was there something I could've said to make it all stop hurting?
 [F]It kills me how your mind can make you feel so worthless
 [G]So, before you [Am]go
 
-[Bridge]
+[Ponte]
 [Am]Would [F]we be [C]better off by now
 [G]If [Am]I'd have let my walls come down?
 [F]Maybe, I [G]guess we'll never know
 [G]You know, you know
 
-[Chorus]
+[Refrão]
 [C]So, [G]before you [Am]go
 Was there something I could've said to make your heart beat better?
 [F]If only I'd have known you had a storm to weather
@@ -1933,7 +2018,7 @@ Was there something I could've said to make it all stop hurting?
 [Intro]
 [D]
 
-[Verse 1]
+[Verso 1]
 I [D] miss knowing what you're thinking
 And [A] hearing how your day has been
 Do you [Bm7] think you could tell me [A] everything, darling
@@ -1944,7 +2029,7 @@ With [Bm7] every day that passes [A] by since we've spoken
 It's [G] like Glasgow gets farther [Gm] from LA
 [D] Maybe it's supposed to be this way
 
-[Chorus]
+[Refrão]
 But, [D] oh, my love, I wanna say, "I miss the [A] green in your eyes"
 And when I [Bm] said we could be friends, guess I [A] lied
 I wanna [G] say, "I wish that you never [A] left"
@@ -1954,14 +2039,14 @@ And you were [Bm] everything I need all a[A]long
 I wanna [G] say, "I wish that you never [A] left"
 Oh, but in[G]stead, I [Gm] only wish you the [D] best
 
-[Verse 2]
+[Verso 2]
 [D] Well, I can't help but notice
 [A] You seem happier than ever now
 [Bm7] And I guess that I should [A] tell you I'm [G] sorry
 It [A] seems I was the [Bm7] problem some[A]how
 [G] Maybe I [Gm] only brought you [D] down
 
-[Chorus]
+[Refrão]
 But, [D] oh, my love, I wanna say, "I miss the [A] green in your eyes"
 And when I [Bm] said we could be friends, guess I [A] lied
 I wanna [G] say, "I wish that you never [A] left"
@@ -1971,11 +2056,11 @@ And you were [Bm] everything I need all a[A]long
 I wanna [G] say, "I wish that you never [A] left"
 Oh, but in[G]stead, I [Gm] only wish you the [D] best
 
-[Bridge]
+[Ponte]
 [G] Wish I could say it's [A] something I really [Bm] mean [A]
 But I [G] want you happy [Gm] whether or not it's with [D] me
 
-[Chorus]
+[Refrão]
 But, [D] oh, my love, I wanna say, "I miss the [A] green in your eyes"
 And when I [Bm] said we could be friends, guess I [A] lied
 I wanna [G] say, "I wish that you never [A] left"
@@ -1985,7 +2070,7 @@ And you were [Bm] everything I need all a[A]long
 I wanna [G] say, "I wish that you never [A] left"
 Oh, but in[G]stead, I [Gm] only wish you the [D] best
 
-[Outro]
+[Final]
 ([D] Oh-oh-oh-oh)
 ([A] Oh-oh-oh-oh)
 ([Bm] Oh-oh-oh-oh)
@@ -2010,7 +2095,7 @@ B7:    X21202
 [Intro]
 [B] [Em] [B] [Em]
 
-[Verse 1]
+[Verso 1]
 [B] Juro que não vai li[Em]gar
 Se um [B] dia eu rou[Em]bar
 O seu [B] anel de bri[Em]lhantes
@@ -2021,13 +2106,13 @@ No meio da bugi[C#m7]ganga
 Você me de[F#7]ixou de tanga
 [B] Ai de mim, que [B7] sou ro[E]mântica
 
-[Chorus]
+[Refrão]
 [E] Kiss, baby, kiss [D#dim] me, baby, kiss [G#m] me
 Pena que você não me [C#7] kiss
 Não me sui[C#m7]cidei por um [F#7] triz
 [B] Ai de mim, que sou [B7] assim [E]
 
-[Verse 2]
+[Verso 2]
 [B] Juro que não vai do[Em]er
 Se um [B] dia eu rou[Em]bar
 O seu [B] anel de bri[Em]lhantes
@@ -2038,7 +2123,7 @@ No meio da bugi[C#m7]ganga
 Você me de[F#7]ixou de tanga
 [B] Ai de mim, que [B7] sou ro[E]mântica
 
-[Verse 3]
+[Verso 3]
 [B] Quando eu me sinto um [Em] pouco rejeitada
 [B] Me dá um nó na gar[Em]ganta
 [B] Choro até secar a [Em] alma de toda mágoa
@@ -2048,13 +2133,13 @@ No fundo [G#m] sempre sozinho
 Se[C#7]guindo o meu ca[C#m7]minho
 Ai de [F#7] mim, que [B] sou ro[B7]mântica [E]
 
-[Chorus]
+[Refrão]
 [E] Kiss, baby, kiss [D#dim] me, baby, kiss [G#m] me
 Pena que você não me [C#7] kiss
 Não me sui[C#m7]cidei por um [F#7] triz
 [B] Ai de mim, que sou [B7] assim [E]
 
-[Outro]
+[Final]
 Como mu[D#dim]tante
 No fundo [G#m] sempre sozinho
 Se[C#7]guindo o meu ca[C#m7]minho
@@ -2090,7 +2175,7 @@ F:  133211
 [D]I miss Ala[C]bamy once a[G]gain and I think it's a sin, yes
 {end_of_verse}
 
-{comment: Interlude}
+{comment: Interlúdio}
 [D]  [C]  [G]
 [D]  [C]  [G]
 
@@ -2155,7 +2240,7 @@ They [D]pick me [C]up when I'm [G]feeling blue, now how about you?
 [D]Lord, I'm [C]coming [G]home to you
 {end_of_chorus}
 
-{comment: Outro Solo}
+{comment: Solo final}
 [D]  [C]  [G]
 (Fade out)`,
   },
@@ -2171,67 +2256,67 @@ They [D]pick me [C]up when I'm [G]feeling blue, now how about you?
 [Intro]
 [C] [G] [D] [G] [C]
 
-[Verse 1]
+[Verso 1]
 [C]Um tanto quanto másculo
 [G]Ai, com "M" maiúsculo
 [Bm]Vejam só os meus músculos
 [C]Que com amor cultivei
 
-[Verse 2]
+[Verso 2]
 [C]Minha pistola é de plástico
 [G]Em formato cilíndrico
 Sempre me chamam de cínico
 [C]Mas o porquê eu não sei
 
-[Verse 3]
+[Verso 3]
 O meu bumbum era flácido
 [G]Mas esse assunto é tão místico
 Devido a um ato cirúrgico
 [D]Hoje eu me [C]transformei
 
-[Verse 4]
+[Verso 4]
 O meu andar é erótico
 Com movimentos atômicos
 [G]Sou um amante robótico
 [C]Com direito a replay
 
-[Verse 5]
+[Verso 5]
 Um ser humano fantástico
 [G]Com poderes titânicos
 Foi um moreno simpático
 Por quem me apaixonei
 
-[Verse 6]
+[Verso 6]
 [C]E hoje estou [G]tão eufórico
 Com mil pedaços biônicos
 Ontem eu era católico
 Ai, hoje eu sou um gay!
 
-[Chorus]
+[Refrão]
 [C]Abra sua mente
 Gay também é gente
 Baiano fala: "Oxente"
 E come vatapá
 
-[Chorus]
+[Refrão]
 Você pode ser gótico
 Ser punk ou skinhead
 Tem gay que é Mohamed
 [C]Tentando camuflar
 
-[Bridge]
+[Ponte]
 [G]Alá, meu bom Alá
 [Am]Faça [F]bem a [C]barba
 [G]Arranque seu bigode
 [Am]Gaúcho [F]também [C]pode
 Não tem que disfarçar
 
-[Chorus]
+[Refrão]
 [C]Faça uma plástica
 [G]Ai, entre na ginástica
 Boneca cibernética
 
-[Outro]
+[Final]
 [Am]Um Robocop Gay
 [F]Um Robocop Gay
 Um Robocop Gay
@@ -2327,40 +2412,40 @@ Um Robocop Gay
 {comment: Bb5: 888xxx}
 {comment: C5: 10-10-10-xxx or x355xx}
 
-{section: Verse 1}
+{section: Verso 1}
 [D5] He's drunk again, it's [F5] time to [G5] fight
 [D5] She must have done something [F5] wrong to[G5]night
 [D5] The living room becomes a [F5] boxing [G5] ring
 It's [Bb5] time to run when you [C5] see him clenching his hands
 [Bb5] She's just a woman, [C5] never again
 
-{section: Chorus}
+{section: Refrão}
 [D5] Never again, [F5] never again
 [C5] She's never going [G5] back again
 [D5] Never again, [F5] never again
 [C5] She's never going [G5] back again
 
-{section: Verse 2}
+{section: Verso 2}
 [D5] I hear her scream from [F5] down the [G5] hall
 [D5] Amazing she can even [F5] talk at [G5] all
 [D5] She cries to me "go [F5] back to [G5] bed"
 I'm [Bb5] terrified that she'll [C5] wind up dead in his hands
 [Bb5] She's just a woman, [C5] never again
 
-{section: Chorus}
+{section: Refrão}
 [D5] Never again, [F5] never again
 [C5] She's never going [G5] back again
 [D5] Never again, [F5] never again
 [C5] She's never going [G5] back again
 
-{section: Verse 3}
+{section: Verso 3}
 [D5] Just tell the nurse you [F5] slipped and [G5] fell
 [D5] It starts to sting as it [F5] starts to [G5] swell
 [D5] She looks at you, she [F5] wants the [G5] truth
 It's [Bb5] right out there in the [C5] waiting room with those hands
 [Bb5] Lookin' just as sweet as he [C5] can, never again
 
-{section: Bridge}
+{section: Ponte}
 [F5] Father's a name you [G5] haven't earned yet
 [D5] You're just a child with a temper
 [F5] Haven't you heard "don't [G5] hit a lady"?
@@ -2369,13 +2454,13 @@ It's [Bb5] right out there in the [C5] waiting room with those hands
 [F5] [G5] [D5]
 [F5] [G5] [D5]
 
-{section: Chorus}
+{section: Refrão}
 [D5] Never again, [F5] never again
 [C5] She's never going [G5] back again
 [D5] Never again, [F5] never again
 [C5] She's never going [G5] back again
 
-{section: Outro}
+{section: Final}
 [D5] Never again, [F5] never again
 [C5] She's never going [G5] back again
 [D5] Never again, [F5] never again
@@ -2560,25 +2645,25 @@ We see things they'll never [D]see
 [Bm]   [A]   [E]   [G]
 [Bm]   [A]   [E]   [G]
 
-{section: Verse 1}
+{section: Verso 1}
 [Bm]Hold on, [A]hold on, [E]don't be [G]scared
 [Bm]You'll never [A]change what's [E]been and [G]gone
 
-{section: Verse 2}
+{section: Verso 2}
 [Bm]May your smile, [A]shine on, [E]don't be [G]scared
 [Bm]Your [A]destiny may [E]keep you [G]warm
 
-{section: Chorus}
+{section: Refrão}
 'Cause [D]all of the [A]stars are [E]fading [G]away
 Just [D]try not to [A]worry, you'll [E]see them some[G]day
 [D]Take what you [A]need and [E]be on your [G]way
 And stop crying your [G]heart out
 
-{section: Verse 3}
+{section: Verso 3}
 [Bm]Get up, [A]come on, [E]why you [G]scared?
 [Bm]You'll never [A]change what's [E]been and [G]gone
 
-{section: Chorus}
+{section: Refrão}
 'Cause [D]all of the [A]stars are [E]fading [G]away
 Just [D]try not to [A]worry, you'll [E]see them some[G]day
 [D]Take what you [A]need and [E]be on your [G]way
@@ -2588,19 +2673,19 @@ And stop crying your [G]heart out
 [Bm]   [A]   [E]   [G]
 [Bm]   [A]   [E]   [G]
 
-{section: Chorus}
+{section: Refrão}
 'Cause [D]all of the [A]stars are [E]fading [G]away
 Just [D]try not to [A]worry, you'll [E]see them some[G]day
 [D]Take what you [A]need and [E]be on your [G]way
 And stop crying your [G]heart out
 
-{section: Chorus}
+{section: Refrão}
 'Cause [D]all of the [A]stars are [E]fading [G]away
 Just [D]try not to [A]worry, you'll [E]see them some[G]day
 [D]Take what you [A]need and [E]be on your [G]way
 And stop crying your [G]heart out
 
-{section: Outro}
+{section: Final}
 [E]Stop crying your [G]heart out
 [E]Stop crying your [G]heart out
 [E]Stop crying your [G]heart out
@@ -2619,13 +2704,13 @@ And stop crying your [G]heart out
 [D] [Dsus4] [D]  [D] [Dsus4] [D]
 [D] [Dsus4] [D]  [D] [Dsus4] [D]
 
-{comment: Verse 1}
+{comment: Verso 1}
 This [D]thing called love, I [G]just can't [C]handle [G]it
 This [D]thing called love, I [G]must get [C]round to [G]it
 I ain't [D]ready
 [Bb]Crazy little [C]thing called [D]love
 
-{comment: Verse 2}
+{comment: Verso 2}
 This [D]thing (this thing) called love (called love)
 It [G]cries (like a baby) in a [C]cradle all [G]night
 It [D]swings (woo woo), it jives (woo woo)
@@ -2633,14 +2718,14 @@ It [G]shakes all over like a [C]jelly [G]fish
 I kinda [D]like it
 [Bb]Crazy little [C]thing called [D]love
 
-{comment: Chorus}
+{comment: Refrão}
 There goes my [G]baby
 She [C]knows how to rock 'n' [G]roll
 She drives me [Bb]crazy
 She gives me [E]hot and cold [A]fever
 Then she [F]leaves me in a [E]cool, cool [A]sweat
 
-{comment: Verse 3}
+{comment: Verso 3}
 I gotta be [D]cool, relax, get [G]hip
 Get [C]on my [G]tracks
 Take a [D]back seat, hitch-hike
@@ -2648,12 +2733,12 @@ And [G]take a long ride on my [C]motor [G]bike
 Until I'm [D]ready
 [Bb]Crazy little [C]thing called [D]love
 
-{comment: Interlude}
+{comment: Interlúdio}
 [Bb] [D] [Bb]
 [E] [A] [F]
 [E] [A]
 
-{comment: Verse 4 (A Capella/Handclaps)}
+{comment: Verso 4 (A Capella/Handclaps)}
 I gotta be cool, relax, get hip
 Get on my tracks
 Take a back seat, hitch-hike
@@ -2661,13 +2746,13 @@ And take a long ride on my motor bike
 Until I'm ready (Ready Freddie)
 Crazy little thing called love
 
-{comment: Verse 5}
+{comment: Verso 5}
 This [D]thing called love, I [G]just can't [C]handle [G]it
 This [D]thing called love, I [G]must get [C]round to [G]it
 I ain't [D]ready
 [Bb]Crazy little [C]thing called [D]love
 
-{comment: Outro}
+{comment: Final}
 [Bb]Crazy little [C]thing called [D]love
 [Bb]Crazy little [C]thing called [D]love
 [Bb]Crazy little [C]thing called [D]love
@@ -2690,7 +2775,7 @@ Chords: [C] [Am] [Em]
 [C]  [Am]  [Em]
 [C]  [Am]  [Em]
 
-[Verse 1]
+[Verso 1]
 [C] You wanna know if I know why?
 [Am] I can't say that I [Em] do
 [C] Don't understand the evil eye,
@@ -2701,14 +2786,14 @@ Chords: [C] [Am] [Em]
 [Am] Just see how far it will [Em] bend,
 Again and again, again and again.
 
-[Chorus]
+[Refrão]
 [C] I wanna make it,
 [Am] I wanna make it wit [Em] chu,
 Anytime, anywhere.
 [C] I wanna make it,
 [Am] I wanna make it wit [Em] chu.
 
-[Verse 2]
+[Verso 2]
 [C] Sometimes the same is different,
 [Am] But mostly it's the [Em] same.
 [C] These mysteries of life,
@@ -2719,7 +2804,7 @@ I'd be un[Em]true.
 [Am] Is what I wanna [Em] do,
 Anytime, anywhere and I say.
 
-[Chorus]
+[Refrão]
 [C] I wanna make it,
 [Am] I wanna make it wit [Em] chu,
 Anytime, anywhere.
@@ -2734,7 +2819,7 @@ Anytime, anywhere.
 [C]  [Am]  [Em]
 [C]  [Am]  [Em]
 
-[Chorus]
+[Refrão]
 [C] I wanna make it,
 [Am] I wanna make it wit [Em] chu,
 Anytime, anywhere.
@@ -2743,7 +2828,7 @@ Anytime, anywhere.
 [C] I wanna make it,
 [Am] I wanna make it wit [Em] chu.
 
-[Outro]
+[Final]
 [C] I wanna make it,
 [Am] I wanna make it wit [Em] chu.
 [C] I wanna make it,
@@ -2765,7 +2850,7 @@ Am, G, Dm, F, C, Bm, D, F#
 [Intro]
 [Am] [G] [Dm] [Am] (x2)
 
-[Verse 1]
+[Verso 1]
 [Am]Getting born in the [G]state of Mississippi
 [Dm]Papa was a copper and her [Am]mama was a hippie
 [Am]In Alabama she would [G]swing a hammer
@@ -2773,7 +2858,7 @@ Am, G, Dm, F, C, Bm, D, F#
 [Am]She never [G]knew that there was [Dm]anything [Am]more than poor
 [Am]What in the [G]world does your [Dm]company [Am]take me for?
 
-[Verse 2]
+[Verso 2]
 [Am]Black bandana, [G]sweet Louisiana
 [Dm]Robbin' on a bank in the [Am]state of Indiana
 [Am]She's a runner, [G]rebel and a stunner
@@ -2781,13 +2866,13 @@ Am, G, Dm, F, C, Bm, D, F#
 [Am]Lookin' down the [G]barrel of a [Dm]hot metal [Am].45
 [Am]Just another [G]way to sur[Dm]vive
 
-[Chorus]
+[Refrão]
 [F]Cali[C]fornia [Dm]rest in [G]peace
 [F]Simul[C]taneous [Dm]re[G]lease
 [F]Cali[C]fornia [Dm]show your [G]teeth
 [F]She's my [C]priestess, [Dm]I'm your priest, [G]yeah, yeah
 
-[Verse 3]
+[Verso 3]
 [Am]She's a lover, [G]baby and a fighter
 [Dm]Shoulda seen it comin' when it [Am]got a little brighter
 [Am]With a name like "[G]Dani California"
@@ -2795,19 +2880,19 @@ Am, G, Dm, F, C, Bm, D, F#
 [Am]A little [G]loaded, she was [Dm]stealin' an[Am]other breath
 [Am]I love my [G]baby to [Dm]death
 
-[Chorus]
+[Refrão]
 [F]Cali[C]fornia [Dm]rest in [G]peace
 [F]Simul[C]taneous [Dm]re[G]lease
 [F]Cali[C]fornia [Dm]show your [G]teeth
 [F]She's my [C]priestess, [Dm]I'm your priest, [G]yeah, yeah
 
-[Bridge]
+[Ponte]
 [Bm]Who knew the [G]other [D]side of [F#]you?
 [Bm]Who knew that [G]others [D]died to [F#]prove?
 [Bm]Too true to [G]say good[D]bye to [F#]you
 [Bm]Too true to [G]say, say, [Bm]say
 
-[Verse 4]
+[Verso 4]
 [Am]Push the fader, [G]gifted animator
 [Dm]One for the now and e[Am]leven for the later
 [Am]Never made it [G]up to Minnesota
@@ -2815,19 +2900,19 @@ Am, G, Dm, F, C, Bm, D, F#
 [Am]Down in the [G]Badlands she was [Dm]savin' the [Am]best for last
 [Am]It only [G]hurts when I [Dm]laugh, gone too [Am]fast
 
-[Chorus]
+[Refrão]
 [F]Cali[C]fornia [Dm]rest in [G]peace
 [F]Simul[C]taneous [Dm]re[G]lease
 [F]Cali[C]fornia [Dm]show your [G]teeth
 [F]She's my [C]priestess, [Dm]I'm your priest, [G]yeah, yeah
 
-[Chorus]
+[Refrão]
 [F]Cali[C]fornia [Dm]rest in [G]peace
 [F]Simul[C]taneous [Dm]re[G]lease
 [F]Cali[C]fornia [Dm]show your [G]teeth
 [F]She's my [C]priestess, [Dm]I'm your priest, [G]yeah, yeah
 
-[Outro]
+[Final]
 [Am] [G] [Dm] [Am] (repeat until solo finish)`,
   },
   {
@@ -2842,7 +2927,7 @@ Am, G, Dm, F, C, Bm, D, F#
 [Intro]
 [G#m]   [E]   [B]   [F#]  (x4)
 
-[Verse 1]
+[Verso 1]
 [G#m]Come to de[E]cide that the [B]things that I [F#]tried
 Were in my [G#m]life just to [E]get high [B]on [F#]
 [G#m]When I sit a[E]lone, come [B]get a little [F#]known
@@ -2852,12 +2937,12 @@ And I [G#m]do believe that [E]we re[B]ly on [F#]
 [G#m]When I lay it [E]on, come [B]get to play it [F#]on
 [G#m]All my [E]life to sacri[B]fice [F#]
 
-[Chorus]
+[Refrão]
 [G#m]Hey [E]oh, [B]listen what I [F#]say, oh
 [G#m]I got [E]your, [B]hey [F#]oh
 Now [G#m]listen what I [E]say, [B]oh [F#]
 
-[Verse 2]
+[Verso 2]
 [G#m]When will I [E]know that I [B]really can't [F#]go
 To the [G#m]well once [E]more, time to de[B]cide on [F#]
 [G#m]When it's killing [E]me, when will I [B]really [F#]see
@@ -2867,12 +2952,12 @@ Be[G#m]fore I get my [E]chance to [B]ride [F#]
 [G#m]When it's killing [E]me, what do I [B]really [F#]need
 [G#m]All that I [E]need to look in[B]side [F#]
 
-[Chorus]
+[Refrão]
 [G#m]Hey [E]oh, [B]listen what I [F#]say, oh
 [G#m]Come back and, [E]hey [B]oh [F#]
 Look at [G#m]what I [E]say, [B]oh [F#]
 
-[Bridge]
+[Ponte]
 [E]The more I [F#]see, the [G#m]less I know
 [E]The more I [F#]like to [G#m]let it go, hey oh, oh [F#]oh [E]oh
 
@@ -2888,7 +2973,7 @@ And there's [B]nowhere to [F#]go [C#m]
 [Instrumental]
 [G#m]   [E]   [B]   [F#]  (x2)
 
-[Verse 3]
+[Verso 3]
 [G#m]When to des[E]cend to a[B]mend for a [F#]friend
 All the [G#m]channels [E]that have broken [B]down [F#]
 [G#m]Now you bring it [E]up, I'm [B]gonna ring it [F#]up
@@ -2898,17 +2983,17 @@ And I [G#m]do believe that [E]we re[B]ly on [F#]
 [G#m]When I lay it [E]on, come [B]get to play it [F#]on
 [G#m]All my [E]life to sacri[B]fice [F#]
 
-[Chorus]
+[Refrão]
 [G#m]Hey [E]oh, [B]listen what I [F#]say, oh
 [G#m]I got [E]your, [B]hey [F#]oh
 Now [G#m]listen what I [E]say, [B]oh [F#]
 
-[Chorus]
+[Refrão]
 [G#m]Hey [E]oh, [B]listen what I [F#]say, oh
 [G#m]Come back and, [E]hey [B]oh [F#]
 Look at [G#m]what I [E]say, [B]oh [F#]
 
-[Outro]
+[Final]
 [B]Deep beneath the [F#]cover of a[C#m]nother perfect wonder
 Where it's [B]so white as [F#]snow [C#m]
 [B]Privately di[F#]vided by a [C#m]world so undecided
@@ -2931,7 +3016,7 @@ And there's [B]nowhere to [F#]go [C#m]
 
 {comment: Main Chords: Bm7, Bm7/A, A/G, C#m7, F#7}
 
-[Verse 1]
+[Verso 1]
 [Bm7]Não consigo tirar da minha cabeça
 Esses olhos que eu nunca vi tão perto
 [Bm7/A]A ponto de bater o cílio no meu
@@ -2939,17 +3024,17 @@ Não sai da mente o sorriso entreaberto
 [A/G]Eu penso se eu tô errado ou se tô certo
 Em cultivar esse bem querer
 
-[Verse 2]
+[Verso 2]
 [Bm7]O problema é que já tem alguém do seu lado
 E eu me sinto tão errado em tentar me aproximar
 [Bm7/A]Por isso mantenho a distância necessária
 Pra que não se esqueça, minha cara
 [A/G]Que ao meu lado é um bom lugar
 
-[Pre-Chorus]
+[Pré-refrão]
 [C#m7]Mais que isso eu não [F#7]vou fazer não
 
-[Chorus]
+[Refrão]
 [Bm7]Apesar de querer
 E como eu [Bm7/A]quero, e como eu quero
 [A/G]Apesar de querer
@@ -2959,7 +3044,7 @@ E como eu [Bm7/A]quero, e como eu quero
 [A/G]Apesar de querer
 E como eu quero, [F#7]como eu quero
 
-[Outro]
+[Final]
 [Bm7]Uhh [Bm7/A]
 [A/G]Uhh [F#7]
 (Repete até o fim)`,
@@ -3056,7 +3141,7 @@ I'll [C]take you places that you've [Eb]never, [Bb]never [F]seen [Bb] [F] [Bb]
 {define: E  frets x 7 9 9 9 7}
 
 [Cm]
-[Verse 1]
+[Verso 1]
 [Cm]The piercing, radiant moon
 [Cm]The storming of poor June
 [Cm]All the life running
@@ -3064,13 +3149,13 @@ I'll [C]take you places that you've [Eb]never, [Bb]never [F]seen [Bb] [F] [Bb]
 [Cm]Approaching guiding light
 [Cm]Our shallow years in fright
 
-[Chorus]
+[Refrão]
 [Cm]Dreams are made, winding
 [Cm]   [Bb]Through my head
 [Bb]   [Cm]Through my head
 [Bb]   [Ab]Before you [G]know, a[Cm]wake.
 
-[Verse 2]
+[Verso 2]
 [Cm]Your lives are open wide
 [Cm]The V-chip gives them sight
 [Cm]Of all the life running
@@ -3078,26 +3163,26 @@ I'll [C]take you places that you've [Eb]never, [Bb]never [F]seen [Bb] [F] [Bb]
 [Cm]The spiders all in tune
 [Cm]The evening of the moon
 
-[Chorus]
+[Refrão]
 [Cm]Dreams are made, winding
 [Cm]   [Bb]Through my head
 [Bb]   [Cm]Through my head
 [Bb]   [Ab]Before you [G]know, a[Cm]wake.
 
-[Bridge/Solo]
+[Ponte/Solo]
 [Cm]  [C#]  [E]
 [Cm]  [C#]  [E]
 [Cm]  [C#]  [E]
 [Cm]  [C#]  [E]
 
-[Chorus]
+[Refrão]
 [Bb]Through my head
 [Bb]   [Cm]Through my head
 [Bb]   [Ab]Before you [G]know
 [Bb]   [Ab]Before you [G]know, I will be waiting, all
 [Cm]awake
 
-[Outro]
+[Final]
 [Cm]Dreams are made, winding
 [Cm]Through her hair
 [Cm]Dreams are made, winding
@@ -3118,13 +3203,13 @@ I'll [C]take you places that you've [Eb]never, [Bb]never [F]seen [Bb] [F] [Bb]
 [Am] [E] [F] [E]
 [Am] [E] [F] [E]
 
-[Verse 1]
+[Verso 1]
 [Am] Lust below it, I [E] never show it
 The [F] truth comes out and we're [E] gone again
 [Am] Through the darkness and light, the [E] pleasure and the strife
 [F] Nothing quite like the fight between the [E] wrong and the right
 
-[Chorus]
+[Refrão]
 [Am] Take me [C] as you [F] see me
 [Am] I'll tell you [C] when to [F] leave me
 [Am] Don't you fight [C] my hold on [F] you
@@ -3132,13 +3217,13 @@ Pour the [E] gasoline
 [Am] Strike your [C] match on [F] me
 Fire[G]starters, we [Am] are
 
-[Verse 2]
+[Verso 2]
 [Am] Tension rising, our [E] ship capsizing
 [F] Don't you moralize this [E] compromise of love
 [Am] The backstabbing game, [E] no one else to blame
 [F] For this trade of pain we got [E]
 
-[Chorus]
+[Refrão]
 [Am] Take me [C] as you [F] see me
 [Am] I'll tell you [C] when to [F] leave me
 [Am] Don't you fight [C] my hold on [F] you
@@ -3146,13 +3231,13 @@ Pour the [E] gasoline
 [Am] Strike your [C] match on [F] me
 Fire[G]starters, we [Am] are
 
-[Bridge]
+[Ponte]
 [Am] I'll lie to you if you [E] lie to me
 [F] Let him go [E]
 [Am] And I'll promise that I'll [E] lie with you if you lie with me
 [F] Close the door [E]
 
-[Chorus]
+[Refrão]
 [Am] Take me [C] as you [F] see me
 [Am] I'll tell you [C] when to [F] leave me
 [Am] Don't you fight [C] my hold on [F] you
@@ -3160,7 +3245,7 @@ Pour the [E] gasoline
 [Am] Strike your [C] match on [F] me
 Fire[G]starters, we [Am] are
 
-[Outro]
+[Final]
 [Am] The truth [C] it burns, but [F] can you take the heat?
 [Am] Bleeding [C] martyrs, [F] firestarters
 Fire[G]starters, we [Am] are
@@ -3185,14 +3270,14 @@ A:  x02220
 [A] [G] [A] [G]
 [A] [G] [A] [G]
 
-{start_of_verse: Verse 1}
+{start_of_verse: Verso 1}
 [Am] I can't seem to [G] face up to the [Am] facts
 [Am] I'm tense and [G] nervous and I [Am] can't relax
 [Am] I can't [G] sleep 'cause my [Am] bed's on fire
 [Am] Don't [G] touch me I'm a [F] real live wire
 {end_of_verse}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 [F] Psycho [G] Killer, [Am] qu'est-ce que c'est?
 [F] Fa-fa-fa-fa, [G] fa-fa-fa-fa-[C]fa-fa, far better
 [F] Run, run, [G] run, run, [C] run, run, run away, oh, oh, oh
@@ -3201,14 +3286,14 @@ A:  x02220
 [F] Run, run, [G] run, run, [C] run, run, run away, [F] oh, [G] oh, oh, oh, [A] ay-ay-ay-ay-ay
 {end_of_chorus}
 
-{start_of_verse: Verse 2}
+{start_of_verse: Verso 2}
 [Am] You start a [G] conversation, [Am] you can't even finish it
 [Am] You're talking a [G] lot, but you're [Am] not saying anything
 [Am] When I have [G] nothing to say, [Am] my lips are sealed
 [Am] Say something [G] once, why [F] say it again?
 {end_of_verse}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 [F] Psycho [G] Killer, [Am] qu'est-ce que c'est?
 [F] Fa-fa-fa-fa, [G] fa-fa-fa-fa-[C]fa-fa, far better
 [F] Run, run, [G] run, run, [C] run, run, run away, oh, oh, oh
@@ -3217,7 +3302,7 @@ A:  x02220
 [F] Run, run, [G] run, run, [C] run, run, run away, [F] oh, [G] oh, oh, oh, [A] ay-ay-ay-ay-ay
 {end_of_chorus}
 
-{start_of_bridge: Bridge}
+{start_of_bridge: Ponte}
 [Bm] Ce que j'ai [G] fait, ce soir-là
 [Bm] Ce qu'elle a [G] dit, ce soir-là
 [A] Réalisant mon espoir
@@ -3228,7 +3313,7 @@ A:  x02220
 [A] I hate [G] people when [A] they're not [G] polite
 {end_of_bridge}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 [F] Psycho [G] Killer, [Am] qu'est-ce que c'est?
 [F] Fa-fa-fa-fa, [G] fa-fa-fa-fa-[C]fa-fa, far better
 [F] Run, run, [G] run, run, [C] run, run, run away, oh, oh, oh
@@ -3237,7 +3322,7 @@ A:  x02220
 [F] Run, run, [G] run, run, [C] run, run, run away, [F] oh, [G] oh, oh, oh, [A] ay-ay-ay-ay-ay
 {end_of_chorus}
 
-{comment: Outro}
+{comment: Final}
 [A] [G] [A] [G]
 (Repeat and fade)`,
   },
@@ -3257,52 +3342,52 @@ Gm, C, Bb, Am, F, Dm
 | [Gm] | [Gm] [Bb] | [C] | [C] [Bb] [Am] |
 | [Gm] | [Gm] [Bb] [F] | [Dm] | [C] [Bb] [Am] |
 
-[Verse 1]
+[Verso 1]
 [Gm]I'm just a [C]stranger
 [Gm]With a twisted [C]smile and a wandering eye
 [Gm]Your heart is in [C]danger
 [Gm]Come close now, [C]let me tell you a lie
 
-[Chorus]
+[Refrão]
 [Gm] [Gm] [Bb] [C] Wild child
 [C] [Bb] [Am] [Gm] [Gm] You got me runnin' through the turn[Bb]stile
 [C] [C] [Bb] [Am] [Gm] [Gm] [Bb] Baby girl, we better make it worth[C]while
 [C] [Bb] [Am] [Gm] [Gm] [Bb] [C] [C] [Bb] [Am]
 You're gonna get my love to-day-ay-ay-ay-ay-ay-ay-yeah
 
-[Verse 2]
+[Verso 2]
 [Gm]You are a [C]sweet dream
 [Gm]With a tender [C]heart and a beautiful smile
 [Gm]But things aren't [C]what they seem
 [Gm]So I'll let you [C]go and dream for a while
 
-[Chorus]
+[Refrão]
 [Gm] [Gm] [Bb] [C] Wild child
 [C] [Bb] [Am] [Gm] [Gm] [Bb] [C] You got me coming outta ex[C]ile
 [Bb] [Am] [Gm] [Gm] [Bb] Baby girl, you know I'm liking your [C]style
 [C] [Bb] [Am] [Gm] [Gm] [Bb] [C]
 You're gonna get my love to-day-ay-ay-ay-yeah
 
-[Guitar Solo]
+[Solo de guitarra]
 | [Gm] | [Gm] [Bb] | [C] | [C] [Bb] [Am] |
 | [Gm] | [Gm] [Bb] | [C] | [C] [Bb] [Am] |
 | [Gm] | [Gm] [Bb] | [C] | [C] [Bb] [Am] |
 | [Gm] | [Gm] [Bb] | [C] | [C] |
 
-[Bridge]
+[Ponte]
 [Gm]I just wanna [Bb]hold you [C]at the end of [Bb]every day
 [Gm]Girl, I want to [Bb]please you, [C]oh, I'm needing [Bb]you to stay
 [Gm]The sun is gonna [Bb]shine [C]if you would just [Bb]come out and play
 [Gm]Baby won't you [Bb]show me your [C]wild child ways
 
-[Chorus]
+[Refrão]
 [Gm] [Gm] [Bb] [C] Wild child
 [C] [Bb] [Am] [Gm] [Gm] You got me runnin' through the turn[Bb]stile
 [C] [C] [Bb] [Am] [Gm] [Gm] [Bb] Baby girl, we better make it worth[C]while
 [C] [Bb] [Am] [Gm] [Gm] [Bb] [C] [C] [Bb] [Am]
 You're gonna get my love to-day-ay-ay-ay-ay-ay-ay-yeah
 
-[Outro]
+[Final]
 [Gm] [Gm] [Bb] [C] Wild child
 [C] [Bb] [Am] [Gm] [Gm] [Bb] [C] You got me coming outta ex[C]ile
 [Bb] [Am] [Gm] [Gm] [Bb] Baby girl, you know I'm liking your [C]style
@@ -3326,7 +3411,7 @@ You're gonna get my love to-day-ay-ay-ay-yeah`,
 [C] [C/B] [F] [F]
 {end_of_grid}
 
-{start_of_verse: Verse 1}
+{start_of_verse: Verso 1}
 [C] Coming out of my [C/B] cage
 And I've been doing just [F] fine
 Gotta gotta be down
@@ -3343,7 +3428,7 @@ And my stomach is [F] sick
 And it's all in my head
 {end_of_verse}
 
-{start_of_bridge: Pre-Chorus}
+{start_of_bridge: Pré-refrão}
 But she's touching his [Am] chest now
 He takes off her [G] dress now
 Let me [F] go
@@ -3351,7 +3436,7 @@ Let me [F] go
 And [G] taking control
 {end_of_bridge}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 [C] Jealousy, [F] turning saints in[Am]to the sea
 [G] Swimming through sick [C] lullabies
 [F] Choking on your [Am] alibis
@@ -3365,7 +3450,7 @@ And [G] taking control
 [C] [F] [Am] [G]
 {end_of_grid}
 
-{start_of_verse: Verse 2}
+{start_of_verse: Verso 2}
 [C] I'm coming out of my [C/B] cage
 And I've been doing just [F] fine
 Gotta gotta be down
@@ -3382,7 +3467,7 @@ And my stomach is [F] sick
 And it's all in my head
 {end_of_verse}
 
-{start_of_bridge: Pre-Chorus}
+{start_of_bridge: Pré-refrão}
 But she's touching his [Am] chest now
 He takes off her [G] dress now
 Let me [F] go
@@ -3390,7 +3475,7 @@ Let me [F] go
 And [G] taking control
 {end_of_bridge}
 
-{start_of_chorus: Chorus}
+{start_of_chorus: Refrão}
 [C] Jealousy, [F] turning saints in[Am]to the sea
 [G] Swimming through sick [C] lullabies
 [F] Choking on your [Am] alibis
@@ -3400,7 +3485,7 @@ And [G] taking control
 [Am] 'Cause I'm Mr. [G] Brightside
 {end_of_chorus}
 
-{start_of_outro: Outro}
+{start_of_outro: Final}
 [C] I never... [F]
 [Am] I never... [G]
 [C] I never... [F]
@@ -3425,27 +3510,27 @@ And [G] taking control
 [Intro]
 [Dm] [F] [Bb] [C] [Dm]
 
-[Verse 1]
+[Verso 1]
 [Dm] Do you want to go to the [F] seaside?
 I'm [Bb] not trying to say that [C] everybody wants to [Dm] go
 I fell in love at the [F] seaside
 I [Bb] handled my charm with [C] time and slight of [G] hand [G/F]
 
-[Verse 2]
+[Verso 2]
 [Dm] Do you want to go to the [F] seaside?
 I'm [Bb] not trying to say that [C] everybody wants to [Dm] go
 I fell in love at the [F] seaside
 She [Bb] handled her charm with [C] time and slight of [G] hand, hand, [G/F] hand
 
-[Bridge]
+[Ponte]
 [Dm] But I'm just trying to [Bb] love you any [C] kind of way
 [Dm] But I find it hard to [Bb] love you girl when you're [C] far [G] away, [G/F] away
 
-[Verse 3]
+[Verso 3]
 [Dm] Do you want to go to the [F] seaside?
 I'm [Bb] not trying to say that [C] everybody wants to [Dm] go
 
-[Outro]
+[Final]
 But I fell in love on the [F] seaside [Bb]
 On the [F] seaside [Bb]
 In the [F] seaside [Dm]`,
@@ -3468,7 +3553,7 @@ In the [F] seaside [Dm]`,
 [Intro]
 [C] [F] [C] [F] (x4)
 
-[Verse 1]
+[Verso 1]
 [C] Last night she said
 [Dm] "Oh, baby, I feel so down
 [G] Oh, it turns me off
@@ -3483,13 +3568,13 @@ For just 'bout fifteen minutes now
 [G] And I don't know why
 [Em] [Dm] I keep walking for miles
 
-[Chorus]
+[Refrão]
 [F] But the people, they don't [G] understand
 [F] No, girlfriends, they can't [G] understand
 [F] Your grandsons, they won't [G] understand
 [F] On top of this, I ain't ever gonna [G] understand
 
-[Verse 2]
+[Verso 2]
 [C] Last night she said
 [Dm] "Oh, baby, I feel so down
 [G] Oh, it turns me off
@@ -3505,13 +3590,13 @@ For just 'bout fifteen minutes now
 [C] [F] [G]
 [C] [F] [G]
 
-[Chorus]
+[Refrão]
 [F] Oh, people, they don't [G] understand
 [F] No, girlfriends, they don't [G] understand
 [F] In spaceships, they won't [G] understand
 [F] And me, I ain't ever gonna [G] understand
 
-[Verse 3]
+[Verso 3]
 [C] Last night she said
 [Dm] "Oh, baby, I feel so down
 [G] Oh, it turns me off
@@ -3521,7 +3606,7 @@ For just 'bout fifteen minutes now
 [G] I know this for sure
 [Em] [Dm] I'm walking out that door, yeah"
 
-[Outro]
+[Final]
 [C] [F] [G]
 [C] [F] [G]
 [C] [F] [G]
@@ -3539,55 +3624,55 @@ For just 'bout fifteen minutes now
 {section: Intro}
 [C]   [F] [Gsus4] (x4)
 
-{section: Verse 1}
+{section: Verso 1}
 I get [C]up, and nothing gets me down [F]   [Gsus4]
 You got it [C]tough, I've seen the toughest a[F]round [Gsus4]
 And I [C]know, baby, just how you [F]feel [Gsus4]
 You've got to [C]roll with the punches to get to what's [F]real [Gsus4]
 
-{section: Pre-Chorus}
+{section: Pré-refrão}
 Well, can't you [Am]see me [G/B]standing [C]here? [D]
 I've got my [Am]back a[G/B]gainst the [C]record ma[D]chine
 I ain't the [Am]worst that [G/B]you've [C]seen [D]
 [F]Oh, can't you [F]see what I [Gsus4]mean? [G]
 
-{section: Chorus}
+{section: Refrão}
 Might as well [C]jump (Jump!)
 Might as well [C]jump [F]   [Gsus4]
 Go ahead and [C]jump (Jump!)
 Go ahead and [C]jump [F]   [Gsus4]
 
-{section: Verse 2}
+{section: Verso 2}
 Aaa-ohh, hey [C]you! Who said that? Baby, how you [F]been? [Gsus4]
 You say you [C]don't know, you won't know un[F]til we be[Gsus4]gin
 
-{section: Pre-Chorus}
+{section: Pré-refrão}
 Well, can't you [Am]see me [G/B]standing [C]here? [D]
 I've got my [Am]back a[G/B]gainst the [C]record ma[D]chine
 I ain't the [Am]worst that [G/B]you've [C]seen [D]
 [F]Oh, can't you [F]see what I [Gsus4]mean? [G]
 
-{section: Chorus}
+{section: Refrão}
 Might as well [C]jump (Jump!)
 Might as well [C]jump [F]   [Gsus4]
 Go ahead and [C]jump (Jump!)
 Go ahead and [C]jump [F]   [Gsus4]
 
-{section: Guitar Solo}
+{section: Solo de guitarra}
 [Bbm]   [Fm]   [Ab]   [Db] (x4)
 
-{section: Synth Solo}
+{section: Solo de teclado}
 [C]   [F]   [G]   [Bb]
 [Am]   [Ab]   [Gsus4]   [G]
 [C]   [F]   [Gsus4] (x2)
 
-{section: Chorus}
+{section: Refrão}
 Might as well [C]jump (Jump!)
 Might as well [C]jump [F]   [Gsus4]
 Go ahead and [C]jump (Jump!)
 Go ahead and [C]jump [F]   [Gsus4]
 
-{section: Outro}
+{section: Final}
 [C]   [F]   [Gsus4]
 (Repeat and fade)`,
   },
