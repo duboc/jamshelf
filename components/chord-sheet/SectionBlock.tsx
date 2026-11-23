@@ -1,11 +1,12 @@
 'use client';
 
-import { memo, type CSSProperties } from 'react';
+import { memo, useEffect, useState, type CSSProperties } from 'react';
 import { SECTION_COLORS, isInstrumentalSection } from '@/lib/utils/music';
 import type { Section } from '@/lib/types/song';
-import { ArrowDownIcon, ArrowUpIcon } from '@/components/ui/Icons';
+import { ArrowDownIcon, ArrowUpIcon, CopyIcon, EditIcon, TrashIcon } from '@/components/ui/Icons';
 import { ChordLine } from './ChordLine';
 import { SectionEditor } from './SectionEditor';
+import { ChordStampSection } from './ChordStampSection';
 
 interface SectionBlockProps {
   section: Section;
@@ -15,14 +16,21 @@ interface SectionBlockProps {
   displayMode?: 'both' | 'lyrics-only' | 'chords-only';
   // Edit mode props
   editMode?: boolean;
+  editSubMode?: 'text' | 'chords';
+  stampChord?: string | null;
   selectedCoord?: { sectionIdx: number; lineIdx: number; segIdx: number } | null;
   onChordSelect?: (sectionIdx: number, lineIdx: number, segIdx: number) => void;
   onAddChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
+  onStampChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
   onLinesChange?: (sectionIdx: number, lines: string[]) => void;
   onRenameSection?: (sectionIdx: number, label: string) => void;
   onDuplicateSection?: (sectionIdx: number) => void;
   onMoveSection?: (sectionIdx: number, dir: 'up' | 'down') => void;
   onDeleteSection?: (sectionIdx: number) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onDismissOverlay?: () => void;
+  domSyncKey?: number;
   // Calibration & spatial arrival cue props
   calibrationMarkSec?: number | null;
   isCalibrationTarget?: boolean;
@@ -37,20 +45,43 @@ export const SectionBlock = memo(function SectionBlock({
   onChordTap,
   displayMode = 'both',
   editMode = false,
+  editSubMode = 'text',
+  stampChord = null,
   selectedCoord = null,
   onChordSelect,
   onAddChord,
+  onStampChord,
   onLinesChange,
   onRenameSection,
   onDuplicateSection,
   onMoveSection,
   onDeleteSection,
+  onUndo,
+  onRedo,
+  onDismissOverlay,
+  domSyncKey = 0,
   calibrationMarkSec = null,
   isCalibrationTarget = false,
   isArrived = false,
   onCalibrationTap,
 }: SectionBlockProps) {
   const colors = SECTION_COLORS[section.type] || SECTION_COLORS.verse;
+  const [labelDraft, setLabelDraft] = useState(section.label);
+  useEffect(() => {
+    setLabelDraft(section.label);
+  }, [section.label]);
+
+  const commitLabelDraft = () => {
+    const trimmed = labelDraft.trim();
+    if (!trimmed) {
+      setLabelDraft(section.label);
+      return;
+    }
+    if (trimmed !== section.label) {
+      onRenameSection?.(sectionIdx, trimmed);
+    }
+  };
+
   const selectedInSection =
     selectedCoord?.sectionIdx === sectionIdx
       ? { lineIdx: selectedCoord.lineIdx, segIdx: selectedCoord.segIdx }
@@ -123,37 +154,61 @@ export const SectionBlock = memo(function SectionBlock({
       className={`gm3-card ${!editMode ? 'gm3-sheet-block' : ''} ${
         isArrived ? 'gm3-section-arrived' : ''
       } break-inside-avoid scroll-mt-4 relative rounded-[24px] focus:outline-none ${
-        isSingerMode ? 'px-6 sm:px-8 py-6 mb-4' : 'p-5 sm:p-6 mb-4'
+        editMode
+          ? 'p-4 sm:p-6 mb-3.5 sm:mb-4'
+          : isSingerMode
+          ? 'px-6 sm:px-8 py-6 mb-4'
+          : 'p-5 sm:p-6 mb-4'
       } ${onCalibrationTap ? 'cursor-pointer hover:ring-2 hover:ring-[var(--accent)]/40' : ''} ${
         isCalibrationTarget ? 'ring-2 ring-[var(--accent)]' : ''
       }`}
       style={blockStyle}
     >
       {editMode ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-[var(--line-subtle)]">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 mb-2.5 pb-2 border-b border-[var(--line-subtle)]/30">
+          <div
+            className="group inline-flex items-center gap-2 rounded-full px-3 py-1 min-w-0 flex-1 max-w-[210px] sm:max-w-[260px]"
+            style={{ backgroundColor: colors.pillBg }}
+          >
             <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              className="w-2 h-2 rounded-full flex-shrink-0"
               style={{ backgroundColor: colors.bd }}
               aria-hidden="true"
             />
             <input
               type="text"
-              value={section.label}
-              onChange={(e) => onRenameSection?.(sectionIdx, e.target.value)}
+              data-section-label-idx={sectionIdx}
+              value={labelDraft}
+              onChange={(e) => setLabelDraft(e.target.value)}
+              onBlur={commitLabelDraft}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                } else if (e.key === 'Escape') {
+                  setLabelDraft(section.label);
+                  e.currentTarget.blur();
+                }
+              }}
               aria-label={`Nome da seção ${sectionIdx + 1}`}
-              className="font-display text-sm font-semibold bg-transparent border-b border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] rounded px-1 min-w-[110px]"
+              placeholder="Nome da seção"
+              className="font-display text-base lg:text-sm font-semibold bg-transparent border-b border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] focus:outline-none rounded-none min-w-0 w-full leading-tight"
+              style={{ color: colors.lb }}
+            />
+            <EditIcon
+              size={12}
+              className="flex-shrink-0 pointer-events-none opacity-55 group-focus-within:opacity-100 transition-opacity"
               style={{ color: colors.lb }}
             />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             <button
               type="button"
               disabled={sectionIdx === 0}
               onClick={() => onMoveSection?.(sectionIdx, 'up')}
-              className="pill-btn bg-[var(--bg)] w-9 h-9"
-              title="Mover seção para cima"
-              aria-label="Mover seção para cima"
+              className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9"
+              title={`Mover ${section.label} para cima`}
+              aria-label={`Mover ${section.label} para cima`}
             >
               <ArrowUpIcon size={15} />
             </button>
@@ -161,28 +216,32 @@ export const SectionBlock = memo(function SectionBlock({
               type="button"
               disabled={sectionIdx >= totalSections - 1}
               onClick={() => onMoveSection?.(sectionIdx, 'down')}
-              className="pill-btn bg-[var(--bg)] w-9 h-9"
-              title="Mover seção para baixo"
-              aria-label="Mover seção para baixo"
+              className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9"
+              title={`Mover ${section.label} para baixo`}
+              aria-label={`Mover ${section.label} para baixo`}
             >
               <ArrowDownIcon size={15} />
             </button>
             <button
               type="button"
               onClick={() => onDuplicateSection?.(sectionIdx)}
-              className="pill-btn bg-[var(--bg)] px-3 h-9 text-xs"
-              title="Duplicar esta seção"
+              className="pill-btn bg-[var(--bg)] w-10 sm:w-auto sm:px-3 h-10 lg:h-9 text-xs"
+              title={`Duplicar ${section.label}`}
+              aria-label={`Duplicar ${section.label}`}
             >
-              Duplicar
+              <CopyIcon size={15} className="sm:hidden" />
+              <span className="hidden sm:inline">Duplicar</span>
             </button>
             <button
               type="button"
               disabled={totalSections <= 1}
               onClick={() => onDeleteSection?.(sectionIdx)}
-              className="pill-btn bg-[var(--rec-dim)] px-3 h-9 text-xs text-[var(--on-rec-container)]"
-              title="Remover esta seção"
+              className="pill-btn bg-[var(--bg)] text-[var(--muted)] hover:bg-[var(--rec-dim)] hover:text-[var(--on-rec-container)] focus-visible:bg-[var(--rec-dim)] focus-visible:text-[var(--on-rec-container)] w-10 sm:w-auto sm:px-3 h-10 lg:h-9 text-xs ml-1"
+              title={`Excluir ${section.label}`}
+              aria-label={`Excluir ${section.label}`}
             >
-              Excluir
+              <TrashIcon size={15} className="sm:hidden" />
+              <span className="hidden sm:inline">Excluir</span>
             </button>
           </div>
         </div>
@@ -213,13 +272,32 @@ export const SectionBlock = memo(function SectionBlock({
       )}
 
       {editMode ? (
-        <SectionEditor
-          lines={section.lines}
-          selected={selectedInSection}
-          onChordSelect={(lineIdx, segIdx) => onChordSelect?.(sectionIdx, lineIdx, segIdx)}
-          onAddChord={(lineIdx, charPos) => onAddChord?.(sectionIdx, lineIdx, charPos)}
-          onLinesChange={(lines) => onLinesChange?.(sectionIdx, lines)}
-        />
+        editSubMode === 'chords' ? (
+          <ChordStampSection
+            sectionIdx={sectionIdx}
+            sectionLabel={section.label}
+            lines={section.lines}
+            selected={selectedInSection}
+            stampChord={stampChord}
+            onChordSelect={(lineIdx, segIdx) => onChordSelect?.(sectionIdx, lineIdx, segIdx)}
+            onStampAt={(lineIdx, charPos) => onStampChord?.(sectionIdx, lineIdx, charPos)}
+            onAddChord={(lineIdx, charPos) => onAddChord?.(sectionIdx, lineIdx, charPos)}
+          />
+        ) : (
+          <SectionEditor
+            sectionIdx={sectionIdx}
+            sectionLabel={section.label}
+            lines={section.lines}
+            selected={selectedInSection}
+            onChordSelect={(lineIdx, segIdx) => onChordSelect?.(sectionIdx, lineIdx, segIdx)}
+            onAddChord={(lineIdx, charPos) => onAddChord?.(sectionIdx, lineIdx, charPos)}
+            onLinesChange={(lines) => onLinesChange?.(sectionIdx, lines)}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onDismissOverlay={onDismissOverlay}
+            domSyncKey={domSyncKey}
+          />
+        )
       ) : (
         <div className={isSingerMode ? 'space-y-2' : 'space-y-1'}>
           {section.lines.map((line, lineIdx) => (

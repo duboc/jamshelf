@@ -121,6 +121,22 @@ export function ChevronRightIcon({ size = 16, ...rest }: IconProps) {
   );
 }
 
+export function ChevronsLeftIcon({ size = 16, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <path d="m11.5 7-5 5 5 5M17.5 7l-5 5 5 5" />
+    </svg>
+  );
+}
+
+export function ChevronsRightIcon({ size = 16, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <path d="m6.5 7 5 5-5 5M12.5 7l5 5-5 5" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ size = 15, ...rest }: IconProps) {
   return (
     <svg {...baseProps(size)} {...rest}>
@@ -343,6 +359,16 @@ export function TrashIcon({ size = 15, ...rest }: IconProps) {
       <path d="M4.5 7h15" />
       <path d="M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2" />
       <path d="M6.8 7 7.6 18.2A1.8 1.8 0 0 0 9.4 20h5.2a1.8 1.8 0 0 0 1.8-1.8L17.2 7" />
+    </svg>
+  );
+}
+
+/** Clean duplicate / copy icon. */
+export function CopyIcon({ size = 15, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size)} {...rest}>
+      <rect x="9" y="9" width="11" height="11" rx="2.2" />
+      <path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5" />
     </svg>
   );
 }

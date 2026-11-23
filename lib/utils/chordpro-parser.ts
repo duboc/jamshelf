@@ -15,13 +15,24 @@ export function inferSectionType(label: string): SectionType {
   return 'verse';
 }
 
+// Musical chord symbol check (case-sensitive root A-G so words like "Coda", "Riff", "Tag", "Pré-refrão" are never mistaken for chords)
+const CHORD_TOKEN_RE =
+  /^[A-G][#b]?(?:maj|min|m|M|dim|aug|sus|add|alt|°|ø|Δ|\+|-)?[0-9]*(?:(?:add|sus|maj|min|dim|aug|b|#|[0-9()+-])*)(?:\/[A-G][#b]?)?$/;
+
 // A string looks like a section header (not a chord name)
-function looksLikeSection(s: string): boolean {
-  if (!s) return false;
-  if (/\s/.test(s)) return true;
-  if (/^(intro|verse|chorus|pre.?chorus|bridge|outro|solo|interlude|instrumental|grid|refr|verso|ponte|estrofe|final)/i.test(s)) return true;
-  if (/^[A-G][#b]?[a-z0-9/()#]*$/.test(s)) return false;
-  return false;
+export function looksLikeSection(s: string): boolean {
+  const trimmed = s.trim();
+  if (!trimmed) return false;
+  if (/\s/.test(trimmed)) return true;
+  if (
+    /^(intro|verse|chorus|pre.?chorus|pr[eé].?refr|bridge|outro|solo|interlude|instrumental|grid|refr|verso|ponte|estrofe|final|coda|tag|riff|break|ending|turnaround|tema|parte|coro)/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+  // Any standalone bracketed label that is NOT a valid chord symbol is a section header
+  return !CHORD_TOKEN_RE.test(trimmed);
 }
 
 // ─── Duration & marks helpers ────────────────────────────────────────────────
@@ -65,7 +76,17 @@ export function serializeMarks(marks: number[]): string {
 
 // ─── Main parser ─────────────────────────────────────────────────────────────
 
-export function parseChordPro(id: string, text: string): ParsedSong {
+export interface ParseChordProOptions {
+  /** When true (visual edit mode), keep newly added empty sections and user-typed trailing blank lines intact. */
+  preserveEmptySections?: boolean;
+}
+
+export function parseChordPro(
+  id: string,
+  text: string,
+  options?: ParseChordProOptions
+): ParsedSong {
+  const preserveEmpty = Boolean(options?.preserveEmptySections);
   const lines = text.split('\n');
 
   const meta = {
@@ -89,8 +110,18 @@ export function parseChordPro(id: string, text: string): ParsedSong {
   const sections: Section[] = [];
   let current: Section | null = null;
 
-  function pushCurrent() {
-    if (current) {
+  function pushCurrent(hasFollowingSection: boolean) {
+    if (!current) return;
+    if (preserveEmpty) {
+      // songToChordPro inserts a single structural blank line between sections; pop only that one separator
+      if (hasFollowingSection && current.lines.length > 0 && !current.lines[current.lines.length - 1].trim()) {
+        current.lines.pop();
+      }
+      if (current.lines.length === 0) {
+        current.lines.push('');
+      }
+      sections.push(current);
+    } else {
       while (current.lines.length && !current.lines[current.lines.length - 1].trim()) {
         current.lines.pop();
       }
@@ -99,7 +130,7 @@ export function parseChordPro(id: string, text: string): ParsedSong {
   }
 
   function startSection(label: string) {
-    pushCurrent();
+    pushCurrent(true);
     current = { type: inferSectionType(label), label, lines: [] };
   }
 
@@ -217,12 +248,14 @@ export function parseChordPro(id: string, text: string): ParsedSong {
     if (current) current.lines.push(line);
   }
 
-  pushCurrent();
+  pushCurrent(false);
 
   if (sections.length === 0) {
     const contentLines = lines.filter((l) => l.trim() && !/^\{[^}]+\}$/.test(l));
     if (contentLines.length) {
       sections.push({ type: 'verse', label: 'Song', lines: contentLines });
+    } else if (preserveEmpty) {
+      sections.push({ type: 'verse', label: 'Verso', lines: [''] });
     }
   }
 
@@ -270,13 +303,18 @@ export function songToChordPro(song: ParsedSong): string {
   }
   lines.push('');
 
-  for (const section of song.sections) {
-    lines.push(`[${section.label}]`);
+  for (let si = 0; si < song.sections.length; si++) {
+    const section = song.sections[si];
+    const cleanLabel = section.label.trim() || 'Verso';
+    // Use {section: ...} when a custom section name would look like a chord symbol (e.g. "A", "B", "Dm")
+    lines.push(looksLikeSection(cleanLabel) ? `[${cleanLabel}]` : `{section: ${cleanLabel}}`);
     for (const l of section.lines) lines.push(l);
-    lines.push('');
+    if (si < song.sections.length - 1) {
+      lines.push('');
+    }
   }
 
-  return lines.join('\n').trimEnd();
+  return lines.join('\n');
 }
 
 // ─── Metadata patch helper ────────────────────────────────────────────────────

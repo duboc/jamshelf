@@ -183,7 +183,9 @@ export function extractChords(sections: { lines: string[] }[]): string[] {
   sections.forEach(sec => sec.lines.forEach(l => {
     let m;
     const re = /\[([^\]]+)\]/g;
-    while ((m = re.exec(l)) !== null) s.add(m[1]);
+    while ((m = re.exec(l)) !== null) {
+      if (isValidChordToken(m[1])) s.add(m[1]);
+    }
   }));
   return [...s];
 }
@@ -210,4 +212,44 @@ export function transposeSong<T extends { originalKey: string; displayKey: strin
       lines: sec.lines.map((line) => transposeLine(line, semitones, useFlats)),
     })),
   };
+}
+
+/** True when `token` is a genuine chord symbol (e.g. "Am7", "Dmaj7", "D/F#"), excluding stage cues like "x2" or "pausa". */
+export function isValidChordToken(token: string): boolean {
+  const trimmed = token.trim();
+  if (!trimmed || trimmed.length > 14) return false;
+  return /^[A-G][#b]?(?:(?:maj|min|dim|aug|sus|add|m|M)(?=[#b\d/]|$)|\d{1,2}|[#b]\d{1,2})*(?:\/[A-G][#b]?)?$/.test(
+    trimmed
+  );
+}
+
+/** Returns the 6 primary diatonic chords for a major or minor key (fallback: C major family). */
+export function getDiatonicChordsForKey(key?: string | null): string[] {
+  const fallback = ['C', 'G', 'Am', 'F', 'Dm', 'Em'];
+  if (!key || !key.trim()) return fallback;
+  const trimmed = key.trim();
+  const rootM = trimmed.match(/^([A-G][#b]?)/);
+  if (!rootM) return fallback;
+  const rootIdx = noteIndex(rootM[1]);
+  if (rootIdx < 0) return fallback;
+  const minor = isMinorKey(trimmed);
+  const scale = shouldPreferFlats(trimmed) ? FLAT_DISPLAY : SHARP_DISPLAY;
+  const degrees: [number, string][] = minor
+    ? [
+        [0, 'm'],
+        [3, ''],
+        [5, 'm'],
+        [7, 'm'],
+        [8, ''],
+        [10, ''],
+      ]
+    : [
+        [0, ''],
+        [2, 'm'],
+        [4, 'm'],
+        [5, ''],
+        [7, ''],
+        [9, 'm'],
+      ];
+  return degrees.map(([semi, suf]) => `${scale[(rootIdx + semi) % 12]}${suf}`);
 }

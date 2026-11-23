@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { Section } from '@/lib/types/song';
 import { SECTION_COLORS } from '@/lib/utils/music';
 
@@ -9,9 +9,18 @@ interface SectionNavProps {
   activeIdx: number;
   onJump: (sectionIdx: number) => void;
   collapsed?: boolean;
+  leadingSlot?: ReactNode;
+  trailingSlot?: ReactNode;
 }
 
-export function SectionNav({ sections, activeIdx, onJump, collapsed = false }: SectionNavProps) {
+export function SectionNav({
+  sections,
+  activeIdx,
+  onJump,
+  collapsed = false,
+  leadingSlot,
+  trailingSlot,
+}: SectionNavProps) {
   const railRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,16 +39,17 @@ export function SectionNav({ sections, activeIdx, onJump, collapsed = false }: S
     });
   }, [activeIdx, collapsed]);
 
-  if (sections.length <= 1) return null;
+  if (sections.length <= 1 && !leadingSlot && !trailingSlot) return null;
 
   return (
     <nav
       aria-label="Seções da música"
-      className="relative flex-shrink-0 bg-transparent px-4 sm:px-6 lg:px-8 pb-2"
+      className="relative flex-shrink-0 bg-transparent px-4 sm:px-6 lg:px-8 pb-1.5 flex items-center gap-1.5"
     >
+      {leadingSlot}
       <div
         ref={railRef}
-        className="gm3-scroll-fade-right w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-6"
+        className="gm3-scroll-fade-right flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 pr-6"
       >
         {sections.map((sec, idx) => {
           const colors = SECTION_COLORS[sec.type] || SECTION_COLORS.verse;
@@ -65,6 +75,7 @@ export function SectionNav({ sections, activeIdx, onJump, collapsed = false }: S
             </button>
           );
         })}
+        {trailingSlot}
       </div>
     </nav>
   );

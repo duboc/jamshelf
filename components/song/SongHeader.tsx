@@ -5,10 +5,12 @@ import type { ParsedSong, Setlist } from '@/lib/types/song';
 import { useDisplayStore, type DisplayMode } from '@/lib/stores/display-store';
 import type { useLiveSession } from '@/lib/stores/live-session-store';
 import { useDialogA11y } from '@/lib/hooks/use-dialog-a11y';
-import { useAnimatedPresence, useRetainedValue } from '@/lib/hooks/use-animated-presence';
+import { useAnimatedPresence } from '@/lib/hooks/use-animated-presence';
 import { formatDuration, parseDurationValue } from '@/lib/utils/chordpro-parser';
 import { isMinorKey } from '@/lib/utils/music';
 import { playReferencePitch } from '@/lib/utils/pitch-audio';
+
+const KEY_ROOTS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'] as const;
 import { ConnectedGroup } from '@/components/ui/ConnectedGroup';
 import { Gm3FocalBadge } from '@/components/ui/Gm3FocalBadge';
 import {
@@ -70,7 +72,6 @@ interface SongHeaderProps {
   onOpenHistory: () => void;
   onOpenChordPro: () => void;
   onEditNotes: () => void;
-  statusMsg: string;
   /** Unified toolbar controls: flows inline in the single horizontal scroll strip on < lg, and spans Row 2 on >= lg. */
   toolbarSlot?: React.ReactNode;
   /** Scroll-collapsed compact GM3 Top App Bar state (maximizes lyric space while reading/scrolling). */
@@ -124,7 +125,6 @@ export function SongHeader({
   onOpenHistory,
   onOpenChordPro,
   onEditNotes,
-  statusMsg,
   toolbarSlot,
   compact = false,
   onExpandHeader,
@@ -143,6 +143,18 @@ export function SongHeader({
   const [starPop, setStarPop] = useState<number | null>(null);
   const [bpmDraft, setBpmDraft] = useState(String(song.tempo));
   const [bpmHint, setBpmHint] = useState('');
+  const [keyQuality, setKeyQuality] = useState<'major' | 'minor'>(
+    isMinorKey(song.originalKey) ? 'minor' : 'major'
+  );
+  const bpmTapTimesRef = useRef<number[]>([]);
+  const bpmHoldTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bpmHoldIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bpmLiveRef = useRef(song.tempo);
+  const onPatchMetaRef = useRef(onPatchMeta);
+  useEffect(() => {
+    bpmLiveRef.current = song.tempo;
+    onPatchMetaRef.current = onPatchMeta;
+  });
   const [durationDraft, setDurationDraft] = useState(
     song.duration ? formatDuration(song.duration) : ''
   );
@@ -159,8 +171,6 @@ export function SongHeader({
   const { mounted: moreMounted, closing: moreClosing } = useAnimatedPresence(moreOpen, 220);
   const { mounted: metaMounted, closing: metaClosing } = useAnimatedPresence(metaOpen, 220);
   const { mounted: goLiveMounted, closing: goLiveClosing } = useAnimatedPresence(showNamePrompt, 220);
-  const { mounted: statusMounted, closing: statusClosing } = useAnimatedPresence(Boolean(statusMsg), 200);
-  const displayStatus = useRetainedValue(statusMsg || null);
 
   useDialogA11y(showNamePrompt, () => setShowNamePrompt(false), goLiveDialogRef);
 
@@ -177,6 +187,58 @@ export function SongHeader({
       setTimeout(() => setPitchRinging(false), 1600);
     }
   };
+
+  const stopBpmHold = () => {
+    if (bpmHoldTimeoutRef.current) {
+      clearTimeout(bpmHoldTimeoutRef.current);
+      bpmHoldTimeoutRef.current = null;
+    }
+    if (bpmHoldIntervalRef.current) {
+      clearInterval(bpmHoldIntervalRef.current);
+      bpmHoldIntervalRef.current = null;
+    }
+  };
+
+  useEffect(() => stopBpmHold, []);
+
+  const stepBpm = (delta: number) => {
+    const next = Math.max(40, Math.min(240, bpmLiveRef.current + delta));
+    bpmLiveRef.current = next;
+    setBpmDraft(String(next));
+    setBpmHint('');
+    onPatchMetaRef.current('tempo', next);
+  };
+
+  const startBpmHold = (delta: number) => {
+    stopBpmHold();
+    stepBpm(delta);
+    bpmHoldTimeoutRef.current = setTimeout(() => {
+      bpmHoldIntervalRef.current = setInterval(() => stepBpm(delta), 75);
+    }, 300);
+  };
+
+  const handleMetaTapTempo = () => {
+    const now = Date.now();
+    const prev = bpmTapTimesRef.current;
+    const recent = prev.length && now - prev[prev.length - 1] > 2000 ? [now] : [...prev.slice(-4), now];
+    bpmTapTimesRef.current = recent;
+    if (recent.length >= 2) {
+      let sum = 0;
+      for (let i = 1; i < recent.length; i++) sum += recent[i] - recent[i - 1];
+      const avgMs = sum / (recent.length - 1);
+      const tapped = Math.max(40, Math.min(240, Math.round(60000 / avgMs)));
+      bpmLiveRef.current = tapped;
+      setBpmDraft(String(tapped));
+      setBpmHint(`Tap: ${tapped} BPM`);
+      onPatchMeta('tempo', tapped);
+    } else {
+      setBpmHint('Continue batendo no ritmo…');
+    }
+  };
+
+  const currentKeyRoot = song.originalKey
+    ? song.originalKey.match(/^([A-G][#b]?)/)?.[1] ?? ''
+    : '';
 
   const commitBpmDraft = () => {
     const parsed = parseInt(bpmDraft.trim(), 10);
@@ -255,7 +317,7 @@ export function SongHeader({
     <section
       ref={headerRef}
       data-compact={compact ? 'true' : undefined}
-      className={`flex-shrink-0 px-4 sm:px-6 lg:px-8 py-1.5 border-b transition-colors duration-[420ms] ease-out ${
+      className={`relative z-30 flex-shrink-0 px-4 sm:px-6 lg:px-8 py-1.5 border-b transition-colors duration-[420ms] ease-out ${
         compact
           ? 'bg-[var(--surface)]/95 backdrop-blur-md border-[var(--line-subtle)]/35'
           : 'bg-transparent border-transparent'
@@ -285,11 +347,11 @@ export function SongHeader({
               inert={!compact || undefined}
               className="gm3-slot-x flex-shrink-0"
             >
-              <div className="gm3-slot-x-inner pr-2">
+              <div className="gm3-slot-x-inner">
                 <button
                   type="button"
                   onClick={onBack}
-                  className="group gm3-icon-btn w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
+                  className="group gm3-icon-btn mr-2 w-9 h-9 flex items-center justify-center text-[var(--ink)] bg-[var(--bg)] hover:bg-[var(--surface-high)] flex-shrink-0 cursor-pointer"
                   title="Voltar"
                   aria-label="Voltar"
                 >
@@ -366,7 +428,7 @@ export function SongHeader({
                         setEditingIdentity(false);
                       }
                     }}
-                    className="studio-input font-display font-bold text-lg sm:text-2xl leading-tight text-[var(--ink)] px-2.5 py-1 min-w-0 flex-1 w-full"
+                    className="studio-input font-display font-bold text-lg sm:text-2xl leading-tight text-[var(--ink)] px-2.5 py-1 min-w-0 flex-1 w-full max-w-xl"
                     aria-label="Título da música"
                   />
                   {!editMode && (
@@ -433,16 +495,6 @@ export function SongHeader({
                     </div>
                   </div>
                 </>
-              )}
-
-              {statusMounted && displayStatus && (
-                <span
-                  role="status"
-                  aria-live="polite"
-                  className={`${statusClosing ? 'gm3-panel-exit' : 'gm3-panel-enter'} font-mono text-xs text-[var(--tune)] font-semibold flex-shrink-0 ml-1.5 sr-only sm:not-sr-only`}
-                >
-                  {displayStatus}
-                </span>
               )}
             </div>
           </div>
@@ -606,6 +658,24 @@ export function SongHeader({
                 <div className="my-1.5 mx-3 border-t border-[var(--line-subtle)]/40" />
 
                 <div className="px-1.5 space-y-0.5">
+                  {editMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        onOpenChordPro();
+                      }}
+                      className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] font-medium text-[var(--accent-ink)] hover:bg-[var(--surface-high)] cursor-pointer flex items-center justify-between gap-2"
+                    >
+                      <span>Editar fonte ChordPro (.cho)</span>
+                      <span className="text-[11px] font-normal text-[var(--muted)]">rascunho</span>
+                    </button>
+                  )}
+                  {editMode && (
+                    <div className="px-3 pt-1.5 pb-0.5 text-[11px] text-[var(--muted)]">
+                      Salve ou cancele a edição visual para usar:
+                    </div>
+                  )}
                   {song.spotifyTrackId && (
                     <button
                       type="button"
@@ -620,54 +690,76 @@ export function SongHeader({
                   )}
                   <button
                     type="button"
+                    disabled={editMode}
                     onClick={() => {
                       setMoreOpen(false);
                       onEditNotes();
                     }}
-                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                    className={`gm3-menu-item w-full text-left px-3 py-2 text-[13px] ${
+                      editMode
+                        ? 'text-[var(--muted)] opacity-50 cursor-not-allowed'
+                        : 'text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer'
+                    }`}
                   >
                     {song.notes ? 'Editar notas de palco' : 'Adicionar notas de palco'}
                   </button>
                   <button
                     type="button"
+                    disabled={editMode}
                     onClick={() => {
                       setMoreOpen(false);
                       onOpenSpotifyPicker();
                     }}
-                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                    className={`gm3-menu-item w-full text-left px-3 py-2 text-[13px] ${
+                      editMode
+                        ? 'text-[var(--muted)] opacity-50 cursor-not-allowed'
+                        : 'text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer'
+                    }`}
                   >
                     {song.spotifyTrackId ? 'Trocar vínculo no Spotify' : 'Buscar faixa no Spotify'}
                   </button>
                   <button
                     type="button"
+                    disabled={editMode}
                     onClick={() => {
                       setMoreOpen(false);
                       onOpenEnhance();
                     }}
-                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                    className={`gm3-menu-item w-full text-left px-3 py-2 text-[13px] ${
+                      editMode
+                        ? 'text-[var(--muted)] opacity-50 cursor-not-allowed'
+                        : 'text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer'
+                    }`}
                   >
                     Revisar letra e acordes com IA
                   </button>
                   <button
                     type="button"
+                    disabled={editMode}
                     onClick={() => {
                       setMoreOpen(false);
                       onOpenHistory();
                     }}
-                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                    className={`gm3-menu-item w-full text-left px-3 py-2 text-[13px] ${
+                      editMode
+                        ? 'text-[var(--muted)] opacity-50 cursor-not-allowed'
+                        : 'text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer'
+                    }`}
                   >
                     Histórico de versões
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      onOpenChordPro();
-                    }}
-                    className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
-                  >
-                    Editar fonte ChordPro (.cho)
-                  </button>
+                  {!editMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        onOpenChordPro();
+                      }}
+                      className="gm3-menu-item w-full text-left px-3 py-2 text-[13px] text-[var(--ink)] hover:bg-[var(--surface-high)] cursor-pointer"
+                    >
+                      Editar fonte ChordPro (.cho)
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -701,13 +793,19 @@ export function SongHeader({
 
         {/* Row 2 (full width on < lg, col 1 on >= lg): Calm Artist + Musical Metadata line */}
         <div
-          className="gm3-collapsible gm3-header-collapse col-span-2 row-start-2 lg:col-span-1 lg:col-start-1 lg:row-start-2 min-w-0"
+          className={`gm3-collapsible gm3-header-collapse col-span-2 row-start-2 lg:col-span-1 lg:col-start-1 lg:row-start-2 min-w-0 ${
+            metaMounted ? 'relative z-20' : ''
+          }`}
           data-collapsed={compact ? 'true' : undefined}
           aria-hidden={compact || undefined}
           inert={compact || undefined}
         >
           <div className={metaMounted ? 'gm3-collapsible-inner-open' : 'gm3-collapsible-inner'}>
-            <div className="pt-1 lg:pt-1.5 pb-1 px-1 -mx-1 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 sm:pl-1">
+            <div
+              className={`${
+                isEditingTitle ? 'pt-1.5 gap-y-1.5' : 'pt-1 lg:pt-1.5 gap-y-1'
+              } pb-0.5 px-1 -mx-1 flex flex-wrap items-center gap-x-2 min-w-0 sm:pl-1`}
+            >
               {isEditingTitle ? (
                 <input
                   type="text"
@@ -720,7 +818,7 @@ export function SongHeader({
                       if (!editMode) setEditingIdentity(false);
                     }
                   }}
-                  className="studio-input text-xs sm:text-[13px] text-[var(--ink)] px-2.5 py-1 max-w-[220px]"
+                  className="studio-input text-base lg:text-sm text-[var(--ink)] px-2.5 py-1 min-h-[38px] lg:min-h-[34px] min-w-[110px] flex-1 sm:flex-none sm:w-56 max-w-[200px] sm:max-w-[240px]"
                   placeholder="Artista não informado"
                   aria-label="Artista"
                 />
@@ -738,14 +836,19 @@ export function SongHeader({
                   onClick={() => {
                     setBpmDraft(String(song.tempo));
                     setBpmHint('');
+                    setKeyQuality(isMinorKey(song.originalKey) ? 'minor' : 'major');
                     setDurationDraft(song.duration ? formatDuration(song.duration) : '');
                     setDurationHint('');
                     setMetaOpen((v) => !v);
                   }}
                   aria-expanded={metaOpen}
                   aria-haspopup="dialog"
-                  className="pill-btn bg-transparent hover:bg-[var(--surface-high)] px-1.5 min-h-[38px] group"
-                  title="Ajustar capo, andamento (BPM), compasso e duração"
+                  className={`pill-btn min-h-[38px] group ${
+                    editMode
+                      ? 'bg-[var(--surface)] border border-[var(--line-subtle)]/75 hover:bg-[var(--surface-high)] px-2.5'
+                      : 'bg-transparent hover:bg-[var(--surface-high)] px-1.5'
+                  }`}
+                  title="Ajustar tom, capo, andamento (BPM), compasso e duração"
                 >
                   {displayedKey && (
                     <span className="inline-flex items-center gap-1">
@@ -766,9 +869,15 @@ export function SongHeader({
                 </span>
               )}
               <span className="font-mono text-xs text-[var(--muted)] group-hover:text-[var(--ink)] tabular-nums">
-                {!song.tempoConfirmed ? '~' : ''}{song.tempo} BPM · {song.timeSignature}
-                {song.duration ? ` · ${formatDuration(song.duration)}` : ''}
+                {!song.tempoConfirmed ? '~' : ''}{song.tempo} BPM
+                <span className={editMode ? 'hidden sm:inline' : ''}>
+                  {' '}· {song.timeSignature}
+                  {song.duration ? ` · ${formatDuration(song.duration)}` : ''}
+                </span>
               </span>
+              {editMode && (
+                <ChevronDownIcon size={13} className="gm3-chevron text-[var(--muted)] ml-0.5 flex-shrink-0" />
+              )}
             </button>
 
             {song.capo > 0 && !editMode && (
@@ -796,10 +905,77 @@ export function SongHeader({
                 role="dialog"
                 aria-label="Ajustes musicais da faixa"
                 inert={metaClosing || undefined}
-                className={`gm3-popover-top-left ${metaClosing ? 'gm3-popover-exit' : ''} absolute left-0 top-[calc(100%+8px)] z-50 w-[min(296px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3`}
+                className={`gm3-popover-top-left ${metaClosing ? 'gm3-popover-exit' : ''} absolute left-0 top-[calc(100%+8px)] z-50 w-[min(320px,calc(100vw-32px))] rounded-[24px] bg-[var(--surface)] p-4 space-y-3`}
                 style={{ boxShadow: 'var(--shadow-md)' }}
               >
                 <div className="field-label">Propriedades da música</div>
+
+                {/* Original Key: 1-tap 12-note pill grid + Maior/Menor toggle */}
+                <div className="space-y-2" role="group" aria-label="Tom original">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[var(--ink)]">
+                      Tom original{song.originalKey ? `: ${song.originalKey}` : ''}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <ConnectedGroup value={keyQuality} ariaLabel="Modo do tom" subtle>
+                        <button
+                          type="button"
+                          aria-pressed={keyQuality === 'major'}
+                          onClick={() => {
+                            setKeyQuality('major');
+                            if (currentKeyRoot) onPatchMeta('key', currentKeyRoot);
+                          }}
+                          className="gm3-connected-btn inline-flex items-center justify-center px-2.5 h-8 text-xs font-medium cursor-pointer"
+                        >
+                          Maior
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={keyQuality === 'minor'}
+                          onClick={() => {
+                            setKeyQuality('minor');
+                            if (currentKeyRoot) onPatchMeta('key', `${currentKeyRoot}m`);
+                          }}
+                          className="gm3-connected-btn inline-flex items-center justify-center px-2.5 h-8 text-xs font-medium cursor-pointer"
+                        >
+                          Menor
+                        </button>
+                      </ConnectedGroup>
+                      {song.originalKey && (
+                        <button
+                          type="button"
+                          onClick={() => onPatchMeta('key', '')}
+                          className="text-[11px] font-mono text-[var(--muted)] hover:text-[var(--ink)] px-1 py-1 cursor-pointer"
+                          title="Limpar tom"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {KEY_ROOTS.map((root) => {
+                      const candidate = keyQuality === 'minor' ? `${root}m` : root;
+                      const active = song.originalKey === candidate;
+                      return (
+                        <button
+                          key={root}
+                          type="button"
+                          data-key-option={candidate}
+                          aria-pressed={active}
+                          onClick={() => onPatchMeta('key', candidate)}
+                          className={`h-9 rounded-xl font-mono text-xs font-bold transition-colors cursor-pointer ${
+                            active
+                              ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                              : 'bg-[var(--bg)] text-[var(--ink)] hover:bg-[var(--surface-high)]'
+                          }`}
+                        >
+                          {candidate}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 {/* Capo */}
                 <div className="flex items-center justify-between">
@@ -808,7 +984,7 @@ export function SongHeader({
                     <button
                       type="button"
                       onClick={() => onPatchMeta('capo', Math.max(0, song.capo - 1))}
-                      className="pill-btn bg-[var(--bg)] w-9 h-9 text-xs font-mono"
+                      className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9 text-xs font-mono"
                       aria-label="Diminuir capotraste"
                     >
                       -
@@ -819,7 +995,7 @@ export function SongHeader({
                     <button
                       type="button"
                       onClick={() => onPatchMeta('capo', Math.min(12, song.capo + 1))}
-                      className="pill-btn bg-[var(--bg)] w-9 h-9 text-xs font-mono"
+                      className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9 text-xs font-mono"
                       aria-label="Aumentar capotraste"
                     >
                       +
@@ -864,47 +1040,73 @@ export function SongHeader({
                       </label>
                       <span className="text-xs text-[var(--muted)]">40 a 240 BPM</span>
                     </div>
-                    <div className="gm3-btn-group">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          const next = Math.max(40, song.tempo - 1);
-                          setBpmDraft(String(next));
-                          setBpmHint('');
-                          onPatchMeta('tempo', next);
-                        }}
-                        className="pill-btn bg-[var(--bg)] w-9 h-9 text-xs font-mono"
-                        aria-label="Diminuir andamento em 1 BPM"
+                        onClick={handleMetaTapTempo}
+                        className="pill-btn pill-btn-tonal px-2.5 h-10 lg:h-9 text-xs font-mono font-semibold"
+                        title="Toque no pulso da música para detectar o BPM automaticamente"
                       >
-                        -
+                        Tap
                       </button>
-                      <input
-                        id="meta-bpm-input"
-                        type="number"
-                        min={40}
-                        max={240}
-                        value={bpmDraft}
-                        onChange={(e) => {
-                          setBpmDraft(e.target.value);
-                          setBpmHint('');
-                        }}
-                        onBlur={commitBpmDraft}
-                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                        className="studio-input w-16 text-center text-xs font-mono py-1.5"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = Math.min(240, song.tempo + 1);
-                          setBpmDraft(String(next));
-                          setBpmHint('');
-                          onPatchMeta('tempo', next);
-                        }}
-                        className="pill-btn bg-[var(--bg)] w-9 h-9 text-xs font-mono"
-                        aria-label="Aumentar andamento em 1 BPM"
-                      >
-                        +
-                      </button>
+                      <div className="gm3-btn-group">
+                        <button
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            startBpmHold(-1);
+                          }}
+                          onPointerUp={stopBpmHold}
+                          onPointerLeave={stopBpmHold}
+                          onPointerCancel={stopBpmHold}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              stepBpm(-1);
+                            }
+                          }}
+                          className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9 text-xs font-mono touch-none select-none"
+                          aria-label="Diminuir andamento em 1 BPM"
+                          title="Diminuir BPM (segure para ajustar rápido)"
+                        >
+                          -
+                        </button>
+                        <input
+                          id="meta-bpm-input"
+                          type="number"
+                          min={40}
+                          max={240}
+                          value={bpmDraft}
+                          onChange={(e) => {
+                            setBpmDraft(e.target.value);
+                            setBpmHint('');
+                          }}
+                          onBlur={commitBpmDraft}
+                          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                          className="studio-input w-14 text-center text-base lg:text-xs font-mono py-1.5 min-h-[40px] lg:min-h-[34px]"
+                        />
+                        <button
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            startBpmHold(1);
+                          }}
+                          onPointerUp={stopBpmHold}
+                          onPointerLeave={stopBpmHold}
+                          onPointerCancel={stopBpmHold}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              stepBpm(1);
+                            }
+                          }}
+                          className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9 text-xs font-mono touch-none select-none"
+                          aria-label="Aumentar andamento em 1 BPM"
+                          title="Aumentar BPM (segure para ajustar rápido)"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
                   {bpmHint && (
@@ -923,7 +1125,7 @@ export function SongHeader({
                     id="meta-time-select"
                     value={song.timeSignature}
                     onChange={(e) => onPatchMeta('time', e.target.value)}
-                    className="studio-input px-2.5 py-1.5 text-xs font-mono"
+                    className="studio-input px-2.5 py-1.5 min-h-[40px] lg:min-h-[34px] text-base lg:text-xs font-mono"
                   >
                     <option value="4/4">4/4</option>
                     <option value="3/4">3/4</option>
@@ -954,7 +1156,7 @@ export function SongHeader({
                       onBlur={commitDurationDraft}
                       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
                       placeholder="3:30"
-                      className="studio-input w-20 text-center text-xs font-mono py-1.5"
+                      className="studio-input w-20 text-center text-base lg:text-xs font-mono py-1.5 min-h-[40px] lg:min-h-[34px]"
                     />
                   </div>
                   {durationHint && (
@@ -985,7 +1187,11 @@ export function SongHeader({
           <div className="gm3-collapsible-inner lg:contents">
             <div className="pt-1.5 pb-1 px-1 -mx-1 lg:p-0 lg:m-0 lg:contents">
               <div className="relative lg:contents">
-                <div className="rounded-2xl bg-[var(--surface-high)] px-2 py-1.5 pr-9 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar lg:contents">
+                <div
+                  className={`rounded-2xl bg-[var(--surface-high)] px-2 py-1.5 flex items-center gap-1.5 flex-nowrap lg:contents ${
+                    editMode ? 'w-full' : 'pr-9 overflow-x-auto no-scrollbar'
+                  }`}
+                >
                   {/* Header Action Pills (hidden on mobile during editMode so edit bar stays spotless) */}
                   <div
                     className="gm3-collapsible-desktop-x lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
@@ -1011,40 +1217,39 @@ export function SongHeader({
               )}
 
               {/* Reading mode M3 Expressive Connected Button Group */}
-              <ConnectedGroup
-                value={displayMode}
-                ariaLabel="Modo de leitura"
-                className="flex-shrink-0"
-              >
-                {(
-                  [
-                    { mode: 'both', label: 'Cifra' },
-                    { mode: 'lyrics-only', label: 'Só letra' },
-                    { mode: 'chords-only', label: 'Acordes' },
-                  ] as { mode: DisplayMode; label: string }[]
-                ).map(({ mode, label }) => {
-                  const active = displayMode === mode;
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      disabled={editMode}
-                      onClick={() => onSetDisplayMode(mode)}
-                      aria-pressed={active}
-                      title={
-                        editMode
-                          ? 'Indisponível durante a edição'
-                          : mode === 'lyrics-only'
-                          ? 'Esconde os acordes e melhora a tipografia para cantar (atalho: L)'
-                          : undefined
-                      }
-                      className="gm3-connected-btn px-3 h-9 text-xs font-medium cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </ConnectedGroup>
+              {!editMode && (
+                <ConnectedGroup
+                  value={displayMode}
+                  ariaLabel="Modo de leitura"
+                  className="flex-shrink-0"
+                >
+                  {(
+                    [
+                      { mode: 'both', label: 'Cifra' },
+                      { mode: 'lyrics-only', label: 'Só letra' },
+                      { mode: 'chords-only', label: 'Acordes' },
+                    ] as { mode: DisplayMode; label: string }[]
+                  ).map(({ mode, label }) => {
+                    const active = displayMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => onSetDisplayMode(mode)}
+                        aria-pressed={active}
+                        title={
+                          mode === 'lyrics-only'
+                            ? 'Esconde os acordes e melhora a tipografia para cantar (atalho: L)'
+                            : undefined
+                        }
+                        className="gm3-connected-btn px-3 h-9 text-xs font-medium cursor-pointer"
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </ConnectedGroup>
+              )}
 
               {/* Pitch guide */}
               {pitchTarget && !editMode && (
@@ -1198,10 +1403,12 @@ export function SongHeader({
                 </div>
               </div>
 
-              <div
-                aria-hidden="true"
-                className="lg:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-9 rounded-r-2xl bg-gradient-to-l from-[var(--surface-high)] to-transparent"
-              />
+              {!editMode && (
+                <div
+                  aria-hidden="true"
+                  className="lg:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-9 rounded-r-2xl bg-gradient-to-l from-[var(--surface-high)] to-transparent"
+                />
+              )}
             </div>
             </div>
           </div>

@@ -24,15 +24,22 @@ interface ChordSheetProps {
   displayMode?: 'both' | 'lyrics-only' | 'chords-only';
   // Edit mode props
   editMode?: boolean;
+  editSubMode?: 'text' | 'chords';
+  stampChord?: string | null;
   selectedCoord?: { sectionIdx: number; lineIdx: number; segIdx: number } | null;
   onChordSelect?: (sectionIdx: number, lineIdx: number, segIdx: number) => void;
   onAddChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
+  onStampChord?: (sectionIdx: number, lineIdx: number, charPos: number) => void;
   onLinesChange?: (sectionIdx: number, lines: string[]) => void;
   onRenameSection?: (sectionIdx: number, label: string) => void;
   onDuplicateSection?: (sectionIdx: number) => void;
   onMoveSection?: (sectionIdx: number, dir: 'up' | 'down') => void;
   onDeleteSection?: (sectionIdx: number) => void;
   onAddSection?: (label: string) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onDismissOverlay?: () => void;
+  domSyncKey?: number;
   // Calibration props
   calibrating?: boolean;
   calibrationMarks?: (number | null)[];
@@ -53,15 +60,22 @@ export function ChordSheet({
   onChordTap,
   displayMode = 'both',
   editMode = false,
+  editSubMode = 'text',
+  stampChord = null,
   selectedCoord = null,
   onChordSelect,
   onAddChord,
+  onStampChord,
   onLinesChange,
   onRenameSection,
   onDuplicateSection,
   onMoveSection,
   onDeleteSection,
   onAddSection,
+  onUndo,
+  onRedo,
+  onDismissOverlay,
+  domSyncKey = 0,
   calibrating = false,
   calibrationMarks,
   calibrationTargetIdx,
@@ -603,14 +617,21 @@ export function ChordSheet({
             onChordTap={onChordTap}
             displayMode={effectiveDisplayMode}
             editMode={editMode}
+            editSubMode={editSubMode}
+            stampChord={stampChord}
             selectedCoord={selectedCoord}
             onChordSelect={onChordSelect}
             onAddChord={onAddChord}
+            onStampChord={onStampChord}
             onLinesChange={onLinesChange}
             onRenameSection={onRenameSection}
             onDuplicateSection={onDuplicateSection}
             onMoveSection={onMoveSection}
             onDeleteSection={onDeleteSection}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onDismissOverlay={onDismissOverlay}
+            domSyncKey={domSyncKey}
             calibrationMarkSec={
               calibrating
                 ? calibrationMarks?.[i] ?? null
@@ -624,15 +645,18 @@ export function ChordSheet({
 
         {/* Add new section bar in visual edit mode */}
         {editMode && onAddSection && (
-          <div className="mt-4 mb-6 rounded-[24px] border border-dashed border-[var(--line-subtle)] bg-[var(--surface)] p-5 space-y-2.5">
+          <div
+            id="add-section-bar"
+            className="mt-4 mb-6 scroll-mt-4 rounded-[24px] border border-dashed border-[var(--line-subtle)] bg-[var(--surface)] p-4 sm:p-5 space-y-2.5"
+          >
             <div className="field-label">Adicionar nova seção</div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {QUICK_SECTION_PRESETS.map((preset) => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => onAddSection(preset)}
-                  className="pill-btn px-3 py-1 text-xs"
+                  className="pill-btn bg-[var(--surface-high)] hover:bg-[var(--primary-container)] hover:text-[var(--on-primary-container)] px-3.5 h-10 lg:h-9 text-xs"
                 >
                   + {preset}
                 </button>

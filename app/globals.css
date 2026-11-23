@@ -11,6 +11,7 @@
   --surface: #ffffff;
   --surface-high: #e9eef6;
   --surface2: #dde3ea;
+  --surface-control: #ffffff;
 
   /* Primary & Secondary roles */
   --accent: #0b57d0;
@@ -240,6 +241,7 @@
     --surface: #1e1f20;
     --surface-high: #282a2c;
     --surface2: #333537;
+    --surface-control: #333537;
 
     --accent: #a8c7fa;
     --accent-ink: #a8c7fa;
@@ -365,6 +367,7 @@
   --surface: #1e1f20;
   --surface-high: #282a2c;
   --surface2: #333537;
+  --surface-control: #333537;
 
   --accent: #a8c7fa;
   --accent-ink: #a8c7fa;
@@ -653,6 +656,12 @@
   .pill-btn-primary:hover:not(:disabled) {
     background: var(--accent-hover);
     color: var(--on-accent);
+  }
+
+  .pill-btn-primary:disabled {
+    background: var(--surface2);
+    color: var(--muted);
+    opacity: 1;
   }
 
   .pill-btn-tune {
