@@ -166,25 +166,26 @@ export const SongCard = memo(function SongCard({
     ? 'bg-[var(--minor-container)] text-[var(--on-minor-container)]'
     : 'bg-[var(--primary-container)] text-[var(--on-primary-container)]';
 
-  // GM3 Expressive Tonal Card (single link per card, signature key badge, clean metadata footer)
+  // GM3 Expressive Tonal Card (full-surface tap + expanding Container Transform, signature key badge)
   if (variant === 'card') {
     return (
       <article
+        data-vt-song-surface={song.id}
         style={staggerStyle}
-        className={`gm3-card gm3-card-interactive ${staggerClass} group relative bg-[var(--surface)] hover:bg-[var(--surface-high)] px-5 py-4 flex flex-col justify-between gap-3`}
+        className={`gm3-card gm3-card-interactive ${staggerClass} ${menuOpen ? 'z-30' : ''} group relative bg-[var(--surface)] hover:bg-[var(--surface-high)] px-5 py-4 flex flex-col justify-between gap-3 cursor-pointer`}
       >
         <div className="flex items-start justify-between gap-2">
           <TransitionLink
             href={`/song/${song.id}`}
             vtSongId={song.id}
             vtDirection="forward"
-            className="min-w-0 flex-1 flex items-start justify-between gap-3"
+            className="min-w-0 flex-1 flex items-start justify-between gap-3 after:absolute after:inset-0 after:content-[''] after:rounded-[inherit] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[var(--secondary)]"
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-2 min-w-0">
                 <h2
                   data-vt-song-title={song.id}
-                  className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors line-clamp-2 break-words"
+                  className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors line-clamp-2 break-words w-fit max-w-full"
                 >
                   {song.title}
                 </h2>
@@ -231,7 +232,7 @@ export const SongCard = memo(function SongCard({
             )}
           </TransitionLink>
 
-          {overflowMenu}
+          <div className="relative z-10 flex-shrink-0">{overflowMenu}</div>
         </div>
 
         {/* Clean musical metadata footer */}
@@ -252,31 +253,24 @@ export const SongCard = memo(function SongCard({
     );
   }
 
-  // GM3 Expressive Segmented List Row (stacked #FFFFFF rows with 2px gap)
-  const segmentedRadius =
-    position === 'only'
-      ? 'rounded-[20px]'
-      : position === 'first'
-      ? 'rounded-t-[20px] rounded-b-[6px]'
-      : position === 'last'
-      ? 'rounded-b-[20px] rounded-t-[6px]'
-      : 'rounded-[6px]';
-
+  // GM3 Expressive Segmented List Row (full-row clickable + expanding Container Transform)
   return (
     <div
+      data-vt-song-surface={song.id}
+      data-pos={position}
       style={staggerStyle}
-      className={`gm3-card gm3-list-row ${staggerClass} group flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_44px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] ${segmentedRadius}`}
+      className={`gm3-card gm3-list-row ${staggerClass} ${menuOpen ? 'z-30' : ''} group relative flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_110px_176px_44px] md:items-center gap-2 md:gap-3 py-3.5 px-5 bg-[var(--surface)] hover:bg-[var(--surface-high)] cursor-pointer`}
     >
       <TransitionLink
         href={`/song/${song.id}`}
         vtSongId={song.id}
         vtDirection="forward"
-        className="min-w-0 block"
+        className="min-w-0 block after:absolute after:inset-0 after:content-[''] after:rounded-[inherit] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[var(--secondary)]"
       >
         <div className="flex items-center gap-2 min-w-0">
           <h2
             data-vt-song-title={song.id}
-            className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] md:truncate break-words transition-colors"
+            className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] md:truncate break-words transition-colors w-fit max-w-full"
           >
             {song.title}
           </h2>
@@ -326,7 +320,7 @@ export const SongCard = memo(function SongCard({
           ) : null}
         </div>
 
-        <div className="flex items-center justify-end">
+        <div className="relative z-10 flex items-center justify-end">
           {overflowMenu}
         </div>
       </div>

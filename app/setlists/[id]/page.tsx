@@ -434,22 +434,24 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
               </div>
               <div ref={trackListRef} className="flex flex-col gap-[2px]">
                 {displayEntries.map(({ song, storeIdx }, idx) => {
-                  const segRadius =
+                  const segPos =
                     setlistSongs.length === 1
-                      ? 'rounded-[20px]'
+                      ? 'only'
                       : idx === 0
-                      ? 'rounded-t-[20px] rounded-b-[6px]'
+                      ? 'first'
                       : idx === setlistSongs.length - 1
-                      ? 'rounded-b-[20px] rounded-t-[6px]'
-                      : 'rounded-[6px]';
+                      ? 'last'
+                      : 'middle';
 
                   return (
                     <div
                       key={song.id}
                       data-flip-key={song.id}
                       data-display-idx={idx}
+                      data-vt-song-surface={song.id}
+                      data-pos={segPos}
                       data-dragging={drag !== null && drag.to === idx ? 'true' : undefined}
-                      className={`gm3-card gm3-list-row group flex items-center gap-3 py-3.5 px-4 sm:px-5 bg-[var(--surface)] ${segRadius} ${
+                      className={`gm3-card gm3-list-row group relative flex items-center gap-3 py-3.5 px-4 sm:px-5 bg-[var(--surface)] cursor-pointer ${
                         drag !== null && drag.to === idx
                           ? 'bg-[var(--secondary-container)]/60 ring-2 ring-[var(--accent)]'
                           : 'hover:bg-[var(--surface-high)]'
@@ -458,7 +460,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                       <div
                         {...getHandleProps(idx)}
                         title="Arrastar para reordenar"
-                        className="flex items-center gap-2 text-[var(--muted)] select-none touch-none cursor-grab active:cursor-grabbing py-1 px-1 -ml-1 flex-shrink-0"
+                        className="relative z-10 flex items-center gap-2 text-[var(--muted)] select-none touch-none cursor-grab active:cursor-grabbing py-1 px-1 -ml-1 flex-shrink-0"
                       >
                         <GripIcon size={16} />
                         <span className="font-expressive text-xl text-[var(--accent)] w-7 text-right">
@@ -470,11 +472,11 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                         href={`/song/${song.id}?setlist=${id}`}
                         vtSongId={song.id}
                         vtDirection="forward"
-                        className="flex-1 min-w-0"
+                        className="flex-1 min-w-0 after:absolute after:inset-0 after:content-[''] after:rounded-[inherit] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[var(--secondary)]"
                       >
                         <div
                           data-vt-song-title={song.id}
-                          className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors break-words sm:truncate"
+                          className="font-display text-[20px] font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors break-words sm:truncate w-fit max-w-full"
                         >
                           {song.title}
                         </div>
@@ -504,7 +506,7 @@ export default function SetlistPage({ params }: { params: Promise<{ id: string }
                       </TransitionLink>
 
                       {/* Keyboard & single-tap reorder + remove controls (WCAG 2.1.1 / 2.5.7) */}
-                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <div className="relative z-10 flex items-center gap-0.5 flex-shrink-0">
                         <button
                           type="button"
                           disabled={idx === 0}

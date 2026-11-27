@@ -18,6 +18,8 @@ type StartViewTransitionFn = (
 let pendingResolve: (() => void) | null = null;
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSongId: string | null = null;
+let pendingDirection: TransitionDirection | null = null;
+let pendingHasSourceSurface = false;
 let taggedElements: HTMLElement[] = [];
 let transitionSeq = 0;
 
@@ -46,15 +48,37 @@ function isElementVisibleInViewport(el: HTMLElement): boolean {
   return rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
 }
 
-function tagHeroElementsForSong(songId: string | null) {
+function tagHeroElementsForSong(
+  songId: string | null,
+  opts?: { allowSurface?: boolean; requireVisibleSurface?: boolean }
+): { hasSurface: boolean } {
   clearTaggedElements();
-  if (!songId || typeof document === 'undefined') return;
+  if (!songId || typeof document === 'undefined') return { hasSurface: false };
   const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(songId) : songId.replace(/"/g, '\\"');
+  let hasSurface = false;
 
+  if (opts?.allowSurface) {
+    const surfaceCandidates = Array.from(
+      document.querySelectorAll<HTMLElement>(`[data-vt-song-surface="${escaped}"]`)
+    );
+    const visibleSurface = surfaceCandidates.find(isElementVisibleInViewport);
+    const surfaceEl = opts.requireVisibleSurface ? visibleSurface : visibleSurface ?? surfaceCandidates[0];
+    if (surfaceEl) {
+      surfaceEl.style.viewTransitionName = 'song-surface-hero';
+      taggedElements.push(surfaceEl);
+      hasSurface = true;
+      // Pure GM3 Container Transform: keep title & key intact inside the expanding/collapsing surface
+      // so they never double-ghost, collide with the back button, or leave holes in the key stepper pill.
+      return { hasSurface: true };
+    }
+  }
+
+  // Only tag title/key when they are visible (or on forward destination) so off-screen back returns never fly wildly
   const titleCandidates = Array.from(
     document.querySelectorAll<HTMLElement>(`[data-vt-song-title="${escaped}"]`)
   );
-  const titleEl = titleCandidates.find(isElementVisibleInViewport) ?? titleCandidates[0];
+  const visibleTitle = titleCandidates.find(isElementVisibleInViewport);
+  const titleEl = opts?.requireVisibleSurface ? visibleTitle : visibleTitle ?? titleCandidates[0];
   if (titleEl) {
     titleEl.style.viewTransitionName = 'song-title-hero';
     taggedElements.push(titleEl);
@@ -63,11 +87,14 @@ function tagHeroElementsForSong(songId: string | null) {
   const keyCandidates = Array.from(
     document.querySelectorAll<HTMLElement>(`[data-vt-song-key="${escaped}"]`)
   );
-  const keyEl = keyCandidates.find(isElementVisibleInViewport) ?? keyCandidates[0];
+  const visibleKey = keyCandidates.find(isElementVisibleInViewport);
+  const keyEl = opts?.requireVisibleSurface ? visibleKey : visibleKey ?? keyCandidates[0];
   if (keyEl) {
     keyEl.style.viewTransitionName = 'song-key-hero';
     taggedElements.push(keyEl);
   }
+
+  return { hasSurface };
 }
 
 /**
@@ -78,13 +105,24 @@ export function commitPendingViewTransition() {
   if (!pendingResolve) return;
   const resolve = pendingResolve;
   const songId = pendingSongId;
+  const dir = pendingDirection;
+  const hadSourceSurface = pendingHasSourceSurface;
   pendingResolve = null;
   if (pendingTimer) {
     clearTimeout(pendingTimer);
     pendingTimer = null;
   }
   markSettledEntrances();
-  tagHeroElementsForSong(songId);
+  const isContainerNav = (dir === 'forward' || dir === 'back') && hadSourceSurface;
+  const { hasSurface } = tagHeroElementsForSong(songId, {
+    allowSurface: isContainerNav,
+    requireVisibleSurface: dir === 'back',
+  });
+  if (isContainerNav && hasSurface) {
+    document.documentElement.dataset.vtContainer = 'true';
+  } else {
+    delete document.documentElement.dataset.vtContainer;
+  }
   resolve();
 }
 
@@ -139,9 +177,20 @@ export function navigateWithTransition(
 
   const direction: TransitionDirection = opts?.direction ?? 'fade';
   const mySeq = ++transitionSeq;
+  const allowSurface = direction === 'forward' || direction === 'back';
   pendingSongId = opts?.songId ?? null;
+  pendingDirection = direction;
   document.documentElement.dataset.vtDir = direction;
-  tagHeroElementsForSong(pendingSongId);
+  const { hasSurface } = tagHeroElementsForSong(pendingSongId, {
+    allowSurface,
+    requireVisibleSurface: direction === 'forward',
+  });
+  pendingHasSourceSurface = hasSurface;
+  if (allowSurface && hasSurface) {
+    document.documentElement.dataset.vtContainer = 'true';
+  } else {
+    delete document.documentElement.dataset.vtContainer;
+  }
 
   try {
     const vt = startVT.call(document, () => {
@@ -154,7 +203,16 @@ export function navigateWithTransition(
             pendingResolve = null;
             pendingTimer = null;
             markSettledEntrances();
-            tagHeroElementsForSong(pendingSongId);
+            const isContainerNav = allowSurface && pendingHasSourceSurface;
+            const dest = tagHeroElementsForSong(pendingSongId, {
+              allowSurface: isContainerNav,
+              requireVisibleSurface: direction === 'back',
+            });
+            if (isContainerNav && dest.hasSurface) {
+              document.documentElement.dataset.vtContainer = 'true';
+            } else {
+              delete document.documentElement.dataset.vtContainer;
+            }
             done();
           }
         }, 420);
@@ -169,13 +227,19 @@ export function navigateWithTransition(
         if (transitionSeq !== mySeq) return;
         clearTaggedElements();
         pendingSongId = null;
+        pendingDirection = null;
+        pendingHasSourceSurface = false;
         delete document.documentElement.dataset.vtDir;
+        delete document.documentElement.dataset.vtContainer;
       });
   } catch {
     if (transitionSeq === mySeq) {
       clearTaggedElements();
       pendingSongId = null;
+      pendingDirection = null;
+      pendingHasSourceSurface = false;
       delete document.documentElement.dataset.vtDir;
+      delete document.documentElement.dataset.vtContainer;
     }
     go();
   }

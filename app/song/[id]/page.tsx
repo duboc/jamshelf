@@ -1582,7 +1582,10 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div
+      data-vt-song-surface={song.id}
+      className="flex-1 flex flex-col min-h-0 overflow-hidden"
+    >
       <VisualPulse />
 
       {/* Constant 56px Pinned Top Bar (or dedicated Edit Top Bar when editing) */}

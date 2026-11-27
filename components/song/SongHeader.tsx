@@ -619,7 +619,7 @@ export function SongHeader({
               <h1
                 data-vt-song-title={song.id}
                 title={titleInput || song.title}
-                className="font-display font-bold text-[17px] sm:text-xl text-[var(--ink)] truncate leading-tight"
+                className="font-display font-bold text-[17px] sm:text-xl text-[var(--ink)] truncate leading-tight w-fit max-w-full"
               >
                 {titleInput || song.title}
               </h1>

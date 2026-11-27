@@ -1329,11 +1329,51 @@
   }
 
   .gm3-list-row {
+    border-radius: 6px;
     transition:
       border-radius var(--motion-spatial-default-duration) var(--motion-spatial-default),
       transform var(--motion-spatial-default-duration) var(--motion-spatial-default),
       background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
       box-shadow var(--motion-effects-default-duration) var(--motion-effects-default);
+  }
+
+  .gm3-list-row[data-pos="only"] {
+    border-radius: 20px;
+  }
+
+  .gm3-list-row[data-pos="first"] {
+    border-radius: 20px 20px 6px 6px;
+  }
+
+  .gm3-list-row[data-pos="last"] {
+    border-radius: 6px 6px 20px 20px;
+  }
+
+  .gm3-list-row:hover:not([data-dragging="true"]) {
+    border-radius: 16px;
+  }
+
+  .gm3-list-row[data-pos="only"]:hover:not([data-dragging="true"]) {
+    border-radius: 22px;
+  }
+
+  .gm3-list-row[data-pos="first"]:hover:not([data-dragging="true"]) {
+    border-radius: 20px 20px 16px 16px;
+  }
+
+  .gm3-list-row[data-pos="last"]:hover:not([data-dragging="true"]) {
+    border-radius: 16px 16px 20px 20px;
+  }
+
+  .gm3-list-row:active:not([data-dragging="true"]):not(:has(button:active, a.pill-btn:active)) {
+    border-radius: 20px;
+    transform: scale(0.992);
+    transition-duration: var(--motion-press-duration);
+    transition-timing-function: var(--motion-press-ease);
+  }
+
+  .gm3-list-row[data-dragging="true"] {
+    border-radius: 18px;
   }
 
   .gm3-menu-item {
@@ -2343,12 +2383,69 @@
   to { transform: translateX(0); }
 }
 
-/* Native GM3 Shared-Element, Anchored Chrome, Shared-Axis & In-Page Morph View Transitions */
+@keyframes gm3-vt-surface-open {
+  0% {
+    border-radius: 20px;
+    background-color: var(--surface-high);
+    box-shadow: 0 6px 24px rgba(11, 87, 208, 0.08), 0 2px 10px rgba(0, 0, 0, 0.06);
+  }
+  34% {
+    border-radius: 16px;
+    background-color: var(--bg);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  }
+  100% {
+    border-radius: 0px;
+    background-color: var(--bg);
+    box-shadow: none;
+  }
+}
+
+@keyframes gm3-vt-surface-close {
+  0% {
+    border-radius: 0px;
+    background-color: var(--bg);
+    box-shadow: none;
+  }
+  52% {
+    border-radius: 16px;
+    background-color: var(--surface);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  }
+  100% {
+    border-radius: 18px;
+    background-color: var(--surface);
+    box-shadow: none;
+  }
+}
+
+@keyframes gm3-vt-list-recede {
+  from { transform: scale(1); }
+  to { transform: scale(0.988); }
+}
+
+@keyframes gm3-vt-list-emerge {
+  from { transform: scale(0.988); }
+  to { transform: scale(1); }
+}
+
+/* Native GM3 Container Transform, Shared-Element, Anchored Chrome & Shared-Axis View Transitions */
 ::view-transition-group(app-chrome-rail),
 ::view-transition-group(app-chrome-bottom) {
   animation-duration: 380ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 15;
+}
+
+:root[data-vt-container="true"]::view-transition-group(app-chrome-rail),
+:root[data-vt-container="true"]::view-transition-group(app-chrome-bottom) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-vt-container="true"][data-vt-dir="back"]::view-transition-group(app-chrome-rail),
+:root[data-vt-container="true"][data-vt-dir="back"]::view-transition-group(app-chrome-bottom) {
+  animation-duration: 380ms;
 }
 
 ::view-transition-old(app-chrome-rail),
@@ -2360,21 +2457,121 @@
   animation-timing-function: var(--motion-effects-default);
 }
 
+/* Prevent squished icons / ghosted labels when Navigation Rail expands/collapses during Container Transform */
+:root[data-vt-container="true"]::view-transition-image-pair(app-chrome-rail) {
+  overflow: clip;
+}
+
+:root[data-vt-container="true"]::view-transition-old(app-chrome-rail),
+:root[data-vt-container="true"]::view-transition-new(app-chrome-rail) {
+  width: 100%;
+  height: 100%;
+  object-fit: none;
+  object-position: top left;
+}
+
+:root[data-vt-container="true"]::view-transition-old(app-chrome-rail) {
+  animation: gm3-vt-fade-out 100ms cubic-bezier(0.3, 0, 1, 1) both;
+}
+
+:root[data-vt-container="true"]::view-transition-new(app-chrome-rail) {
+  animation: gm3-vt-fade-in 190ms cubic-bezier(0, 0, 0.2, 1) 60ms both;
+}
+
+/* Expanding/collapsing song container surface (M3 Container Transform: zero bitmap stretching) */
+::view-transition-group(song-surface-hero) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  z-index: 12;
+}
+
+:root[data-vt-dir="back"]::view-transition-group(song-surface-hero) {
+  animation-duration: 380ms;
+}
+
+::view-transition-image-pair(song-surface-hero) {
+  overflow: clip;
+  animation: gm3-vt-surface-open 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+:root[data-vt-dir="back"]::view-transition-image-pair(song-surface-hero) {
+  animation: gm3-vt-surface-close 380ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+::view-transition-old(song-surface-hero),
+::view-transition-new(song-surface-hero) {
+  width: 100%;
+  height: 100%;
+  object-fit: none;
+  object-position: top left;
+}
+
+::view-transition-old(song-surface-hero) {
+  animation: gm3-vt-fade-out 95ms cubic-bezier(0.3, 0, 1, 1) both;
+}
+
+::view-transition-new(song-surface-hero) {
+  animation: gm3-vt-fade-in 220ms cubic-bezier(0, 0, 0.2, 1) 40ms both;
+}
+
+:root[data-vt-dir="back"]::view-transition-old(song-surface-hero) {
+  animation: gm3-vt-fade-out 115ms cubic-bezier(0.3, 0, 1, 1) both;
+}
+
+:root[data-vt-dir="back"]::view-transition-new(song-surface-hero) {
+  animation: gm3-vt-fade-in 190ms cubic-bezier(0, 0, 0.2, 1) 80ms both;
+}
+
+/* Synchronized Title & Key hero glide riding above the expanding surface */
 ::view-transition-group(song-title-hero),
 ::view-transition-group(song-key-hero) {
-  animation-duration: 420ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
   z-index: 20;
 }
 
+:root[data-vt-dir="back"]::view-transition-group(song-title-hero),
+:root[data-vt-dir="back"]::view-transition-group(song-key-hero) {
+  animation-duration: 420ms;
+}
+
 ::view-transition-old(song-title-hero),
-::view-transition-new(song-title-hero),
+::view-transition-new(song-title-hero) {
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+  animation-duration: 240ms;
+  animation-timing-function: var(--motion-effects-default);
+}
+
 ::view-transition-old(song-key-hero),
 ::view-transition-new(song-key-hero) {
   height: 100%;
   object-fit: contain;
+  object-position: center;
   animation-duration: 240ms;
   animation-timing-function: var(--motion-effects-default);
+}
+
+/* Background page choreography when Container Transform is active */
+:root[data-vt-container="true"][data-vt-dir="forward"]::view-transition-old(root) {
+  animation:
+    gm3-vt-fade-out 220ms var(--motion-effects-default) both,
+    gm3-vt-list-recede 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+:root[data-vt-container="true"][data-vt-dir="forward"]::view-transition-new(root) {
+  animation: gm3-vt-fade-in 220ms var(--motion-effects-default) both;
+}
+
+:root[data-vt-container="true"][data-vt-dir="back"]::view-transition-old(root) {
+  animation: gm3-vt-fade-out 180ms var(--motion-effects-default) both;
+}
+
+:root[data-vt-container="true"][data-vt-dir="back"]::view-transition-new(root) {
+  animation:
+    gm3-vt-fade-in 280ms var(--motion-effects-default) both,
+    gm3-vt-list-emerge 380ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 ::view-transition-old(root) {
@@ -2563,6 +2760,7 @@
   }
 
   ::view-transition-group(*),
+  ::view-transition-image-pair(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
     animation: none !important;

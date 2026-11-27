@@ -328,8 +328,9 @@ export function CleanStageView({
   return (
     <div
       data-clean-stage="true"
+      data-vt-song-surface={song.id}
       data-motion-scheme="standard"
-      className="h-screen flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--ink)]"
+      className="h-[100dvh] flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--ink)]"
     >
       <VisualPulse />
 
