@@ -638,7 +638,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div
       className={`min-h-screen flex text-[var(--ink)] ${
         hideChrome ? 'bg-[var(--bg)]' : 'gm3-ambient-canvas'
-      } ${isSongPage ? 'h-screen overflow-hidden' : ''}`}
+      } ${isSongPage ? 'h-[100dvh] overflow-hidden' : ''}`}
     >
       {/* WCAG 2.4.1 Skip Link */}
       <a

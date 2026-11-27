@@ -66,23 +66,23 @@ export const SectionBlock = memo(function SectionBlock({
   onCalibrationTap,
 }: SectionBlockProps) {
   const colors = SECTION_COLORS[section.type] || SECTION_COLORS.verse;
-  const [labelDraft, setLabelDraft] = useState(section.label);
+  const displayLabel = formatSectionLabel(section.label);
+  const [labelDraft, setLabelDraft] = useState(displayLabel);
   useEffect(() => {
-    setLabelDraft(section.label);
-  }, [section.label]);
+    setLabelDraft(displayLabel);
+  }, [displayLabel, domSyncKey]);
 
   const commitLabelDraft = () => {
     const trimmed = labelDraft.trim();
     if (!trimmed) {
-      setLabelDraft(section.label);
+      setLabelDraft(displayLabel);
       return;
     }
-    if (trimmed !== section.label) {
+    if (trimmed !== displayLabel) {
       onRenameSection?.(sectionIdx, trimmed);
     }
   };
 
-  const displayLabel = formatSectionLabel(section.label);
   const selectedInSection =
     selectedCoord?.sectionIdx === sectionIdx
       ? { lineIdx: selectedCoord.lineIdx, segIdx: selectedCoord.segIdx }
@@ -187,7 +187,7 @@ export const SectionBlock = memo(function SectionBlock({
                   e.preventDefault();
                   e.currentTarget.blur();
                 } else if (e.key === 'Escape') {
-                  setLabelDraft(section.label);
+                  setLabelDraft(displayLabel);
                   e.currentTarget.blur();
                 }
               }}
@@ -208,8 +208,8 @@ export const SectionBlock = memo(function SectionBlock({
               disabled={sectionIdx === 0}
               onClick={() => onMoveSection?.(sectionIdx, 'up')}
               className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9"
-              title={`Mover ${section.label} para cima`}
-              aria-label={`Mover ${section.label} para cima`}
+              title={`Mover ${displayLabel} para cima`}
+              aria-label={`Mover ${displayLabel} para cima`}
             >
               <ArrowUpIcon size={15} />
             </button>
@@ -218,8 +218,8 @@ export const SectionBlock = memo(function SectionBlock({
               disabled={sectionIdx >= totalSections - 1}
               onClick={() => onMoveSection?.(sectionIdx, 'down')}
               className="pill-btn bg-[var(--bg)] w-10 h-10 lg:w-9 lg:h-9"
-              title={`Mover ${section.label} para baixo`}
-              aria-label={`Mover ${section.label} para baixo`}
+              title={`Mover ${displayLabel} para baixo`}
+              aria-label={`Mover ${displayLabel} para baixo`}
             >
               <ArrowDownIcon size={15} />
             </button>
@@ -227,8 +227,8 @@ export const SectionBlock = memo(function SectionBlock({
               type="button"
               onClick={() => onDuplicateSection?.(sectionIdx)}
               className="pill-btn bg-[var(--bg)] w-10 sm:w-auto sm:px-3 h-10 lg:h-9 text-xs"
-              title={`Duplicar ${section.label}`}
-              aria-label={`Duplicar ${section.label}`}
+              title={`Duplicar ${displayLabel}`}
+              aria-label={`Duplicar ${displayLabel}`}
             >
               <CopyIcon size={15} className="sm:hidden" />
               <span className="hidden sm:inline">Duplicar</span>
@@ -238,8 +238,8 @@ export const SectionBlock = memo(function SectionBlock({
               disabled={totalSections <= 1}
               onClick={() => onDeleteSection?.(sectionIdx)}
               className="pill-btn bg-[var(--bg)] text-[var(--muted)] hover:bg-[var(--rec-dim)] hover:text-[var(--on-rec-container)] focus-visible:bg-[var(--rec-dim)] focus-visible:text-[var(--on-rec-container)] w-10 sm:w-auto sm:px-3 h-10 lg:h-9 text-xs ml-1"
-              title={`Excluir ${section.label}`}
-              aria-label={`Excluir ${section.label}`}
+              title={`Excluir ${displayLabel}`}
+              aria-label={`Excluir ${displayLabel}`}
             >
               <TrashIcon size={15} className="sm:hidden" />
               <span className="hidden sm:inline">Excluir</span>
@@ -276,7 +276,7 @@ export const SectionBlock = memo(function SectionBlock({
         editSubMode === 'chords' ? (
           <ChordStampSection
             sectionIdx={sectionIdx}
-            sectionLabel={section.label}
+            sectionLabel={displayLabel}
             lines={section.lines}
             selected={selectedInSection}
             stampChord={stampChord}
@@ -287,7 +287,7 @@ export const SectionBlock = memo(function SectionBlock({
         ) : (
           <SectionEditor
             sectionIdx={sectionIdx}
-            sectionLabel={section.label}
+            sectionLabel={displayLabel}
             lines={section.lines}
             selected={selectedInSection}
             onChordSelect={(lineIdx, segIdx) => onChordSelect?.(sectionIdx, lineIdx, segIdx)}

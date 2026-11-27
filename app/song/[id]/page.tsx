@@ -10,6 +10,7 @@ import { useLiveSession, type LiveScrollState } from '@/lib/stores/live-session-
 import {
   extractChords,
   extractLyricText,
+  formatSectionLabel,
   getDiatonicChordsForKey,
   transposeChord,
   parseLine,
@@ -154,6 +155,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
   const replaceAllTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const choPreviewScrollRef = useRef<HTMLDivElement>(null);
   const lastMoveMetaRef = useRef<{ sectionIdx: number; lineIdx: number; at: number } | null>(null);
+  const pendingEditAnchorRef = useRef<number | null>(null);
   const saveVisualEditRef = useRef<(() => void) | null>(null);
   const saveChoRef = useRef<(() => void) | null>(null);
 
@@ -353,14 +355,25 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
     return () => clearInterval(timer);
   }, [calibrating, calStartMs]);
 
-  // Clear edit selection when leaving edit mode
+  // Preserve current reading section when entering visual edit mode, and clear selection when leaving
   useEffect(() => {
     if (!store.editMode) {
+      pendingEditAnchorRef.current = null;
       const timer = setTimeout(() => {
         setSelectedCoord(null);
         setAddTarget(null);
       }, 0);
       return () => clearTimeout(timer);
+    }
+    const targetIdx = pendingEditAnchorRef.current;
+    if (targetIdx === null) return;
+    pendingEditAnchorRef.current = null;
+    const container = sheetScrollRef.current;
+    const target = container?.querySelector<HTMLElement>(`#section-${targetIdx}`);
+    if (container && target) {
+      const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+      container.scrollTop = Math.min(maxScroll, Math.max(0, target.offsetTop - 16));
+      setActiveSectionIdx(targetIdx);
     }
   }, [store.editMode]);
 
@@ -483,7 +496,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
           idx >= 0 &&
           idx < nextSections.length &&
           trimmed &&
-          trimmed !== nextSections[idx].label
+          trimmed !== formatSectionLabel(nextSections[idx].label)
         ) {
           nextSections[idx].label = trimmed;
           sectionsChanged = true;
@@ -825,6 +838,25 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
 
   const enterVisualEdit = () => {
     const raw = exportEntry(id) ?? songToChordPro(currentSong);
+    let anchorSectionIdx: number | null = null;
+    const scroller = sheetScrollRef.current;
+    if (scroller && scroller.scrollTop >= 40 && currentSong.sections.length > 0) {
+      const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      if (maxScroll > 0 && scroller.scrollTop >= maxScroll - 24) {
+        anchorSectionIdx = currentSong.sections.length - 1;
+      } else {
+        const scrollerTop = scroller.getBoundingClientRect().top;
+        const nodes = scroller.querySelectorAll<HTMLElement>('[data-section-idx]');
+        for (const node of nodes) {
+          if (node.getBoundingClientRect().bottom > scrollerTop + 80) {
+            anchorSectionIdx = Number(node.dataset.sectionIdx ?? 0);
+            break;
+          }
+        }
+        if (anchorSectionIdx === null) anchorSectionIdx = activeSectionIdx;
+      }
+    }
+    pendingEditAnchorRef.current = anchorSectionIdx;
     lastMoveMetaRef.current = null;
     clearDeletedSectionToast();
     clearReplaceAllToast();
@@ -1000,6 +1032,7 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         sections: duplicateSongSection(currentSong.sections, sectionIdx),
       })
     );
+    setDomSyncKey((k) => k + 1);
     closeOverlay();
     flashStatus('Seção duplicada');
     requestAnimationFrame(() => {
@@ -1017,17 +1050,19 @@ export default function SongPage({ params }: { params: Promise<{ id: string }> }
         sections: moveSongSection(currentSong.sections, sectionIdx, dir),
       })
     );
+    setDomSyncKey((k) => k + 1);
     closeOverlay();
   }
 
   function handleDeleteSection(sectionIdx: number) {
-    const removedLabel = currentSong.sections[sectionIdx]?.label || 'Seção';
+    const removedLabel = formatSectionLabel(currentSong.sections[sectionIdx]?.label || 'Seção');
     commitDraftText(
       songToChordPro({
         ...currentSong,
         sections: removeSongSection(currentSong.sections, sectionIdx),
       })
     );
+    setDomSyncKey((k) => k + 1);
     closeOverlay();
     if (deletedToastTimerRef.current) clearTimeout(deletedToastTimerRef.current);
     setDeletedSectionToast({ label: removedLabel, nonce: Date.now() });
